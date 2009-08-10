@@ -52,9 +52,9 @@ lookupFile paths exts file = lookupFile' paths'
                   let fn = p `combine` replaceExtension file e
                   [fn, inCurrySubdir fn]
       lookupFile' [] = return Nothing
-      lookupFile' (fn:paths)
+      lookupFile' (fn:ps)
           = do so <- doesFileExist fn
-               if so then return (Just fn) else lookupFile' paths
+               if so then return (Just fn) else lookupFile' ps
 
 
 
@@ -69,7 +69,7 @@ inSubdir sub fn = joinPath $ add (splitDirectories fn)
     add ps@[_] = sub:ps
     add ps@[p,_] | p==sub = ps
     add (p:ps) = p:add ps
-    add "" = error "inSubdir: called with empty path"
+    add [] = error "inSubdir: called with empty path"
 
 --The sub directory to hide files in:
 

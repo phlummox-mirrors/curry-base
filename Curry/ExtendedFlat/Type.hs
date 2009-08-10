@@ -78,7 +78,7 @@ data QName = QName {srcRef      :: Maybe SrcRef,
 instance Read QName where
   readsPrec d r = 
        [ (mkQName nm,s) | (nm,s) <- readsPrec d r ]
-    ++ [ (QName r t m n, s) | ((r, t, m, n),s) <- readsPrec d r ]
+    ++ [ (QName r' t m n, s) | ((r', t, m, n),s) <- readsPrec d r ]
 
 instance Show QName where
   showsPrec d (QName r t m n)
@@ -432,22 +432,22 @@ gshowsPrec showType d =
                                       
       where
         showsQName :: Bool -> QName -> ShowS
-        showsQName d qn@QName{modName=m,localName=n,typeofQName=t} = 
-          if showType then showParen d (shows qn{srcRef=Nothing})
+        showsQName d' qn@QName{modName=m,localName=n} = 
+          if showType then showParen d' (shows qn{srcRef=Nothing})
                       else shows (m,n)
 
         showsVarIndex :: Bool -> VarIndex -> ShowS
-        showsVarIndex d
-            | showType  = showParen d . shows
+        showsVarIndex d'
+            | showType  = showParen d' . shows
             | otherwise = shows . idxOf
 
         genericShowsPrec :: Data a => Bool -> a -> ShowS
-        genericShowsPrec d t = let args = intersperse (showChar ' ') $
-                                          gmapQ (gshowsPrec showType True) t in
-                               showParen (d && not (null args)) $
-                               showString (showConstr (toConstr t)) .
-                               (if null args then id else showChar ' ') .
-                               foldr (.) id args
+        genericShowsPrec d' t = let args = intersperse (showChar ' ') $
+                                           gmapQ (gshowsPrec showType True) t in
+                                showParen (d' && not (null args)) $
+                                showString (showConstr (toConstr t)) .
+                                (if null args then id else showChar ' ') .
+                                foldr (.) id args
 
         showsList :: Data a => [a] -> ShowS
         showsList xs = showChar '[' . 
