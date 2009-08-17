@@ -21,7 +21,7 @@ module Curry.ExtendedFlat.Type(SrcRef,Prog(..),
                                Visibility(..),
                                TVarIndex, TypeDecl(..), ConsDecl(..), TypeExpr(..),
                                OpDecl(..), Fixity(..),
-                               VarIndex(..), mkIdx,
+                               VarIndex(..), mkIdx, incVarIndex,
                                FuncDecl(..), Rule(..), 
                                CaseType(..), CombType(..), Expr(..), BranchExpr(..),
                                Pattern(..), Literal(..), 
@@ -77,8 +77,9 @@ data QName = QName {srcRef      :: Maybe SrcRef,
 
 instance Read QName where
   readsPrec d r = 
-       [ (mkQName nm,s) | (nm,s) <- readsPrec d r ]
-    ++ [ (QName r' t m n, s) | ((r', t, m, n),s) <- readsPrec d r ]
+      [ (QName r' t m n, s) | ((r', t, m, n),s) <- readsPrec d r ]
+      ++ [ (mkQName nm,s) | (nm,s) <- readsPrec d r ]
+
 
 instance Show QName where
   showsPrec d (QName r t m n)
@@ -138,6 +139,9 @@ instance Num VarIndex where
   abs = onIndex abs
   signum = onIndex signum
   fromInteger = mkIdx . fromInteger
+
+incVarIndex :: VarIndex -> Int -> VarIndex
+incVarIndex vi n = vi { idxOf = n + idxOf vi }
 
 ------------------------------------------------------------
 --- Data type to specify the visibility of various entities.
@@ -386,7 +390,7 @@ data Literal = Intc   SrcRef Integer
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
 
--- Reads a FlatCurry file (extension ".fcy") and returns the corresponding
+-- Reads an ExtendedFlat file (extension ".efc") and returns the corresponding
 -- FlatCurry program term (type 'Prog') as a value of type 'Maybe'.
 readFlatCurry :: FilePath -> IO (Maybe Prog)
 readFlatCurry fn 

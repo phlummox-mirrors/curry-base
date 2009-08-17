@@ -114,8 +114,8 @@ updQNamesInProg f = updProg id id
 rnmProg :: String -> Prog -> Prog
 rnmProg name p = updProgName (const name) (updQNamesInProg rnm p)
  where
-  rnm (mod,n) | mod==progName p = (name,n)
-              | otherwise = (mod,n)
+  rnm (m,n) | m==progName p = (name,n)
+            | otherwise = (m,n)
 
 -- TypeDecl ------------------------------------------------------------------
 
@@ -495,7 +495,7 @@ updFuncBody = updFuncRule . updRuleBody
 
 --- transform rule
 trRule :: ([VarIndex] -> Expr -> a) -> (String -> a) -> Rule -> a
-trRule rule _ (Rule args exp) = rule args exp
+trRule rule _ (Rule args e) = rule args e
 trRule _ ext (External s) = ext s
 
 -- Selectors
@@ -506,7 +506,7 @@ ruleArgs = trRule (\args _ -> args) failed
 
 --- get rules body if it's not external
 ruleBody :: Rule -> Expr
-ruleBody = trRule (\_ exp -> exp) failed
+ruleBody = trRule (\_ e -> e) failed
 
 --- get rules external declaration
 ruleExtDecl :: Rule -> String
@@ -526,7 +526,7 @@ updRule :: ([VarIndex] -> [VarIndex]) ->
            (String -> String) -> Rule -> Rule
 updRule fa fe fs = trRule rule ext
  where
-  rule args exp = Rule (fa args) (fe exp)
+  rule args e = Rule (fa args) (fe e)
   ext s = External (fs s)
 
 --- update rules arguments
@@ -704,25 +704,25 @@ trExpr var _ _ _ _ _ _ _ (Var n) = var n
 
 trExpr _ lit _ _ _ _ _ _ (Lit l) = lit l
 
-trExpr var lit comb lt fr or cas branch (Comb ct name args)
-  = comb ct name (map (trExpr var lit comb lt fr or cas branch) args)
+trExpr var lit comb lt fr oR cas branch (Comb ct name args)
+  = comb ct name (map (trExpr var lit comb lt fr oR cas branch) args)
 
-trExpr var lit comb lt fr or cas branch (Let bs e)
-  = lt (map (\ (n,exp) -> (n,f exp)) bs) (f e)
+trExpr var lit comb lt fr oR cas branch (Let bs e)
+  = lt (map (\ (n,e) -> (n,f e)) bs) (f e)
  where
-  f = trExpr var lit comb lt fr or cas branch
+  f = trExpr var lit comb lt fr oR cas branch
 
-trExpr var lit comb lt fr or cas branch (Free vs e)
-  = fr vs (trExpr var lit comb lt fr or cas branch e)
+trExpr var lit comb lt fr oR cas branch (Free vs e)
+  = fr vs (trExpr var lit comb lt fr oR cas branch e)
 
-trExpr var lit comb lt fr or cas branch (Or e1 e2) = or (f e1) (f e2)
+trExpr var lit comb lt fr oR cas branch (Or e1 e2) = oR (f e1) (f e2)
  where
-  f = trExpr var lit comb lt fr or cas branch
+  f = trExpr var lit comb lt fr oR cas branch
 
-trExpr var lit comb lt fr or cas branch (Case ct e bs)
-  = cas ct (f e) (map (\ (Branch pat exp) -> branch pat (f exp)) bs)
+trExpr var lit comb lt fr oR cas branch (Case ct e bs)
+  = cas ct (f e) (map (\ (Branch pat e) -> branch pat (f e)) bs)
  where
-  f = trExpr var lit comb lt fr or cas branch
+  f = trExpr var lit comb lt fr oR cas branch
 
 -- Update Operations
 
@@ -748,7 +748,7 @@ updFrees fr = trExpr Var Lit Comb Let fr Or Case Branch
 
 --- update all or expressions in given expression
 updOrs :: (Expr -> Expr -> Expr) -> Expr -> Expr
-updOrs or = trExpr Var Lit Comb Let Free or Case Branch
+updOrs oR = trExpr Var Lit Comb Let Free oR Case Branch
 
 --- update all case expressions in given expression
 updCases :: (CaseType -> Expr -> [BranchExpr] -> Expr) -> Expr -> Expr
@@ -778,20 +778,20 @@ isConsPartCall e = isComb e && isCombTypeConsPartCall (combType e)
 
 --- is expression fully evaluated?
 isGround :: Expr -> Bool
-isGround exp 
-  = case exp of
+isGround e 
+  = case e of
       Comb ConsCall _ args -> all isGround args
-      _ -> isLit exp
+      _ -> isLit e
 
 --- get all variables (also pattern variables) in expression
 allVars :: Expr -> [VarIndex]
 allVars e = trExpr (:) (const id) comb lt fr (.) cas branch e []
  where
   comb _ _ = foldr (.) id
-  lt bs exp = exp . foldr (.) id (map (\ (n,ns) -> (n:) . ns) bs)
-  fr vs exp = (vs++) . exp
-  cas _ exp bs = exp . foldr (.) id bs
-  branch pat exp = ((args pat)++) . exp
+  lt bs e = e . foldr (.) id (map (\ (n,ns) -> (n:) . ns) bs)
+  fr vs e = (vs++) . e
+  cas _ e bs = e . foldr (.) id bs
+  branch pat e = ((args pat)++) . e
   args pat | isConsPattern pat = patArgs pat
            | otherwise = []
 
@@ -799,7 +799,7 @@ allVars e = trExpr (:) (const id) comb lt fr (.) cas branch e []
 rnmAllVars :: Update Expr VarIndex
 rnmAllVars f = trExpr (Var . f) Lit Comb lt (Free . map f) Or Case branch
  where
-   lt = Let . map (\ (n,exp) -> (f n,exp))
+   lt = Let . map (\ (n,e) -> (f n,e))
    branch = Branch . updPatArgs (map f)
 
 --- update all qualified names in expression
@@ -812,7 +812,7 @@ updQNames f = trExpr Var Lit comb Let Free Or Case (Branch . updPatCons f)
 
 --- transform branch expression
 trBranch :: (Pattern -> Expr -> a) -> BranchExpr -> a
-trBranch branch (Branch pat exp) = branch pat exp
+trBranch branch (Branch pat e) = branch pat e
 
 -- Selectors
 
@@ -830,7 +830,7 @@ branchExpr = trBranch (\_ e -> e)
 updBranch :: (Pattern -> Pattern) -> (Expr -> Expr) -> BranchExpr -> BranchExpr
 updBranch fp fe = trBranch branch
  where
-  branch pat exp = Branch (fp pat) (fe exp)
+  branch pat e = Branch (fp pat) (fe e)
 
 --- update pattern of branch expression
 updBranchPattern :: Update BranchExpr Pattern

@@ -174,7 +174,7 @@ given module prefix, respectively).
 > unqualify (QualIdent _ x) = x
 
 > qualUnqualify :: ModuleIdent -> QualIdent -> QualIdent
-> qualUnqualify m qid@(QualIdent Nothing x) = qid
+> qualUnqualify _ qid@(QualIdent Nothing _) = qid
 > qualUnqualify m (QualIdent (Just m') x) = QualIdent m'' x
 >     where m'' | m == m' = Nothing
 >               | otherwise    = Just m'
@@ -332,6 +332,7 @@ Micellaneous function for generating and testing extended identifiers.
 > renameLabel l = renameIdent l (-1)
 
 
+> fpSelExt, recSelExt, recUpdExt, recordExt, labelExt :: String
 > fpSelExt = "_#selFP"
 > recSelExt = "_#selR@"
 > recUpdExt = "_#updR@"

@@ -31,8 +31,6 @@ instance Error WarnMsg where
 instance Show WarnMsg where
     show = showWarning
 
--- tell w = Control.Monad.Writer.tell w
-
 showWarning w = "Warning: " ++ pos ++ warnTxt w
     where pos = case warnPos w of
                   Nothing -> ""

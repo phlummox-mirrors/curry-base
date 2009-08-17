@@ -18,7 +18,7 @@
 module Curry.ExtendedFlat.Goodies where
 
 import Control.Monad(mplus, msum)
-
+import Data.List
 
 import Curry.ExtendedFlat.Type
 
@@ -930,3 +930,32 @@ typeofLiteral l
         Charc _ _  -> preludeType "Char"
     where
       preludeType s = TCons (mkQName ("Prelude", s)) []
+
+
+
+-- Function |fvs| returns a list containing the identifiers that
+-- occur free in an expression. (Not to confuse with Curry's free
+-- variables..)
+fvs :: Expr -> [VarIndex]
+fvs expr = case expr of
+             Var v         -> [v]
+             Lit _         -> []
+             Comb _ _ es   -> foldr union [] (map fvs es)
+             Let bs e      -> foldr letFvs (fvs e) bs \\ map fst bs
+             Free vs e     -> fvs e \\ vs
+             Or l r        -> fvs l `union` fvs r
+             Case _ _ e bs   -> foldr branchFvs (fvs e) bs
+    where
+      letFvs (_,e)         = union (fvs e)
+      branchFvs (Branch p e) vs   = (fvs e \\ pvars p) `union` vs
+      pvars (Pattern _ vs) = vs
+      pvars (LPattern _)   = []
+
+
+
+-- Is an expression in weak head normal form? Yes for literals,
+-- constructor terms and unsaturated combinations.
+whnf :: Expr -> Bool
+whnf (Lit _)       = True
+whnf (Comb t _ _)  = not (isCombTypeFuncCall t)
+whnf _             = False
