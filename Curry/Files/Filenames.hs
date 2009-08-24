@@ -12,6 +12,8 @@ icurryExt = ".icurry"
 
 flatExt = ".fcy"
 
+extFlatExt = ".efc"
+
 flatIntExt = ".fint"
 -- fintExt = ".fint"
 
@@ -46,6 +48,9 @@ interfName sfn = replaceExtension sfn icurryExt
 
 flatName :: FilePath -> FilePath
 flatName fn = replaceExtension fn flatExt
+
+extFlatName :: FilePath -> FilePath
+extFlatName fn = replaceExtension fn extFlatExt
 
 flatIntName :: FilePath -> FilePath
 flatIntName fn = replaceExtension fn flatIntExt

@@ -37,7 +37,7 @@ import System.FilePath
 
 import Curry.Base.Position (SrcRef)
 
-import Curry.Files.Filenames(flatName)
+import Curry.Files.Filenames(flatName, extFlatName)
 import Curry.Files.PathUtils (writeModule, maybeReadModule)
 
 
@@ -417,7 +417,7 @@ writeFlatCurry filename prog
 -- Writes a FlatCurry program term with source references into a file.
 writeExtendedFlat :: String -> Prog -> IO ()
 writeExtendedFlat filename prog =
-  writeModule (replaceExtension filename ".efc") (showFlatCurry' True prog)
+  writeModule (extFlatName filename) (showFlatCurry' True prog)
 
 
 showFlatCurry' :: Bool -> Prog -> String
