@@ -1,3 +1,13 @@
+{-
+  Filename mangling for several intermediate file formats.
+
+  The functions in this module were collected from several
+  compiler modules in order to provide a unique accessing
+  point for this functionality.
+
+  (c) 2009, Holger Siegel.
+-}
+
 module Curry.Files.Filenames where
 
 import System.FilePath

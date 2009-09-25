@@ -1,9 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-
-  The \texttt{MsgMonad} type is used for describing the result of a
-  computation that can fail. In contrast to the standard \texttt{Maybe}
-  type, its \texttt{Error} case provides for an error message that
-  describes the failure.
+  The monads MsgMonad and MsgMonadIO provide a common way
+  to log warning messages and to stop execution when an
+  error occurs. They may be used to integrate different
+  compiler passes smoothly.
+
+  (c) 2009, Holger Siegel.
+
 -}
 
 module Curry.Base.MessageMonad where

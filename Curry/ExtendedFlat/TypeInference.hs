@@ -1,5 +1,16 @@
 {-# LANGUAGE FlexibleContexts, PatternGuards #-}
 
+{-
+  Function adjustTypeInfos annotates every declaration,
+  identifier, and application with exact type information.
+
+  This information is derived from the more general information
+  found in the AST.
+
+  (c) 2009, Holger Siegel.
+
+-}
+
 module Curry.ExtendedFlat.TypeInference
     ( dispType,
       adjustTypeInfo,

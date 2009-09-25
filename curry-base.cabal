@@ -1,8 +1,10 @@
 Name:          curry-base
-Version:       0.2.2
+Version:       0.2.4
 Cabal-Version: >= 1.6
 Synopsis:      Functions for manipulating Curry programs
-Description:   
+Description:   This package serves as a foundation for Curry compilers. it defines the intermediate
+               formats FlatCurry and ExtendedFlat. Additionally, it provides functionality
+               for the smooth integration of compiler frontends and backends.
 Category:      Language
 License:       OtherLicense
 License-File:  LICENSE
@@ -20,4 +22,3 @@ Library
                     Curry.ExtendedFlat.Type, Curry.ExtendedFlat.Goodies, Curry.ExtendedFlat.TypeInference, Curry.ExtendedFlat.MonadicGoodies
                     Curry.FlatCurry.Type, Curry.FlatCurry.Goodies, Curry.FlatCurry.Tools
                     Curry.Files.Filenames, Curry.Files.PathUtils
-  Other-Modules:

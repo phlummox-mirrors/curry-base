@@ -1,3 +1,9 @@
+{-
+  Monadic transformations of ExtendedFlat programs.
+
+  (c) 2009, Holger Siegel.
+-}
+
 module Curry.ExtendedFlat.MonadicGoodies
     (UpdateM, postOrderM,
      updFuncExpsM, updProgFuncsM, updFuncLetsM) where
