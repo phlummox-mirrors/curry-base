@@ -17,7 +17,7 @@ Stability:     experimental
 
 Library
   Build-Depends:    base >= 3 && < 4, mtl, old-time, directory, filepath, containers, pretty
-  ghc-options:      -Wall -fwarn-unused-binds -fwarn-unused-imports  -auto-all
+  ghc-options:      
   Exposed-Modules:  Curry.Base.Position, Curry.Base.Ident, Curry.Base.MessageMonad
                     Curry.ExtendedFlat.Type, Curry.ExtendedFlat.Goodies, Curry.ExtendedFlat.TypeInference, Curry.ExtendedFlat.MonadicGoodies
                     Curry.FlatCurry.Type, Curry.FlatCurry.Goodies, Curry.FlatCurry.Tools
