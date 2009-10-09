@@ -348,7 +348,7 @@ updQNamesInTypeExpr f = updTCons (\name args -> TCons (f name) args)
 -- OpDecl --------------------------------------------------------------------
 
 --- transform operator declaration
-trOp :: (QName -> Fixity -> Integer -> a) -> OpDecl -> a
+trOp :: (QName -> Fixity -> Int -> a) -> OpDecl -> a
 trOp op (Op name fix prec) = op name fix prec
 
 -- Selectors
@@ -362,7 +362,7 @@ opFixity :: OpDecl -> Fixity
 opFixity = trOp (\_ fix _ -> fix)
 
 --- get precedence of operator declaration
-opPrecedence :: OpDecl -> Integer
+opPrecedence :: OpDecl -> Int
 opPrecedence = trOp (\_ _ prec -> prec)
 
 -- Update Operations
@@ -370,7 +370,7 @@ opPrecedence = trOp (\_ _ prec -> prec)
 --- update operator declaration
 updOp :: (QName -> QName) ->
          (Fixity -> Fixity) ->
-         (Integer -> Integer)       -> OpDecl -> OpDecl
+         (Int -> Int)       -> OpDecl -> OpDecl
 updOp fn ff fp = trOp op
  where
   op name fix prec = Op (fn name) (ff fix) (fp prec)
@@ -384,7 +384,7 @@ updOpFixity :: Update OpDecl Fixity
 updOpFixity f = updOp id f id
 
 --- update precedence of operator declaration
-updOpPrecedence :: Update OpDecl Integer
+updOpPrecedence :: Update OpDecl Int
 updOpPrecedence = updOp id id
 
 -- FuncDecl ------------------------------------------------------------------

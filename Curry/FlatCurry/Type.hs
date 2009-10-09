@@ -116,7 +116,7 @@ data TypeExpr =
 --- PAKCS definition using Haskell type 'Integer' instead of 'Int'
 --- for representing the precedence. 
 
-data OpDecl = Op QName Fixity Integer deriving (Read, Show, Eq)
+data OpDecl = Op QName Fixity Int deriving (Read, Show, Eq)
 
 --- Data types for the different choices for the fixity of an operator.
 
