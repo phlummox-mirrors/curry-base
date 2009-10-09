@@ -25,7 +25,8 @@ module Curry.FlatCurry.Type (Prog(..), QName, Visibility(..),
 
 import Curry.Files.PathUtils (writeModule,maybeReadModule)
 
-import Data.List(intersperse)
+import Data.List (intersperse)
+import Data.Char (isSpace)
 import Control.Monad (liftM)
 
 ------------------------------------------------------------------------------
@@ -317,8 +318,17 @@ readFlatInterface fn
 
 -- Reads a Flat file and returns the corresponding term (type 'Prog') as
 -- a value of type 'Maybe'.
+-- Due to compatibility with PAKCS it is allowed to have a commentary
+-- at the beginning of the file enclose in {- ... -}.
 readFlat :: FilePath -> IO (Maybe Prog)
-readFlat = liftM (fmap read) . maybeReadModule
+readFlat = liftM (fmap (read . skipComment)) . maybeReadModule
+  where
+    skipComment s = case dropWhile isSpace s of
+       '{':'-':s' -> dropComment s'
+       s'        -> s'
+    dropComment ('-':'}':xs) = xs
+    dropComment (_:xs)       = dropComment xs
+    dropComment []           = []
 
 -- Writes a FlatCurry program term into a file.
 writeFlatCurry :: String -> Prog -> IO ()
