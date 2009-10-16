@@ -124,7 +124,7 @@ data CTypeExpr =
 --- An operator declaration "fix p n" in Curry corresponds to the
 --- AbstractCurry term (COp n fix p).
 
-data COpDecl = COp QName CFixity Integer deriving (Read, Show)
+data COpDecl = COp QName CFixity Int deriving (Read, Show)
 
 data CFixity = CInfixOp   -- non-associative infix operator
              | CInfixlOp  -- left-associative infix operator
