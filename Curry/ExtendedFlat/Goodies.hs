@@ -901,24 +901,26 @@ patExpr :: Pattern -> Expr
 patExpr = trPattern (\ name -> Comb ConsCall name . map Var) Lit
 
 
--- get the type of an expression
+-- |  Get the type of an expression.
 -- (Will only succeed if all VarIndices and QNames contain the
--- required type information.)
+-- required type information. Make sure that the expression is processed by
+-- Curry.ExtendedFlat.TypeInference.adjustTypeInfo.)
 typeofExpr :: Expr -> Maybe TypeExpr
 typeofExpr expr 
     = case expr of
         Var vi        -> typeofVar vi
         Lit l         -> Just (typeofLiteral l)
-        Comb _  qn as -> fmap (typeofApp as) (typeofQName qn)
+        Comb _  qn as -> typeofQName qn >>= typeofApp as
         Free _ e      -> typeofExpr e
         Let _ e       -> typeofExpr e
         Or e1 e2      -> typeofExpr e1 `mplus` typeofExpr e2
         Case _ _ _ bs -> msum (map (typeofExpr . branchExpr) bs)
     where 
-      typeofApp []     t              = t
+      typeofApp :: [a] -> TypeExpr -> Maybe TypeExpr
+      typeofApp []     t              = Just t
       typeofApp (_:as) (FuncType _ t) = typeofApp as t
-      typeofApp (_:_)  (TVar _)       = ierr
-      typeofApp (_:_)  (TCons _ _)    = ierr
+      typeofApp (_:_)  (TVar _)       = Nothing
+      typeofApp a@(_:_)  e@(TCons _ _)    = Nothing
       ierr = error $ "internal error in typeofExpr: FuncType expected"
 
 
