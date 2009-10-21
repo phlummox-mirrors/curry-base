@@ -28,6 +28,7 @@ Library
     Curry.ExtendedFlat.MonadicGoodies
     Curry.ExtendedFlat.UnMutual
     Curry.ExtendedFlat.LiftLetrec
+    Curry.ExtendedFlat.EraseTypes
     Curry.FlatCurry.Type
     Curry.FlatCurry.Goodies
     Curry.FlatCurry.Tools

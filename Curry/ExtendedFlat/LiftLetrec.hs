@@ -73,7 +73,6 @@ mkLiftedFunction t v rhs fv
     = do name <- newGlobalName t
          st <- get
          let fcall = (Comb FuncCall name (map Var fv))
-         -- FIXME Typ der Funktion muss irgendwie ermittelt werden :(
          let fdecl = Func name (length fv) Private (fromMaybe (TVar 0) t) (Rule fv (Let [(v,fcall)] rhs))
          put st { lifted = Map.insert name fdecl (lifted st),
                   globals = Set.insert name (globals st)

@@ -67,9 +67,6 @@ mkSingleLet body bound fbs
 -- Some self-explaining helper functions:
 
 
--- FIXME rename, wenn x in (fvs e1) !
--- immer rename wg. Shadowing
--- (siehe Test.curry)
 nonrecLet :: VarIndex -> Expr -> Expr -> UnMutualMonad Expr
 nonrecLet x e1 e2
     | x `elem` allVars e1 
