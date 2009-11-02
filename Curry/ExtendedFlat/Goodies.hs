@@ -17,6 +17,7 @@
 
 module Curry.ExtendedFlat.Goodies where
 
+import Control.Arrow(first, second)
 import Control.Monad(mplus, msum)
 import Data.List
 
@@ -299,15 +300,15 @@ trTypeExpr tvar tcons functype (FuncType from to) = functype (f from) (f to)
 
 --- is type expression a type variable?
 isTVar :: TypeExpr -> Bool
-isTVar = trTypeExpr (\_ -> True) (\_ _ -> False) (\_ _ -> False)
+isTVar = trTypeExpr (const True) (\_ _ -> False) (\_ _ -> False)
 
 --- is type declaration a constructed type?
 isTCons :: TypeExpr -> Bool
-isTCons = trTypeExpr (\_ -> False) (\_ _ -> True) (\_ _ -> False)
+isTCons = trTypeExpr (const False) (\_ _ -> True) (\_ _ -> False)
 
 --- is type declaration a functional type?
 isFuncType :: TypeExpr -> Bool
-isFuncType = trTypeExpr (\_ -> False) (\_ _ -> False) (\_ _ -> True)
+isFuncType = trTypeExpr (const False) (\_ _ -> False) (\_ _ -> True)
 
 -- Update Operations
 
@@ -343,11 +344,11 @@ allVarsInTypeExpr = trTypeExpr (:[]) (const concat) (++)
 
 --- rename variables in type expression
 rnmAllVarsInTypeExpr :: (TVarIndex -> TVarIndex) -> TypeExpr -> TypeExpr
-rnmAllVarsInTypeExpr f = updTVars (TVar . f)
+rnmAllVarsInTypeExpr = updTVars . (TVar .)
 
 --- update all qualified names in type expression
 updQNamesInTypeExpr :: (QName -> QName) -> TypeExpr -> TypeExpr
-updQNamesInTypeExpr f = updTCons (\name args -> TCons (f name) args)
+updQNamesInTypeExpr f = updTCons (TCons . f)
 
 -- OpDecl --------------------------------------------------------------------
 
@@ -520,7 +521,7 @@ ruleExtDecl = trRule failed id
 
 --- is rule external?
 isRuleExternal :: Rule -> Bool
-isRuleExternal = trRule (\_ _ -> False) (\_ -> True)
+isRuleExternal = trRule (\_ _ -> False) (const True)
 
 -- Update Operations
 
@@ -531,7 +532,7 @@ updRule :: ([VarIndex] -> [VarIndex]) ->
 updRule fa fe fs = trRule rule ext
  where
   rule as e = Rule (fa as) (fe e)
-  ext s = External (fs s)
+  ext = External . fs
 
 --- update rules arguments
 updRuleArgs :: Update Rule [VarIndex]
@@ -543,13 +544,13 @@ updRuleBody f = updRule id f id
 
 --- update rules external declaration
 updRuleExtDecl :: Update Rule String
-updRuleExtDecl f = updRule id id f
+updRuleExtDecl = updRule id id
 
 -- Auxiliary Functions
 
 --- get variable names in a functions rule
 allVarsInRule :: Rule -> [VarIndex]
-allVarsInRule = trRule (\args body -> args ++ allVars body) (\_ -> [])
+allVarsInRule = trRule (\args body -> args ++ allVars body) (const [])
 
 --- rename all variables in rule
 rnmAllVarsInRule :: Update Rule VarIndex
@@ -572,19 +573,19 @@ trCombType _ _ _ cpc (ConsPartCall n) = cpc n
 
 --- is type of combination FuncCall?
 isCombTypeFuncCall :: CombType -> Bool
-isCombTypeFuncCall = trCombType True (\_ -> False) False (\_ -> False)
+isCombTypeFuncCall = trCombType True (const False) False (const False)
 
 --- is type of combination FuncPartCall?
 isCombTypeFuncPartCall :: CombType -> Bool
-isCombTypeFuncPartCall = trCombType False (\_ -> True) False (\_ -> False)
+isCombTypeFuncPartCall = trCombType False (const True) False (const False)
 
 --- is type of combination ConsCall?
 isCombTypeConsCall :: CombType -> Bool
-isCombTypeConsCall = trCombType False (\_ -> False) True (\_ -> False)
+isCombTypeConsCall = trCombType False (const False) True (const False)
 
 --- is type of combination ConsPartCall?
 isCombTypeConsPartCall :: CombType -> Bool
-isCombTypeConsPartCall = trCombType False (\_ -> False) False (\_ -> True)
+isCombTypeConsPartCall = trCombType False (const False) False (const True)
 
 -- Auxiliary Functions
 
@@ -712,7 +713,7 @@ trExpr var lit comb lt fr oR cas branch (Comb ct name args)
   = comb ct name (map (trExpr var lit comb lt fr oR cas branch) args)
 
 trExpr var lit comb lt fr oR cas branch (Let bs e)
-  = lt (map (\ (n,e) -> (n,f e)) bs) (f e)
+  = lt (map (second f) bs) (f e)
  where
   f = trExpr var lit comb lt fr oR cas branch
 
@@ -760,7 +761,7 @@ updCases cas = trExpr Var Lit Comb Let Free Or cas Branch
 
 --- update all case branches in given expression
 updBranches :: (Pattern -> Expr -> BranchExpr) -> Expr -> Expr
-updBranches branch = trExpr Var Lit Comb Let Free Or Case branch
+updBranches = trExpr Var Lit Comb Let Free Or Case
 
 -- Auxiliary Functions
 
@@ -792,10 +793,10 @@ allVars :: Expr -> [VarIndex]
 allVars expr = trExpr (:) (const id) comb lt fr (.) cas branch expr []
  where
   comb _ _ = foldr (.) id
-  lt bs e = e . foldr (.) id (map (\ (n,ns) -> (n:) . ns) bs)
-  fr vs e = (vs++) . e
+  lt bs = (. foldr (.) id (map (\ (n,ns) -> (n:) . ns) bs))
+  fr    = (.) . (++)
   cas _ _ e bs = e . foldr (.) id bs
-  branch pat e = ((args pat)++) . e
+  branch = (.) . (++) . args
   args pat | isConsPattern pat = patArgs pat
            | otherwise = []
 
@@ -803,14 +804,14 @@ allVars expr = trExpr (:) (const id) comb lt fr (.) cas branch expr []
 rnmAllVars :: Update Expr VarIndex
 rnmAllVars f = trExpr (Var . f) Lit Comb lt (Free . map f) Or Case branch
  where
-   lt = Let . map (\ (n,e) -> (f n,e))
+   lt = Let . map (first f)
    branch = Branch . updPatArgs (map f)
 
 --- update all qualified names in expression
 updQNames :: Update Expr QName
 updQNames f = trExpr Var Lit comb Let Free Or Case (Branch . updPatCons f)
  where
-  comb ct name args = Comb ct (f name) args
+  comb ct = Comb ct . f
 
 -- BranchExpr ----------------------------------------------------------------
 
@@ -869,7 +870,7 @@ patLiteral = trPattern failed id
 
 --- is pattern a constructor pattern?
 isConsPattern :: Pattern -> Bool
-isConsPattern = trPattern (\_ _ -> True) (\_ -> False)
+isConsPattern = trPattern (\_ _ -> True) (const False)
 
 -- Update Operations
 
@@ -880,7 +881,7 @@ updPattern :: (QName -> QName) ->
 updPattern fn fa fl = trPattern pattern lpattern
  where
   pattern name args = Pattern (fn name) (fa args)
-  lpattern l = LPattern (fl l)
+  lpattern = LPattern . fl
 
 --- update constructors name of pattern
 updPatCons :: (QName -> QName) -> Pattern -> Pattern
@@ -892,7 +893,7 @@ updPatArgs f = updPattern id f id
 
 --- update literal of pattern
 updPatLiteral :: (Literal -> Literal) -> Pattern -> Pattern
-updPatLiteral f = updPattern id id f
+updPatLiteral = updPattern id id
 
 -- Auxiliary Functions
 
@@ -917,11 +918,11 @@ typeofExpr expr
         Case _ _ _ bs -> msum (map (typeofExpr . branchExpr) bs)
     where 
       typeofApp :: [a] -> TypeExpr -> Maybe TypeExpr
-      typeofApp []     t              = Just t
-      typeofApp (_:as) (FuncType _ t) = typeofApp as t
-      typeofApp (_:_)  (TVar _)       = Nothing
-      typeofApp a@(_:_)  e@(TCons _ _)    = Nothing
-      ierr = error $ "internal error in typeofExpr: FuncType expected"
+      typeofApp []      t              = Just t
+      typeofApp (_:as)  (FuncType _ t) = typeofApp as t
+      typeofApp (_:_)   (TVar _)       = Nothing
+      typeofApp a@(_:_) (TCons _ _)    = Nothing
+      -- ierr = error "internal error in typeofExpr: FuncType expected"
 
 
 typeofLiteral :: Literal -> TypeExpr

@@ -53,7 +53,7 @@ failWith = throwError . strMsg
 
 
 failWithAt :: (MonadError WarnMsg m) => Position -> String -> m a
-failWithAt p s  = throwError (WarnMsg (Just p) s)
+failWithAt p = throwError . WarnMsg (Just p)
 
 
 warnMessage :: (MonadWriter [WarnMsg] m) => String -> m ()

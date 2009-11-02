@@ -29,6 +29,7 @@ Library
     Curry.ExtendedFlat.UnMutual
     Curry.ExtendedFlat.LiftLetrec
     Curry.ExtendedFlat.EraseTypes
+    Curry.ExtendedFlat.CurryArithmetics
     Curry.FlatCurry.Type
     Curry.FlatCurry.Goodies
     Curry.FlatCurry.Tools

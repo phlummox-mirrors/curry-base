@@ -28,6 +28,7 @@ module Curry.AbstractCurry (CurryProg(..), QName, CLabel, CVisibility(..),
 		      CField,
                       readCurry, writeCurry) where
 
+import Control.Monad(liftM)
 import Data.List(intersperse)
 
 import Curry.Files.PathUtils (writeModule,readModule)
@@ -258,23 +259,20 @@ type CField a = (CLabel,a)
 -- Reads an AbstractCurry file and returns the corresponding AbstractCurry
 -- program term (type 'CurryProg')
 readCurry :: String -> IO CurryProg
-readCurry filename
-   = do file <- readModule filename
-	let prog = (read file) :: CurryProg
-	return prog
+readCurry = liftM read . readModule
 
 -- Writes an AbstractCurry program term into a file
 writeCurry :: String -> CurryProg -> IO ()
 writeCurry filename prog 
-   = catch (writeModule filename (showCurry prog)) (\e -> ioError e)
+   = catch (writeModule filename (showCurry prog)) ioError
 
 -- Shows an AbstractCurry program in a more nicely way.
 showCurry :: CurryProg -> String
 showCurry (CurryProg mname imps types funcs ops) =
   "CurryProg "++show mname++"\n "++
   show imps ++"\n ["++
-  concat (intersperse ",\n  " (map (\t->show t) types)) ++"]\n ["++
-  concat (intersperse ",\n  " (map (\f->show f) funcs)) ++"]\n "++
+  concat (intersperse ",\n  " (map show types)) ++"]\n ["++
+  concat (intersperse ",\n  " (map show funcs)) ++"]\n "++
   show ops ++"\n"
   
 

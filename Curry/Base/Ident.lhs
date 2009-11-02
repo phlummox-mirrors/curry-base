@@ -133,7 +133,7 @@ Module names
 > mkIdent x = Ident NoPos x 0
 
 > renameIdent :: Ident -> Int -> Ident
-> renameIdent (Ident p x _) n = Ident p x n
+> renameIdent id n = id { uniqueId = n }
 
 
 > unRenameIdent :: Ident -> Ident
@@ -192,7 +192,7 @@ given module prefix, respectively).
 > updQualIdent f g (QualIdent m x) = QualIdent (liftM f m) (g x)
 
 > addRef :: SrcRef -> QualIdent -> QualIdent
-> addRef r = updQualIdent id (addRefId r)
+> addRef = updQualIdent id . addRefId
 
 > addRefId :: SrcRef -> Ident -> Ident
 > addRefId = addPositionIdent . AST
@@ -280,7 +280,7 @@ Micellaneous function for generating and testing extended identifiers.
 > fpSelectorId n = Ident NoPos (fpSelExt ++ show n) 0
 
 > isFpSelectorId :: Ident -> Bool
-> isFpSelectorId f = any (fpSelExt `isPrefixOf`) (tails (name f))
+> isFpSelectorId = any (fpSelExt `isPrefixOf`) . tails . name
 
 > isQualFpSelectorId :: QualIdent -> Bool
 > isQualFpSelectorId = isFpSelectorId . unqualify
@@ -291,7 +291,7 @@ Micellaneous function for generating and testing extended identifiers.
 
 > qualRecSelectorId :: ModuleIdent -> QualIdent -> Ident -> QualIdent
 > qualRecSelectorId m r l = qualifyWith m' (recSelectorId r l)
->   where m' = (fromMaybe m (fst (splitQualIdent r)))
+>   where m' = fromMaybe m (fst (splitQualIdent r))
 
 > recUpdateId :: QualIdent -> Ident -> Ident
 > recUpdateId r l = 
@@ -299,7 +299,7 @@ Micellaneous function for generating and testing extended identifiers.
 
 > qualRecUpdateId :: ModuleIdent -> QualIdent -> Ident -> QualIdent
 > qualRecUpdateId m r l = qualifyWith m' (recUpdateId r l)
->   where m' = (fromMaybe m (fst (splitQualIdent r)))
+>   where m' = fromMaybe m (fst (splitQualIdent r))
 
 > recordExtId :: Ident -> Ident
 > recordExtId r = mkIdent (recordExt ++ name r)

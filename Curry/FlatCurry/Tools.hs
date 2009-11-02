@@ -789,7 +789,7 @@ rnmAllVarsPat _ (LPattern l) = LPattern l
 
 --- flatten pattern variables
 allVarsPat :: Pattern -> [Int]
-allVarsPat = maybe [] id . patArgs
+allVarsPat = fromMaybe [] . patArgs
 
 -- opDecls ------------------------------
 

@@ -22,7 +22,7 @@ import Curry.ExtendedFlat.MonadicGoodies
 
 -- FIXME the use of lists is not very efficient,
 -- but since the number of type variables is relatively
--- low, we stick with that for now.
+-- small, we stick with that for now.
 type TVarSet = [TVarIndex]
 
 
@@ -33,7 +33,7 @@ eraseTypes = updProg id id id (map eraseTypesInFunc) id
 eraseTypesInFunc :: FuncDecl -> FuncDecl
 eraseTypesInFunc (Func qname arity visty funtype rule)
     = Func qname arity visty funtype rule'
-    where rule' = (eraseTypesInRule (allTVars funtype) rule)
+    where rule' = eraseTypesInRule (allTVars funtype) rule
 
 
 eraseTypesInRule :: TVarSet -> Rule -> Rule
@@ -84,5 +84,5 @@ replaceFreeTypesWithEmptyTuple :: TVarSet -> TypeExpr -> TypeExpr
 replaceFreeTypesWithEmptyTuple usedtvars = updTVars foo
     where 
       foo tidx
-          | tidx `elem` usedtvars = (TVar tidx)
+          | tidx `elem` usedtvars = TVar tidx
           | otherwise = TCons (mkQName ("Prelude", "()")) []

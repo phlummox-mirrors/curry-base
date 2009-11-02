@@ -411,13 +411,13 @@ readFlat = liftM (fmap read) . maybeReadModule
   
 -- Writes a FlatCurry program term into a file.
 writeFlatCurry :: String -> Prog -> IO ()
-writeFlatCurry filename prog
-   = writeModule filename (showFlatCurry' False prog)
+writeFlatCurry filename
+    = writeModule filename . showFlatCurry' False
 
 -- Writes a FlatCurry program term with source references into a file.
 writeExtendedFlat :: String -> Prog -> IO ()
-writeExtendedFlat filename prog =
-  writeModule (extFlatName filename) (showFlatCurry' True prog)
+writeExtendedFlat filename
+    = writeModule (extFlatName filename) . showFlatCurry' True
 
 
 showFlatCurry' :: Bool -> Prog -> String

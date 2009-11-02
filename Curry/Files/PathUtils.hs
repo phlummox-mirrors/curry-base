@@ -19,7 +19,7 @@ import System.FilePath
 import System.Directory
 import System.Time (ClockTime)
 
-import Control.Monad (unless)
+import Control.Monad (unless, liftM)
 
 import Curry.Base.Ident
 import Curry.Files.Filenames
@@ -106,7 +106,7 @@ readModule = onExistingFileDo readFile
 
 maybeReadModule :: FilePath -> IO (Maybe String)
 maybeReadModule filename = 
-  catch (readModule filename >>= return . Just) (\_ -> return Nothing)
+  catch (liftM Just (readModule filename)) (\_ -> return Nothing)
 
 doesModuleExist :: FilePath -> IO Bool
 doesModuleExist = onExistingFileDo doesFileExist

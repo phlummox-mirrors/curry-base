@@ -332,16 +332,16 @@ readFlat = liftM (fmap (read . skipComment)) . maybeReadModule
 
 -- Writes a FlatCurry program term into a file.
 writeFlatCurry :: String -> Prog -> IO ()
-writeFlatCurry filename prog
-   = writeModule filename (showFlatCurry prog)
+writeFlatCurry filename
+   = writeModule filename . showFlatCurry
 
 -- Shows FlatCurry program in a more nicely way.
 showFlatCurry :: Prog -> String
 showFlatCurry (Prog mname imps types funcs ops) =
   "Prog "++show mname++"\n "++
   show imps ++"\n ["++
-  concat (intersperse ",\n  " (map (\t->show t) types)) ++"]\n ["++
-  concat (intersperse ",\n  " (map (\f->show f) funcs)) ++"]\n "++
+  concat (intersperse ",\n  " (map show types)) ++"]\n ["++
+  concat (intersperse ",\n  " (map show funcs)) ++"]\n "++
   show ops ++"\n"
   
 

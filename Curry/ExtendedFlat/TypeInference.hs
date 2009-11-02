@@ -16,8 +16,7 @@ module Curry.ExtendedFlat.TypeInference
       adjustTypeInfo,
       labelVarsWithTypes,
       uniqueTypeIndices,
-      genEquations,
-      elimFreeTypes
+      genEquations
     ) where
 
 import Debug.Trace
@@ -38,8 +37,7 @@ trace' msg x = x -- trace msg x
 --   of a declaration, the polymorphic type variables in its
 --   type label are replaced by concrete types.
 adjustTypeInfo :: Prog -> Prog
-adjustTypeInfo = -- elimFreeTypes .
-                 genEquations . 
+adjustTypeInfo = genEquations . 
                  uniqueTypeIndices .
                  labelVarsWithTypes
 
@@ -56,11 +54,11 @@ prettyType (TCons qn ts) = let  n = let (m,l) = qnOf qn in m ++ '.' : l
 prettyAllEqns = render . prettyEqns
     where
       prettyEqn ::(TVarIndex, TypeExpr)  -> Doc
-      prettyEqn (l, r) = (char 't' <> int l <+> text "->" <+> prettyType r)
+      prettyEqn (l, r) = char 't' <> int l <+> text "->" <+> prettyType r
 
       prettyEqns ((m,l), t, eqns)
           = text m <> char '.' <> text l <+> text "::" <+> prettyType t <> char ':'
-            $$ (nest 5 (vcat (map prettyEqn eqns)))
+            $$ nest 5 (vcat (map prettyEqn eqns))
 
 
 postOrderExpr :: Monad m => (Expr -> m Expr) -> Expr -> m Expr
@@ -105,6 +103,8 @@ visitTVars f = postOrderType f'
 -- ----------------------------------------------------------------------
 -- ----------------------------------------------------------------------
 
+type TDictM = ReaderT TypeMap (State Int)
+
 -- | All identifiers that do not have type annotations are
 --   labelled with new type variables
 labelVarsWithTypes :: Prog -> Prog
@@ -119,18 +119,19 @@ labelVarsWithTypes = updProgFuncs updateFunc
                 argTypes = [ (vi, t) | VarIndex (Just t) vi <- vs ]
             in Func qn arity visty te (Rule vs expr')
 
-      po :: Expr -> ReaderT TypeMap (State Int) Expr
+      po :: Expr -> TDictM Expr
       -- type information from vi is superseded by type information
       -- from the map. This is okay in the current context, but for
       -- general type inference this would result in loss of information.
       -- (Fix by unifying both types in a later version)
       po e@(Var vi)
           = do vt <- asks (IntMap.lookup $ idxOf vi)
-               case vt of
-                 Just t -> return (Var vi { typeofVar = Just t })
-                 Nothing -> case typeofVar vi of
-                              Nothing -> error $ "no type for var " ++ show e
-                              _ -> liftM Var (poVarIndex vi)
+               trace' ("labelVarsWithTypes " ++ show e ++" :: "++ show vt)(
+                                                                         case vt of
+                                                                           Just t -> return (Var vi { typeofVar = Just t })
+                                                                           Nothing -> case typeofVar vi of
+                                                                                        Nothing -> error $ "no type for var " ++ show e
+                                                                                        _ -> liftM Var (poVarIndex vi))
       po e@(Lit _)
           = return e
       po (Comb t n es)
@@ -153,6 +154,8 @@ labelVarsWithTypes = updProgFuncs updateFunc
           = do e' <- po e
                bs' <- mapM poBranch bs
                return (Case p t e' bs')
+
+      poBranch :: BranchExpr -> TDictM BranchExpr
       poBranch (Branch (Pattern qn vs) rhs) 
           = do qn' <- poQName qn
                vs' <- mapM poVarIndex vs
@@ -160,18 +163,21 @@ labelVarsWithTypes = updProgFuncs updateFunc
                               return (Branch (Pattern qn' vs') rhs'))
       poBranch (Branch (LPattern l) e) 
           = do rhs' <- po e
-               return (Branch (LPattern l) e)
+               return (Branch (LPattern l) rhs')
+
+      poVarIndex :: VarIndex -> TDictM VarIndex
       poVarIndex vi
           = do t <- maybe (lift$freshTVar) return . typeofVar $ vi
                return vi{typeofVar = Just t }
 
+      poQName :: QName -> TDictM QName
       poQName qn
           = do t <- maybe (lift$freshTVar) 
                         return . typeofQName $ qn
                return qn{typeofQName = Just t }
 
       withVS :: MonadReader TypeMap m => [VarIndex] -> m a -> m a
-      withVS vs action = local (\ m -> foldr (\ v -> IntMap.insert (idxOf v) (fromJust $ typeofVar v)) m vs) action
+      withVS vs = local (\ m -> foldr (\ v -> IntMap.insert (idxOf v) (fromJust $ typeofVar v)) m vs)
 
 -- ----------------------------------------------------------------------
 -- ----------------------------------------------------------------------
@@ -183,7 +189,7 @@ uniqueTypeIndices :: Prog -> Prog
 uniqueTypeIndices = updProgFuncs (map updateFunc)
     where
       updateFunc func = let firstfree = maxFuncTV func + 1
-                        in (updFuncRule (trRule (ruleFoo firstfree) External)) func
+                        in updFuncRule (trRule (ruleFoo firstfree) External) func
       ruleFoo firstfree args expr
           = let expr' = evalState (postOrderExpr relabelTypes expr) firstfree
             in  Rule args expr'
@@ -255,7 +261,8 @@ equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn or
                tqn =:= foldr FuncType resultType argTypes
                return resultType
 
-      letEqn _ e = e
+      letEqn :: ([(VarIndex, EqnMonad TypeExpr)] -> EqnMonad TypeExpr -> EqnMonad TypeExpr)
+      letEqn bs = (mapM_ bindEqn bs >>)
 
       frEqn _ e = e
 
@@ -263,25 +270,35 @@ equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn or
                      r' <- r
                      l' =:= r'
 
-      casEqn :: SrcRef -> CaseType -> EqnMonad TypeExpr -> [(Pattern, EqnMonad TypeExpr)] -> EqnMonad TypeExpr
+      casEqn :: SrcRef -> CaseType -> EqnMonad TypeExpr -> [EqnMonad (Pattern, TypeExpr)] -> EqnMonad TypeExpr
       casEqn _ _ scr [] = scr >> (lift$freshTVar)
       casEqn _ _ scr ps = do scrt <- scr
                              -- unify patterns with scrutinee
-                             mapM_ (unifLhs scrt) ps
+                             branches <- sequence ps
+                             let pats = map fst branches
+                             let (p:ps') = map snd branches
+                             mapM_ (unifLhs scrt) pats
+                             -- foldM (\l r -> unifLhs scrt r >>= (=:= l)) scrt pats
                              -- unify right hand sides
-                             (p:ps') <- sequence $ map snd ps
                              foldM (=:=) p ps'
 
-      unifLhs scrt (LPattern lit, _)
+      unifLhs scrt (LPattern lit)
           = typeofLiteral lit =:= scrt
-      unifLhs scrt (Pattern qn vs, _)
+      unifLhs scrt (Pattern qn vs)
           = do qnt <- qnType qn
+              -- FIXME: Variablentypen in Map eintragen!!!
                argTypes <- mapM varIndexType vs
                qnt =:= foldr FuncType scrt argTypes
 
 
-      branchEqn :: Pattern -> EqnMonad TypeExpr -> (Pattern, EqnMonad TypeExpr)
-      branchEqn p e = (p, e)
+      branchEqn :: Pattern -> EqnMonad TypeExpr -> EqnMonad (Pattern, TypeExpr)
+      branchEqn p e = do trhs <- e
+                         return (p, trhs)
+
+      bindEqn :: (VarIndex, EqnMonad TypeExpr) -> EqnMonad TypeExpr
+      bindEqn (vi, rhs) = do vit <- varIndexType vi
+                             rvi <- rhs
+                             vit =:= rvi
 
 
 unify :: TypeExpr -> TypeExpr -> TypeMap -> TypeMap
@@ -328,30 +345,6 @@ freshTVar = do nextIdx <- get
                modify succ
                return (TVar nextIdx)
 
----------------------------------------------------------------------
-
--- | Type variables that occur in the right hand side of a declaration
---   but not in its type signature are replaced by the unit type ().
---   This function requires that proper type information has been made
---   available by function @adjustTypeInfo@
-
-elimFreeTypes :: Prog -> Prog
-elimFreeTypes = updProgFuncs updateFunc
-    where 
-      updateFunc = map (trFunc foo)
-      foo qn arity visty te r@(External _) = Func qn arity visty te r
-      foo qn arity visty te r@(Rule vs expr) 
-          = let tvs = tvars te
-                tvars (TVar vi) = [vi]
-                tvars (FuncType t1 t2) = tvars t1 ++ tvars t2
-                tvars (TCons _ ts) = concatMap tvars ts
-                tfoo t@(TVar vi)
-                    | vi `elem` tvs = t
-                    | otherwise = TCons (mkQName ("Prelude", "()")) []
-                tfoo (FuncType t1 t2) = FuncType (tfoo t1) (tfoo t2)
-                tfoo (TCons qn ts) = TCons qn (map tfoo ts)
-            in Func qn arity visty te (modifyType tfoo (Rule vs expr))
-
 
 ---------------------------------------------------------------------
 
@@ -391,7 +384,7 @@ specialiseType m t = trTypeExpr (foo m) TCons FuncType t
 
 -- boilerplate
 specInRule :: TypeMap -> Rule -> Rule
-specInRule tm = modifyType (specialiseType tm)
+specInRule = modifyType . specialiseType
 
 
 
@@ -400,16 +393,15 @@ modifyType :: (TypeExpr -> TypeExpr) -> Rule -> Rule
 modifyType f = updRule (map specInVarIndex) specInExpr id
     where specInExpr
               = trExpr var Lit comb letexp free Or Case alt
-          var vi
-              = Var (specInVarIndex vi)
-          comb ct qn as
-              = Comb ct (specInQName qn) as
-          letexp bs e
-              = Let (map specInBind bs) e
-          free vis e
-              = Free (map specInVarIndex vis) e
-          alt p e
-              = Branch (specInPattern p) e
+          var = Var . specInVarIndex
+          comb ct 
+              = Comb ct . specInQName
+          letexp
+              = Let . map specInBind
+          free
+              = Free . map specInVarIndex
+          alt
+              = Branch . specInPattern
 
           specInBind (vi, e)
               = (specInVarIndex vi, e)
