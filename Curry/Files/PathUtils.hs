@@ -81,9 +81,10 @@ inCurrySubdir = inSubdir currySubdir
 
 --write a file to curry subdirectory
 
-writeModule :: FilePath -> String -> IO ()
-writeModule filename contents = do
-  let filename' = inCurrySubdir filename
+writeModule :: Bool -> FilePath -> String -> IO ()
+writeModule inHiddenSubdir filename contents = do
+  let filename' | inHiddenSubdir = inCurrySubdir filename
+                | otherwise      = filename
       subdir = takeDirectory filename'
   ensureDirectoryExists subdir
   writeFile filename' contents

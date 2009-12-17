@@ -1,5 +1,5 @@
 Name:          curry-base
-Version:       0.2.6
+Version:       0.2.7
 Cabal-Version: >= 1.6
 Synopsis:      Functions for manipulating Curry programs
 Description:   This package serves as a foundation for Curry compilers. it defines the intermediate

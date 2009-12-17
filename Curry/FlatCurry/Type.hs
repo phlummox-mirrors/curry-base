@@ -331,9 +331,10 @@ readFlat = liftM (fmap (read . skipComment)) . maybeReadModule
     dropComment []           = []
 
 -- Writes a FlatCurry program term into a file.
-writeFlatCurry :: String -> Prog -> IO ()
-writeFlatCurry filename
-   = writeModule filename . showFlatCurry
+-- If the flag is set, it will be the hidden .curry sub directory.
+writeFlatCurry :: Bool -> String -> Prog -> IO ()
+writeFlatCurry inHiddenSubdir filename prog
+   = writeModule inHiddenSubdir filename (showFlatCurry prog)
 
 -- Shows FlatCurry program in a more nicely way.
 showFlatCurry :: Prog -> String

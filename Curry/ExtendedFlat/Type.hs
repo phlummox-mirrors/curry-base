@@ -410,15 +410,16 @@ readFlat :: FilePath -> IO (Maybe Prog)
 readFlat = liftM (fmap read) . maybeReadModule
   
 -- Writes a FlatCurry program term into a file.
-writeFlatCurry :: String -> Prog -> IO ()
-writeFlatCurry filename
-    = writeModule filename . showFlatCurry' False
+-- If the flag is set, it will be the hidden .curry sub directory.
+writeFlatCurry :: Bool -> String -> Prog -> IO ()
+writeFlatCurry inHiddenSubdir filename prog
+   = writeModule inHiddenSubdir filename (showFlatCurry' False prog)
 
 -- Writes a FlatCurry program term with source references into a file.
-writeExtendedFlat :: String -> Prog -> IO ()
-writeExtendedFlat filename
-    = writeModule (extFlatName filename) . showFlatCurry' True
-
+-- If the flag is set, it will be the hidden .curry sub directory.
+writeExtendedFlat :: Bool -> String -> Prog -> IO ()
+writeExtendedFlat inHiddenSubdir filename prog =
+  writeModule inHiddenSubdir (extFlatName filename) (showFlatCurry' True prog)
 
 showFlatCurry' :: Bool -> Prog -> String
 showFlatCurry' b x = gshowsPrec b False x ""

@@ -262,9 +262,11 @@ readCurry :: String -> IO CurryProg
 readCurry = liftM read . readModule
 
 -- Writes an AbstractCurry program term into a file
-writeCurry :: String -> CurryProg -> IO ()
-writeCurry filename prog 
-   = catch (writeModule filename (showCurry prog)) ioError
+-- If the flag is set, it will be the hidden .curry sub directory.
+writeCurry :: Bool -> String -> CurryProg -> IO ()
+writeCurry inHiddenSubdir filename prog 
+   = catch (writeModule inHiddenSubdir filename (showCurry prog)) 
+           (\e -> ioError e)
 
 -- Shows an AbstractCurry program in a more nicely way.
 showCurry :: CurryProg -> String
