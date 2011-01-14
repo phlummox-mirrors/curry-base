@@ -1,4 +1,4 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE DoRec #-}
 
 {-
   Turns mutually recursive declarations into a single recursive
@@ -31,8 +31,8 @@ type UnMutualMonad = State UnMutualState
 
 
 unMutualProg :: Prog -> Prog
-unMutualProg p = evalState (updProgFuncsM 
-                            (\fdecl -> do 
+unMutualProg p = evalState (updProgFuncsM
+                            (\fdecl -> do
                                modify (\st -> st { localCounter = (maximum . map idxOf . allVarsInFunc) fdecl})
                                updFuncLetsM rmMutualRecursion fdecl)
                             p) (UnMutualState 1000)
@@ -42,8 +42,9 @@ rmMutualRecursion bs body
     | allWhnf bs || length bs <= 1
         = return (Let bs body)
     | otherwise
-        = mdo (body', bound, fbs) <- partitionBinds (fvs body) sccs (body, mkTuple fbs, [])
-              mkSingleLet body' bound fbs
+        = do
+          rec (body', bound, fbs) <- partitionBinds (fvs body) sccs (body, mkTuple fbs, [])
+          mkSingleLet body' bound fbs
     where fvsGraph    = depGraph bs
           sccs        = sortSccs fvsGraph
 
@@ -69,7 +70,7 @@ mkSingleLet body bound fbs
 
 nonrecLet :: VarIndex -> Expr -> Expr -> UnMutualMonad Expr
 nonrecLet x e1 e2
-    | x `elem` allVars e1 
+    | x `elem` allVars e1
         = do vi <- newLocalName (typeofVar x)
              let e2' = subst x (Var vi) e2
              return (Let [(vi,e1)] e2')
@@ -128,7 +129,7 @@ by declarations of identifiers that the body refers to, the tuple expression is 
 by declarations that are needed to define the feedback vriables, and the set of feedback
 identifiers is the complete feedback set:
 -}
-partitionBinds :: [VarIndex] -> [SCC FvsNode] 
+partitionBinds :: [VarIndex] -> [SCC FvsNode]
                -> (Expr, Expr, [VarIndex])
                -> UnMutualMonad (Expr, Expr, [VarIndex])
 
@@ -170,7 +171,7 @@ partitionBinds _pull [] part
 
 pickFbNode :: [VarIndex] -> [FvsNode] -> (Bind, [FvsNode])
 pickFbNode pull defs = (b, d)
-    where 
+    where
     ds         = [x | (_, x, _) <- defs]
     (b, y, _)  = maximumBy (compare `on` weight pull ds) defs
     d          = [ n | n@(_, x, _) <- defs, x /= y]
@@ -218,8 +219,8 @@ subst v x = po
           po e@(Free vs e')
               | v `elem` vs = e
               | otherwise   = Free vs (po e')
-          po e@(Let bs e') 
-              | lookup v bs == Nothing 
+          po e@(Let bs e')
+              | lookup v bs == Nothing
               = Let (map poBind bs) (po e')
               | otherwise = e
           po (Or l r) = Or (po l) (po r)
@@ -228,7 +229,7 @@ subst v x = po
           poBranch e@(Branch p rhs)
               | v `elem` trPattern (\_ args -> args) (const []) p
               = e
-              | otherwise 
+              | otherwise
               = Branch p (po rhs)
 
 
