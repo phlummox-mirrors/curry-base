@@ -1,9 +1,10 @@
 Name:          curry-base
-Version:       0.2.8
+Version:       0.2.9
 Cabal-Version: >= 1.6
 Synopsis:      Functions for manipulating Curry programs
-Description:   This package serves as a foundation for Curry compilers. it defines the intermediate
-               formats FlatCurry and ExtendedFlat. Additionally, it provides functionality
+Description:   This package serves as a foundation for Curry compilers.
+               It defines the intermediate language formats FlatCurry and
+               ExtendedFlat. Additionally, it provides functionality
                for the smooth integration of compiler frontends and backends.
 Category:      Language
 License:       OtherLicense
@@ -11,28 +12,42 @@ License-File:  LICENSE
 Author:        Wolfgang Lux, Martin Engelke, Bernd Brassel, Holger Siegel
 Maintainer:    Holger Siegel
 Bug-Reports:   mailto:hsi@informatik.uni-kiel.de
-Homepage:      http://curry-language.org
+Homepage:      http://www.curry-language.org
 Build-Type:    Simple
 Stability:     experimental
 
+Flag split-syb
+  Description: Has the syb functionality been split into the package syb?
+  Default:     True
+
 Library
-  Build-Depends:    base >= 3 && < 4, mtl, old-time, directory, filepath, containers, pretty
-  ghc-options:      
-  Exposed-Modules:  
-    Curry.Base.Position
+  if flag(split-syb)
+    Build-Depends: base == 4.*, syb
+  else
+    Build-Depends: base == 3.*
+  Build-Depends:
+      mtl
+    , containers
+    , filepath
+    , pretty
+    , old-time
+    , directory
+  ghc-options: -Wall
+  Exposed-Modules:
+    Curry.AbstractCurry
     Curry.Base.Ident
     Curry.Base.MessageMonad
-    Curry.ExtendedFlat.Type
-    Curry.ExtendedFlat.Goodies
-    Curry.ExtendedFlat.TypeInference
-    Curry.ExtendedFlat.MonadicGoodies
-    Curry.ExtendedFlat.UnMutual
-    Curry.ExtendedFlat.LiftLetrec
-    Curry.ExtendedFlat.EraseTypes
+    Curry.Base.Position
     Curry.ExtendedFlat.CurryArithmetics
-    Curry.FlatCurry.Type
+    Curry.ExtendedFlat.EraseTypes
+    Curry.ExtendedFlat.Goodies
+    Curry.ExtendedFlat.LiftLetrec
+    Curry.ExtendedFlat.MonadicGoodies
+    Curry.ExtendedFlat.Type
+    Curry.ExtendedFlat.TypeInference
+    Curry.ExtendedFlat.UnMutual
     Curry.FlatCurry.Goodies
     Curry.FlatCurry.Tools
+    Curry.FlatCurry.Type
     Curry.Files.Filenames
     Curry.Files.PathUtils
-    Curry.AbstractCurry
