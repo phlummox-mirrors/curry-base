@@ -7,7 +7,7 @@
 
 module Curry.Files.PathUtils
   ( -- * Re-exports from 'System.FilePath'
-    takeBaseName, dropExtension, takeExtension
+    takeBaseName, dropExtension, takeExtension, takeFileName
 
     -- * Retrieving curry fiiles
   , lookupModule, lookupFile, lookupInterface, getCurryPath

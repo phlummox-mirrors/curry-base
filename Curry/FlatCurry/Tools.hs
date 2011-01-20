@@ -14,9 +14,9 @@ module Curry.FlatCurry.Tools (
   isPublicType, isPublicCons,typeQName,isExternalType,
 
   -- operations on functions:
-  funcName, funcArity, funcVisibility, funcType, funcRule,
+  funcName, funcArity, funcVisibility, funcType, funcRule, isPublicFunc,
 
-  updFunc, updFuncName, updFuncArity, updFuncVisibility, updFuncType, 
+  updFunc, updFuncName, updFuncArity, updFuncVisibility, updFuncType,
   updFuncRule,
 
   funcArgs, funcBody, funcRHS, isExternal, isCombFunc,
@@ -28,13 +28,13 @@ module Curry.FlatCurry.Tools (
   -- operations on function-rules:
   isRuleExternal, ruleArgs, ruleBody,
 
-  updRule, updRuleArgs, updRuleBody,
+  updRule, updRuleArgs, updRuleBody, ruleExtDecl, updRuleExtDecl,
 
   rnmAllVarsRule, allVarsRule, updQNamesRule,
 
   -- operations on type-expressions:
   isTypeVar, isFuncType, isTypeCons, typeConsName, argTypes, resultType,
-  isIOType,typeArity, allTVars, 
+  isIOType,typeArity, allTVars,
   rnmAllVarsTypeExpr, allTypeCons,
 
   -- operations on expressions:
@@ -56,9 +56,9 @@ module Curry.FlatCurry.Tools (
 
   updBranch, updBranchPattern, updBranchExpr,
 
-  patCons, patArgs, patLiteral, patExpr,
+  patCons, patArgs, patLiteral, patExpr, updPatArgs, updPatLiteral,
 
-  rnmAllVarsBranch, allVarsBranch, 
+  rnmAllVarsBranch, allVarsBranch,
   rnmAllVarsPat, allVarsPat,
 
   -- operations on OpDecls
@@ -68,40 +68,44 @@ module Curry.FlatCurry.Tools (
 
 
 import Data.Maybe
-import Data.Char
-import Data.List
 
 import Curry.FlatCurry.Type
 
-infixr 5 -:-
-
--- variant of zipWith for lists of same length
-zipWith' _ [] [] = []
-zipWith' f (x:xs) (y:ys) = f x y : zipWith' f xs ys
-
 -- auxiliary functions -------------------------------------------------------
 
-x -:- xs = Comb ConsCall ("Prelude",":") [x,xs]
-nil = Comb ConsCall ("Prelude","[]") []
+-- infixr 5 -:-
 
-char_ :: Char -> Expr
-char_ c = Lit (Charc c)
-
-int_ :: Integer -> Expr
-int_ n = Lit (Intc n)
-
-float_ :: Double -> Expr
-float_ f = Lit (Floatc f)
-
-list_ :: [Expr] -> Expr
-list_ [] = nil
-list_ (x:xs) = x -:- list_ xs
-
-string_ :: String -> Expr
-string_ = list_ . map char_
+-- (-:-) :: Expr -> Expr -> Expr
+-- x -:- xs = Comb ConsCall ("Prelude",":") [x,xs]
+--
+-- nil :: Expr
+-- nil = Comb ConsCall ("Prelude","[]") []
+--
+-- char_ :: Char -> Expr
+-- char_ c = Lit (Charc c)
+--
+-- int_ :: Integer -> Expr
+-- int_ n = Lit (Intc n)
+--
+-- float_ :: Double -> Expr
+-- float_ f = Lit (Floatc f)
+--
+-- list_ :: [Expr] -> Expr
+-- list_ [] = nil
+-- list_ (x:xs) = x -:- list_ xs
+--
+-- string_ :: String -> Expr
+-- string_ = list_ . map char_
 
 -- Prog ----------------------------------------------------------------------
 
+updProg :: (String -> String)
+        -> ([String] -> [String])
+        -> ([TypeDecl] -> [TypeDecl])
+        -> ([FuncDecl] -> [FuncDecl])
+        -> ([OpDecl] -> [OpDecl])
+        -> Prog
+        -> Prog
 updProg fn fi ft ff fo (Prog name imps types funcs ops)
   = Prog (fn name) (fi imps) (ft types) (ff funcs) (fo ops)
 
@@ -159,15 +163,15 @@ allVarsProg = concatMap allVarsFunc . progFuncs
 
 --- update all qualified names in program
 updQNamesProg :: (QName -> QName) -> Prog -> Prog
-updQNamesProg f 
+updQNamesProg f
   = updProg id id (map (updQNamesType f)) (map (updQNamesFunc f))
      (map (\ (Op name fix prec) -> Op (f name) fix prec))
 
 rnmProg :: String -> Prog -> Prog
 rnmProg name p = updProgName (const name) (updQNamesProg rnm p)
  where
-  rnm (mod,n) | mod==progName p = (name,n)
-              | otherwise = (mod,n)
+  rnm (modul,n) | modul == progName p = (name,n)
+                | otherwise           = (modul,n)
 
 
 -- TypeDecl ------------------------------------------------------------------
@@ -178,17 +182,17 @@ allConstructors (TypeSyn _ _ _ _) = []
 allConstructors (Type _ _ _ cs) = cs
 
 --- select name of constructor
-consQName :: ConsDecl -> QName 
+consQName :: ConsDecl -> QName
 consQName (Cons n _ _ _) = n
 
-consArity :: ConsDecl -> Int 
+consArity :: ConsDecl -> Int
 consArity (Cons _ a _ _) = a
 
 --- update all qualified names in type declaration
 updQNamesType :: (QName -> QName) -> TypeDecl -> TypeDecl
 updQNamesType f (Type name vis vars decls)
   = Type (f name) vis vars (map (updQNamesConsDecl f) decls)
-updQNamesType f (TypeSyn name vis vars t) 
+updQNamesType f (TypeSyn name vis vars t)
   = TypeSyn (f name) vis vars (updQNamesTypeExpr f t)
 
 --- update all qualified names in constructor declaration
@@ -220,9 +224,16 @@ typeQName (TypeSyn n _ _ _) = n
 typeQName (Type n _ _ _) = n
 
 
-  
+
 -- FuncDecl ------------------------------------------------------------------
 
+updFunc :: (QName -> QName)
+        -> (Int -> Int)
+        -> (Visibility -> Visibility)
+        -> (TypeExpr -> TypeExpr)
+        -> (Rule -> Rule)
+        -> FuncDecl
+        -> FuncDecl
 updFunc fn fa fv ft fr (Func name arity vis t rule)
   = Func (fn name) (fa arity) (fv vis) (ft t) (fr rule)
 
@@ -248,7 +259,7 @@ funcVisibility (Func _ _ vis _ _) = vis
 
 --- is function public?
 isPublicFunc :: FuncDecl -> Bool
-isPublicFunc (Func _ _ vis _ _) = vis==Public
+isPublicFunc (Func _ _ vis _ _) = vis == Public
 
 --- update visibility of function
 updFuncVisibility :: (Visibility -> Visibility) -> FuncDecl -> FuncDecl
@@ -296,8 +307,8 @@ updFuncBody = updFuncRule . updRuleBody
 funcRHS :: FuncDecl -> Maybe [Expr]
 funcRHS = maybe Nothing (Just . unwrapCaseOr) . funcBody
  where
-  unwrapCaseOr e 
-    | isCase e 
+  unwrapCaseOr e
+    | isCase e
       = concatMap unwrapCaseOr (map branchExpr (caseBranches e))
     | isOr e = concatMap unwrapCaseOr (orExps e)
     | otherwise = [e]
@@ -320,7 +331,7 @@ incVarsFunc m = rnmAllVarsFunc (m+)
 
 --- rename all variables in function
 rnmAllVarsFunc :: (Int -> Int) -> FuncDecl -> FuncDecl
-rnmAllVarsFunc f (Func name arity vis t rule) 
+rnmAllVarsFunc f (Func name arity vis t rule)
   = Func name arity vis t (rnmAllVarsRule f rule)
 
 --- get variable names in a function declaration
@@ -329,7 +340,12 @@ allVarsFunc = allVarsRule . funcRule
 
 -- Rule ----------------------------------------------------------------------
 
-updRule fa fe _ (Rule args exp) = Rule (fa args) (fe exp)
+updRule :: ([VarIndex] -> [VarIndex])
+        -> (Expr -> Expr)
+        -> (String -> String)
+        -> Rule
+        -> Rule
+updRule fa fe _ (Rule args expr) = Rule (fa args) (fe expr)
 updRule _ _ f (External s) = External (f s)
 
 --- is rule an external declaration?
@@ -348,8 +364,8 @@ updRuleArgs f = updRule f id id
 
 --- get rules body if it's not external
 ruleBody :: Rule -> Maybe Expr
-ruleBody (Rule _ exp) = Just exp
-ruleBody (External _) = Nothing
+ruleBody (Rule _ expr) = Just expr
+ruleBody (External _)  = Nothing
 
 --- update rules body
 updRuleBody :: (Expr -> Expr) -> Rule -> Rule
@@ -372,13 +388,14 @@ updQNamesRule = updRuleBody . updQNames
 
 --- rename all variables in rule
 rnmAllVarsRule :: (Int -> Int) -> Rule -> Rule
-rnmAllVarsRule f (Rule args body) 
+rnmAllVarsRule f (Rule args body)
   = Rule (map f args) (rnmAllVars f body)
 rnmAllVarsRule _ (External s) = External s
 
 --- get variable names in a functions rule
 allVarsRule :: Rule -> [Int]
 allVarsRule (Rule args body) = args ++ allVars body
+allVarsRule (External _)     = []
 
 -- TypeExpr ------------------------------------------------------------------
 
@@ -394,7 +411,7 @@ isFuncType t = case t of
   FuncType _ _ -> True
   _ -> False
 
---- compute number of arguments by function type 
+--- compute number of arguments by function type
 typeArity :: TypeExpr -> Int
 typeArity (TVar _) = 0
 typeArity (TCons _ _) = 0
@@ -417,7 +434,6 @@ typeConsName t | isTypeCons t = let TCons name _ = t in Just name
 
 --- get argument types from functional type
 argTypes :: TypeExpr -> [TypeExpr]
-
 argTypes t = case t of
   FuncType dom ran -> dom : argTypes ran
   _ -> []
@@ -431,11 +447,12 @@ resultType t = case t of
 --- rename variables in type declaration
 rnmAllVarsTypeExpr :: (Int -> Int) -> TypeExpr -> TypeExpr
 rnmAllVarsTypeExpr f (TVar n) = TVar (f n)
-rnmAllVarsTypeExpr f (TCons name args) 
+rnmAllVarsTypeExpr f (TCons name args)
   = TCons name (map (rnmAllVarsTypeExpr f) args)
-rnmAllVarsTypeExpr f (FuncType dom ran) 
-  = FuncType (rnmAllVarsTypeExpr f dom) (rnmAllVarsTypeExpr f ran) 
+rnmAllVarsTypeExpr f (FuncType dom ran)
+  = FuncType (rnmAllVarsTypeExpr f dom) (rnmAllVarsTypeExpr f ran)
 
+allTVars :: TypeExpr -> [TVarIndex]
 allTVars (TVar n) = [n]
 allTVars (TCons _ args) = concatMap allTVars args
 allTVars (FuncType t1 t2) = concatMap allTVars [t1,t2]
@@ -449,22 +466,23 @@ allTypeCons (FuncType t1 t2) = allTypeCons t1 ++ allTypeCons t2
 --- update all qualified names in type expression
 updQNamesTypeExpr :: (QName -> QName) -> TypeExpr -> TypeExpr
 updQNamesTypeExpr _ (TVar n) = TVar n
-updQNamesTypeExpr f (FuncType dom ran) 
+updQNamesTypeExpr f (FuncType dom ran)
   = FuncType (updQNamesTypeExpr f dom) (updQNamesTypeExpr f ran)
-updQNamesTypeExpr f (TCons name args) 
+updQNamesTypeExpr f (TCons name args)
   = TCons (f name) (map (updQNamesTypeExpr f) args)
 
 -- Expr ----------------------------------------------------------------------
 
 --- is expression a variable?
 isVar :: Expr -> Bool
-isVar e = case e of 
+isVar e = case e of
   Var _ -> True
   _ -> False
 
 --- get internal number of variable
 varNr :: Expr -> Int
 varNr (Var n) = n
+varNr _       = error "Curry.FlatCurry.Tools.varNr: no variable"
 
 --- is expression a literal expression?
 isLit :: Expr -> Bool
@@ -504,10 +522,10 @@ isLet e = case e of
 
 --- is expression fully evaluated?
 isGround :: Expr -> Bool
-isGround exp 
-  = case exp of
+isGround expr
+  = case expr of
       Comb ConsCall _ args -> all isGround args
-      _ -> isLit exp
+      _ -> isLit expr
 
 --- get literal if expression is literal expression
 literal :: Expr -> Maybe Literal
@@ -524,10 +542,13 @@ combType e = case e of
 --- get expression from declaration of free variables
 exprFromFreeDecl :: Expr -> Expr
 exprFromFreeDecl (Free _ e) = e
+exprFromFreeDecl _          = error $ "Curry.FlatCurry.Tools." ++
+  "exprFromFreeDecl: no declaration of free variables"
 
 --- get expressions from or-expression
 orExps :: Expr -> [Expr]
 orExps (Or e1 e2) = [e1,e2]
+orExps _          = error "Curry.FlatCurry.Tools.orExps: no or expression"
 
 -- shortcuts
 
@@ -545,13 +566,13 @@ isConsCall e = maybe False isCombConsCall (combType e)
 
 --- get name of function if expression is a (maybe partial) function call
 combFunc :: Expr -> Maybe QName
-combFunc e 
+combFunc e
   | isFuncCall e || isPartCall e = let Comb _ name _ = e in Just name
   | otherwise = Nothing
 
 --- get name of constructor if expression is a constructor call
 combCons :: Expr -> Maybe QName
-combCons e 
+combCons e
   | isConsCall e = let Comb _ name _ = e in Just name
   | otherwise = Nothing
 
@@ -566,11 +587,15 @@ missingFuncArgs e = combType e >>= Just . missingArgs
 
 --- is expression a combined expression with given name?
 hasName :: QName -> Expr -> Bool
-hasName name (Comb _ name' _) = name==name'
+hasName name (Comb _ name' _) = name == name'
+hasName _    _                = error $ "Curry.FlatCurry.Tools.hasName: " ++
+                                        "no combined expression"
 
 --- get branch expressions from case expression
 caseBranches :: Expr -> [BranchExpr]
 caseBranches (Case _ _ bs) = bs
+caseBranches _             = error $ "Curry.FlatCurry.Tools.caseBranches: " ++
+                                        "no case expression"
 
 -- auxiliary functions
 
@@ -581,9 +606,9 @@ rnmAllVars _ (Lit l) = Lit l
 rnmAllVars f (Comb ct name args) = Comb ct name (map (rnmAllVars f) args)
 rnmAllVars f (Free vs e) = Free (map f vs) (rnmAllVars f e)
 rnmAllVars f (Or e1 e2) = Or (rnmAllVars f e1) (rnmAllVars f e2)
-rnmAllVars f (Case ct e bs) 
+rnmAllVars f (Case ct e bs)
   = Case ct (rnmAllVars f e) (map (rnmAllVarsBranch f) bs)
-rnmAllVars f (Let bs e) 
+rnmAllVars f (Let bs e)
   = Let (map (\ (n,e') -> (f n,rnmAllVars f e')) bs) (rnmAllVars f e)
 
 --- get all variables (even in patterns) in expression
@@ -603,7 +628,7 @@ mapVar _ (Lit l) = Lit l
 mapVar f (Comb ct name args) = Comb ct name (map (mapVar f) args)
 mapVar f (Free vs e) = Free vs (mapVar f e)
 mapVar f (Or e1 e2) = Or (mapVar f e1) (mapVar f e2)
-mapVar f (Case ct e bs) 
+mapVar f (Case ct e bs)
   = Case ct (mapVar f e) (map (updBranchExpr (mapVar f)) bs)
 mapVar f (Let bs e) = Let (map (\ (n,e') -> (n,mapVar f e')) bs) (mapVar f e)
 
@@ -614,7 +639,7 @@ mapLit f (Lit l) = f (Lit l)
 mapLit f (Comb ct name args) = Comb ct name (map (mapLit f) args)
 mapLit f (Free vs e) = Free vs (mapLit f e)
 mapLit f (Or e1 e2) = Or (mapLit f e1) (mapLit f e2)
-mapLit f (Case ct e bs) 
+mapLit f (Case ct e bs)
   = Case ct (mapLit f e) (map (updBranchExpr (mapLit f)) bs)
 mapLit f (Let bs e) = Let (map (\ (n,e') -> (n,mapLit f e')) bs) (mapLit f e)
 
@@ -625,9 +650,9 @@ mapComb _ (Lit l) = Lit l
 mapComb f (Comb ct name args) = f (Comb ct name (map (mapComb f) args))
 mapComb f (Free vs e) = Free vs (mapComb f e)
 mapComb f (Or e1 e2) = Or (mapComb f e1) (mapComb f e2)
-mapComb f (Case ct e bs) 
+mapComb f (Case ct e bs)
   = Case ct (mapComb f e) (map (updBranchExpr (mapComb f)) bs)
-mapComb f (Let bs e) 
+mapComb f (Let bs e)
   = Let (map (\ (n,e') -> (n,mapComb f e')) bs) (mapComb f e)
 
 --- map all free declarations in given expression
@@ -637,9 +662,9 @@ mapFree _ (Lit l) = Lit l
 mapFree f (Comb ct name args) = Comb ct name (map (mapFree f) args)
 mapFree f (Free vs e) = f (Free vs (mapFree f e))
 mapFree f (Or e1 e2) = Or (mapFree f e1) (mapFree f e2)
-mapFree f (Case ct e bs) 
+mapFree f (Case ct e bs)
   = Case ct (mapFree f e) (map (updBranchExpr (mapFree f)) bs)
-mapFree f (Let bs e) 
+mapFree f (Let bs e)
   = Let (map (\ (n,e') -> (n,mapFree f e')) bs) (mapFree f e)
 
 --- map all or expressions in given expression
@@ -649,7 +674,7 @@ mapOr _ (Lit l) = Lit l
 mapOr f (Comb ct name args) = Comb ct name (map (mapOr f) args)
 mapOr f (Free vs e) = Free vs (mapOr f e)
 mapOr f (Or e1 e2) = f (Or (mapOr f e1) (mapOr f e2))
-mapOr f (Case ct e bs) 
+mapOr f (Case ct e bs)
   = Case ct (mapOr f e) (map (updBranchExpr (mapOr f)) bs)
 mapOr f (Let bs e) = Let (map (\ (n,e') -> (n,mapOr f e')) bs) (mapOr f e)
 
@@ -660,9 +685,9 @@ mapCase _ (Lit l) = Lit l
 mapCase f (Comb ct name args) = Comb ct name (map (mapCase f) args)
 mapCase f (Free vs e) = Free vs (mapCase f e)
 mapCase f (Or e1 e2) = Or (mapCase f e1) (mapCase f e2)
-mapCase f (Case ct e bs) 
+mapCase f (Case ct e bs)
   = f (Case ct (mapCase f e) (map (updBranchExpr (mapCase f)) bs))
-mapCase f (Let bs e) 
+mapCase f (Let bs e)
   = Let (map (\ (n,e') -> (n,mapCase f e')) bs) (mapCase f e)
 
 --- map all let expressions in given expression
@@ -672,16 +697,16 @@ mapLet _ (Lit l) = Lit l
 mapLet f (Comb ct name args) = Comb ct name (map (mapLet f) args)
 mapLet f (Free vs e) = Free vs (mapLet f e)
 mapLet f (Or e1 e2) = Or (mapLet f e1) (mapLet f e2)
-mapLet f (Case ct e bs) 
+mapLet f (Case ct e bs)
   = Case ct (mapLet f e) (map (updBranchExpr (mapLet f)) bs)
-mapLet f (Let bs e) 
+mapLet f (Let bs e)
   = f (Let (map (\ (n,e') -> (n,mapLet f e')) bs) (mapLet f e))
 
 --- update all qualified names in expression
 updQNames :: (QName -> QName) -> Expr -> Expr
-updQNames f 
+updQNames f
   = mapComb (\ (Comb ct name args) -> Comb ct (f name) args)
-  . mapCase (\ (Case ct e bs) 
+  . mapCase (\ (Case ct e bs)
               -> Case ct e (map (updBranchPattern (updPatCons f)) bs))
 
 -- CombType ------------------------------------------------------------------
@@ -714,7 +739,11 @@ missingArgs ConsCall = 0  -- ConsCalls need not be fully applied (?)
 
 -- BranchExpr ----------------------------------------------------------------
 
-updBranch fp fe (Branch pat exp) = Branch (fp pat) (fe exp)
+updBranch :: (Pattern -> Pattern)
+          -> (Expr -> Expr)
+          -> BranchExpr
+          -> BranchExpr
+updBranch fp fe (Branch pat expr) = Branch (fp pat) (fe expr)
 
 --- get pattern from branch expression
 branchPattern :: BranchExpr -> Pattern
@@ -737,6 +766,11 @@ isConsPattern :: Pattern -> Bool
 isConsPattern (Pattern _ _) = True
 isConsPattern (LPattern _) = False
 
+updPattern :: (QName -> QName)
+           -> ([VarIndex] -> [VarIndex])
+           -> (Literal -> Literal)
+           -> Pattern
+           -> Pattern
 updPattern fn fa _ (Pattern name args) = Pattern (fn name) (fa args)
 updPattern _ _ f (LPattern l) = LPattern (f l)
 
@@ -757,7 +791,7 @@ patArgs (LPattern _) = Nothing
 updPatArgs :: ([Int] -> [Int]) -> Pattern -> Pattern
 updPatArgs f = updPattern id f id
 
---- get literal if pattern is a literal pattern 
+--- get literal if pattern is a literal pattern
 patLiteral :: Pattern -> Maybe Literal
 patLiteral (Pattern _ _) = Nothing
 patLiteral (LPattern l) = Just l
@@ -775,7 +809,7 @@ patExpr (LPattern l) = Lit l
 
 --- rename all variables in branch expression
 rnmAllVarsBranch :: (Int -> Int) -> BranchExpr -> BranchExpr
-rnmAllVarsBranch f (Branch pat e) 
+rnmAllVarsBranch f (Branch pat e)
   = Branch (rnmAllVarsPat f pat) (rnmAllVars f e)
 
 --- flatten all variables in branch expression
@@ -793,4 +827,5 @@ allVarsPat = fromMaybe [] . patArgs
 
 -- opDecls ------------------------------
 
+opName :: OpDecl -> QName
 opName (Op name _ _) = name

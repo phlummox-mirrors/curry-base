@@ -1,65 +1,59 @@
-{-# LANGUAGE FlexibleContexts, PatternGuards #-}
+{- |The function adjustTypeInfos annotates every declaration, identifier, and
+    application with exact type information.
 
-{-
-  Function adjustTypeInfos annotates every declaration,
-  identifier, and application with exact type information.
+    This information is derived from the more general information found in
+    the AST.
 
-  This information is derived from the more general information
-  found in the AST.
-
-  (c) 2009, Holger Siegel.
-
+    (c) 2009, Holger Siegel.
 -}
 
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
+
 module Curry.ExtendedFlat.TypeInference
-    ( dispType,
-      adjustTypeInfo,
-      labelVarsWithTypes,
-      uniqueTypeIndices,
-      genEquations
-    ) where
+  ( dispType, adjustTypeInfo, labelVarsWithTypes,uniqueTypeIndices
+  , genEquations
+  ) where
 
-import Debug.Trace
 
-import Text.PrettyPrint.HughesPJ
 import Control.Monad.State
 import Control.Monad.Reader
+import qualified Data.IntMap as IntMap
 import Data.Maybe
-import qualified  Data.IntMap as IntMap
+import Text.PrettyPrint.HughesPJ
 
 import Curry.ExtendedFlat.Type
 import Curry.ExtendedFlat.Goodies
 
+-- import Debug.Trace
 
-trace' msg x = x -- trace msg x 
+trace' :: String -> b -> b
+trace' _ x = x
+-- trace' = trace
 
--- | For every identifier that occurs in the right hand side
---   of a declaration, the polymorphic type variables in its
---   type label are replaced by concrete types.
+{- |For every identifier that occurs in the right hand side of a declaration,
+    the polymorphic type variables in its type label are replaced by concrete
+    types. -}
 adjustTypeInfo :: Prog -> Prog
-adjustTypeInfo = genEquations . 
-                 uniqueTypeIndices .
-                 labelVarsWithTypes
+adjustTypeInfo = genEquations .  uniqueTypeIndices . labelVarsWithTypes
 
--- | Displays a TypeExpr as a string
+-- |Displays a 'TypeExpr' as a 'String'
 dispType :: TypeExpr -> String
 dispType = render . prettyType
 
 prettyType :: TypeExpr -> Doc
-prettyType (TVar i) = text ('t':show i)
+prettyType (TVar i)       = text ('t':show i)
 prettyType (FuncType f x) = parens (prettyType f) <+> text "->" <+> prettyType x
-prettyType (TCons qn ts) = let  n = let (m,l) = qnOf qn in m ++ '.' : l
-                           in text n <+> hsep (map (parens . prettyType) ts)
+prettyType (TCons qn ts)  = let  n = let (m,l) = qnOf qn in m ++ '.' : l
+                            in text n <+> hsep (map (parens . prettyType) ts)
 
-prettyAllEqns = render . prettyEqns
-    where
-      prettyEqn ::(TVarIndex, TypeExpr)  -> Doc
-      prettyEqn (l, r) = char 't' <> int l <+> text "->" <+> prettyType r
+prettyAllEqns :: ((String, String), TypeExpr, [(TVarIndex, TypeExpr)]) -> String
+prettyAllEqns = render . prettyEqns where
+  prettyEqn ::(TVarIndex, TypeExpr)  -> Doc
+  prettyEqn (l, r) = char 't' <> int l <+> text "->" <+> prettyType r
 
-      prettyEqns ((m,l), t, eqns)
-          = text m <> char '.' <> text l <+> text "::" <+> prettyType t <> char ':'
-            $$ nest 5 (vcat (map prettyEqn eqns))
-
+  prettyEqns ((m,l), t, eqns)
+    = text m <> char '.' <> text l <+> text "::" <+> prettyType t <> char ':'
+      $$ nest 5 (vcat (map prettyEqn eqns))
 
 postOrderExpr :: Monad m => (Expr -> m Expr) -> Expr -> m Expr
 postOrderExpr f = po
@@ -81,9 +75,6 @@ postOrderExpr f = po
           poBranch (Branch p rhs) = do rhs' <- po rhs
                                        return (Branch p rhs')
 
-
-
-
 postOrderType :: Monad m => (TypeExpr -> m TypeExpr) -> TypeExpr -> m TypeExpr
 postOrderType f = po
     where po e@(TVar _) = f e
@@ -93,12 +84,10 @@ postOrderType f = po
           po (TCons qn ts) = do ts' <- mapM po ts
                                 f (TCons qn ts')
 
-
 visitTVars :: Monad m => (TVarIndex -> m TypeExpr) -> TypeExpr -> m TypeExpr
 visitTVars f = postOrderType f'
     where f' (TVar i) = f i
           f' t = return t
-
 
 -- ----------------------------------------------------------------------
 -- ----------------------------------------------------------------------
@@ -109,14 +98,14 @@ type TDictM = ReaderT TypeMap (State Int)
 --   labelled with new type variables
 labelVarsWithTypes :: Prog -> Prog
 labelVarsWithTypes = updProgFuncs updateFunc
-    where 
-      updateFunc = map (\func -> let maxtvi = maxFuncTV func + 1 
+    where
+      updateFunc = map (\func -> let maxtvi = maxFuncTV func + 1
                                  in trFunc (foo maxtvi) func)
-      foo maxtv qn arity visty te r@(External _) = Func qn arity visty te r
-      foo maxtv qn arity visty te r@(Rule vs expr) 
+      foo _ qn arity visty te r@(External _) = Func qn arity visty te r
+      foo maxtv qn arity visty te (Rule vs expr)
           = let expr' = evalState (runReaderT (withVS vs (po expr)) typeMap) maxtv
-                typeMap = trace' (show argTypes) $ IntMap.fromList argTypes
-                argTypes = [ (vi, t) | VarIndex (Just t) vi <- vs ]
+                typeMap = trace' (show argTypes') $ IntMap.fromList argTypes'
+                argTypes' = [ (vi, t) | VarIndex (Just t) vi <- vs ]
             in Func qn arity visty te (Rule vs expr')
 
       po :: Expr -> TDictM Expr
@@ -138,7 +127,7 @@ labelVarsWithTypes = updProgFuncs updateFunc
           = do es' <- mapM po es
                n' <- poQName n
                return (Comb t n' es')
-      po (Free vs e) 
+      po (Free vs e)
           = do vs' <- mapM poVarIndex vs
                e' <- po e
                return (Free vs' e')
@@ -156,12 +145,12 @@ labelVarsWithTypes = updProgFuncs updateFunc
                return (Case p t e' bs')
 
       poBranch :: BranchExpr -> TDictM BranchExpr
-      poBranch (Branch (Pattern qn vs) rhs) 
+      poBranch (Branch (Pattern qn vs) rhs)
           = do qn' <- poQName qn
                vs' <- mapM poVarIndex vs
                withVS vs' (do rhs' <- po rhs
                               return (Branch (Pattern qn' vs') rhs'))
-      poBranch (Branch (LPattern l) e) 
+      poBranch (Branch (LPattern l) e)
           = do rhs' <- po e
                return (Branch (LPattern l) rhs')
 
@@ -172,7 +161,7 @@ labelVarsWithTypes = updProgFuncs updateFunc
 
       poQName :: QName -> TDictM QName
       poQName qn
-          = do t <- maybe (lift$freshTVar) 
+          = do t <- maybe (lift$freshTVar)
                         return . typeofQName $ qn
                return qn{typeofQName = Just t }
 
@@ -207,11 +196,11 @@ relabelTypes (Var v)
 relabelTypes (Case p t e bs)
     = do bs' <- mapM relabelPatType bs
          return (Case p t e bs')
-    where relabelPatType (Branch (Pattern qn vis) e)
+    where relabelPatType (Branch (Pattern qn vis) e')
               = do t' <- case typeofQName qn of
                            Just lt -> relabelType lt
                            Nothing -> freshTVar
-                   return (Branch (Pattern qn {typeofQName = Just t'} vis) e)
+                   return (Branch (Pattern qn {typeofQName = Just t'} vis) e')
           relabelPatType be = return be
 relabelTypes t = return t
 
@@ -220,13 +209,13 @@ relabelType t = evalStateT (visitTVars typeFoo t) IntMap.empty
     where typeFoo i = do m <- get
                          case IntMap.lookup i m of
                            Just v -> return v
-                           Nothing -> do v <- lift freshTVar 
+                           Nothing -> do v <- lift freshTVar
                                          modify (IntMap.insert i v)
                                          return v
 
 
 -- ----------------------------------------------------------------------
--- ----------------------------------------------------------------------                                
+-- ----------------------------------------------------------------------
 
 type TypeMap =  IntMap.IntMap TypeExpr
 
@@ -236,30 +225,30 @@ type EqnMonad = StateT TypeMap (State TVarIndex)
 -- | Specialises all type variables (part of adjustTypeInfo)
 genEquations  :: Prog -> Prog
 genEquations = updProgFuncs updateFunc
-    where 
-      updateFunc = map (\func -> let maxtvi = maxFuncTV func + 1 
+    where
+      updateFunc = map (\func -> let maxtvi = maxFuncTV func + 1
                                  in trFunc (foo maxtvi) func)
-      foo maxtv qn arity visty te r@(External _) = Func qn arity visty te r
-      foo maxtv qn arity visty te r@(Rule vs expr) 
-          = let h = evalState (execStateT (do argTypes <- mapM varIndexType vs
+      foo _ qn arity visty te r@(External _) = Func qn arity visty te r
+      foo maxtv qn arity visty te (Rule vs expr)
+          = let h = evalState (execStateT (do argTypes' <- mapM varIndexType vs
                                               etype <- equations expr
                                               qnt <- qnType qn
-                                              qnt =:= foldr FuncType etype argTypes
+                                              _ <- qnt =:= foldr FuncType etype argTypes'
                                               return()
                                           ) IntMap.empty) maxtv
             in trace' (prettyAllEqns (qnOf qn,te,IntMap.toList h)) Func qn arity visty (specialiseType h te) (specInRule h (Rule vs expr))
-          
+
 
 equations :: Expr -> EqnMonad TypeExpr
 equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn orEqn casEqn branchEqn
     where
       combEqn :: (CombType -> QName -> [EqnMonad TypeExpr] -> EqnMonad TypeExpr)
       combEqn _ qn args
-          = do resultType <- lift$freshTVar
-               argTypes <- sequence args
+          = do resultType' <- lift$freshTVar
+               argTypes' <- sequence args
                tqn <- qnType qn
-               tqn =:= foldr FuncType resultType argTypes
-               return resultType
+               _ <- tqn =:= foldr FuncType resultType' argTypes'
+               return resultType'
 
       letEqn :: ([(VarIndex, EqnMonad TypeExpr)] -> EqnMonad TypeExpr -> EqnMonad TypeExpr)
       letEqn bs = (mapM_ bindEqn bs >>)
@@ -287,8 +276,8 @@ equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn or
       unifLhs scrt (Pattern qn vs)
           = do qnt <- qnType qn
               -- FIXME: Variablentypen in Map eintragen!!!
-               argTypes <- mapM varIndexType vs
-               qnt =:= foldr FuncType scrt argTypes
+               argTypes' <- mapM varIndexType vs
+               qnt =:= foldr FuncType scrt argTypes'
 
 
       branchEqn :: Pattern -> EqnMonad TypeExpr -> EqnMonad (Pattern, TypeExpr)
@@ -305,7 +294,7 @@ unify :: TypeExpr -> TypeExpr -> TypeMap -> TypeMap
 -- t =:= u = return t
 
 unify (TVar i) t tm
-    | Just s <- IntMap.lookup i tm 
+    | Just s <- IntMap.lookup i tm
     = unify s t tm
 unify s (TVar j) tm
     | Just t <- IntMap.lookup j tm
@@ -339,7 +328,7 @@ varIndexType = maybe (lift$freshTVar) return . typeofVar
 qnType :: QName -> EqnMonad TypeExpr
 qnType = maybe (lift$freshTVar) return . typeofQName
 
-      
+
 freshTVar :: MonadState Int m => m TypeExpr
 freshTVar = do nextIdx <- get
                modify succ
@@ -348,8 +337,9 @@ freshTVar = do nextIdx <- get
 
 ---------------------------------------------------------------------
 
+maxFuncTV :: FuncDecl -> TVarIndex
 maxFuncTV = trFunc (\qn _ _ te r -> max (maxQNameTV qn) (max (maxTypeTV te) (maxRuleTV r)))
-    where 
+    where
       maxRuleTV = trRule (\vis e -> maximum (maxExprTV e : map maxVarIndexTV vis)) (const (-1))
 
       maxExprTV :: Expr -> Int
@@ -379,7 +369,7 @@ maxFuncTV = trFunc (\qn _ _ te r -> max (maxQNameTV qn) (max (maxTypeTV te) (max
 
 specialiseType :: TypeMap -> TypeExpr -> TypeExpr
 specialiseType m t = trTypeExpr (foo m) TCons FuncType t
-    where foo m i = maybe (TVar i) (specialiseType m) (IntMap.lookup i m)
+    where foo m' i = maybe (TVar i) (specialiseType m') (IntMap.lookup i m')
 
 
 -- boilerplate
@@ -394,7 +384,7 @@ modifyType f = updRule (map specInVarIndex) specInExpr id
     where specInExpr
               = trExpr var Lit comb letexp free Or Case alt
           var = Var . specInVarIndex
-          comb ct 
+          comb ct
               = Comb ct . specInQName
           letexp
               = Let . map specInBind

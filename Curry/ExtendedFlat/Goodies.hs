@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------------
---- This library provides selector functions, test and update operations 
+--- This library provides selector functions, test and update operations
 --- as well as some useful auxiliary functions for FlatCurry data terms.
 --- Most of the provided functions are based on general transformation
 --- functions that replace constructors with user-defined
@@ -8,7 +8,7 @@
 --- transformations on FlatCurry terms,
 --- so the provided functions can be used to implement specific transformations
 --- without having to explicitly state the recursion. Essentially, the tedious
---- part of such transformations - descend in fairly complex term structures - 
+--- part of such transformations - descend in fairly complex term structures -
 --- is abstracted away, which hopefully makes the code more clear and brief.
 ---
 --- @author Sebastian Fischer
@@ -111,14 +111,14 @@ rnmAllVarsInProg = updProgFuncs . map . rnmAllVarsInFunc
 
 --- update all qualified names in program
 updQNamesInProg :: Update Prog QName
-updQNamesInProg f = updProg id id 
+updQNamesInProg f = updProg id id
   (map (updQNamesInType f)) (map (updQNamesInFunc f)) (map (updOpName f))
 
 --- rename program (update name of and all qualified names in program)
 rnmProg :: String -> Prog -> Prog
 rnmProg name p = updProgName (const name) (updQNamesInProg rnm p)
  where
-  rnm qn = if modName qn == progName p 
+  rnm qn = if modName qn == progName p
            then qn { modName = name }
            else qn
 
@@ -201,7 +201,7 @@ updTypeSynonym = updType id id id id
 
 --- update all qualified names in type declaration
 updQNamesInType :: Update TypeDecl QName
-updQNamesInType f 
+updQNamesInType f
   = updType f id id (map (updQNamesInConsDecl f)) (updQNamesInTypeExpr f)
 
 -- ConsDecl ------------------------------------------------------------------
@@ -268,29 +268,39 @@ updQNamesInConsDecl f = updCons f id id (map (updQNamesInTypeExpr f))
 --- get index from type variable
 tVarIndex :: TypeExpr -> TVarIndex
 tVarIndex (TVar n) = n
+tVarIndex _        = error $ "Curry.ExtendedFlat.Goodies.tvarIndex: " ++
+                             "no type variable"
 
 --- get domain from functional type
 domain :: TypeExpr -> TypeExpr
 domain (FuncType dom _) = dom
+domain _                = error $ "Curry.ExtendedFlat.Goodies.domain: " ++
+                                  "no function type"
 
 --- get range from functional type
 range :: TypeExpr -> TypeExpr
 range (FuncType _ ran) = ran
+range _                = error $ "Curry.ExtendedFlat.Goodies.range: " ++
+                                  "no function type"
 
 --- get name from constructed type
 tConsName :: TypeExpr -> QName
 tConsName (TCons name _) = name
+tConsName _              = error $ "Curry.ExtendedFlat.Goodies.tConsName: " ++
+                                   "no constructor type"
 
 --- get arguments from constructed type
 tConsArgs :: TypeExpr -> [TypeExpr]
 tConsArgs (TCons _ args) = args
+tConsArgs _              = error $ "Curry.ExtendedFlat.Goodies.tConsArgs: " ++
+                                   "no constructor type"
 
 --- transform type expression
 trTypeExpr :: (TVarIndex -> a) ->
               (QName -> [a] -> a) ->
               (a -> a -> a) -> TypeExpr -> a
 trTypeExpr tvar _ _ (TVar n) = tvar n
-trTypeExpr tvar tcons functype (TCons name args) 
+trTypeExpr tvar tcons functype (TCons name args)
   = tcons name (map (trTypeExpr tvar tcons functype) args)
 trTypeExpr tvar tcons functype (FuncType from to) = functype (f from) (f to)
  where
@@ -338,7 +348,7 @@ resultType (TVar n) = TVar n
 resultType (TCons name args) = TCons name args
 resultType (FuncType _ ran) = resultType ran
 
---- get indexes of all type variables 
+--- get indexes of all type variables
 allVarsInTypeExpr :: TypeExpr -> [TVarIndex]
 allVarsInTypeExpr = trTypeExpr (:[]) (const concat) (++)
 
@@ -429,8 +439,8 @@ updFunc :: (QName -> QName) ->
            (TypeExpr -> TypeExpr) ->
            (Rule -> Rule)             -> FuncDecl -> FuncDecl
 updFunc fn fa fv ft fr = trFunc func
- where 
-  func name arity vis t rule 
+ where
+  func name arity vis t rule
     = Func (fn name) (fa arity) (fv vis) (ft t) (fr rule)
 
 --- update name of function
@@ -475,7 +485,7 @@ funcRHS :: FuncDecl -> [Expr]
 funcRHS f | not (isExternal f) = orCase (funcBody f)
           | otherwise = []
  where
-  orCase e 
+  orCase e
     | isOr e = concatMap orCase (orExps e)
     | isCase e = concatMap orCase (map branchExpr (caseBranches e))
     | otherwise = [e]
@@ -515,7 +525,7 @@ ruleBody = trRule (\_ e -> e) failed
 
 --- get rules external declaration
 ruleExtDecl :: Rule -> String
-ruleExtDecl = trRule failed id 
+ruleExtDecl = trRule failed id
 
 -- Test Operations
 
@@ -599,22 +609,30 @@ missingArgs = trCombType 0 id 0 id
 --- get internal number of variable
 varNr :: Expr -> VarIndex
 varNr (Var n) = n
+varNr _       = error "Curry.ExtendedFlat.Goodies.varNr: no variable"
 
 --- get literal if expression is literal expression
 literal :: Expr -> Literal
 literal (Lit l) = l
+literal _       = error "Curry.ExtendedFlat.Goodies.literal: no literal"
 
 --- get combination type of a combined expression
 combType :: Expr -> CombType
 combType (Comb ct _ _) = ct
+combType _             = error $ "Curry.ExtendedFlat.Goodies.combType: " ++
+                                 "no combined expression"
 
 --- get name of a combined expression
 combName :: Expr -> QName
 combName (Comb _ name _) = name
+combName _               = error $ "Curry.ExtendedFlat.Goodies.combName: " ++
+                                 "no combined expression"
 
 --- get arguments of a combined expression
 combArgs :: Expr -> [Expr]
 combArgs (Comb _ _ args) = args
+combArgs _               = error $ "Curry.ExtendedFlat.Goodies.combArgs: " ++
+                                 "no combined expression"
 
 --- get number of missing arguments if expression is combined
 missingCombArgs :: Expr -> Int
@@ -623,40 +641,57 @@ missingCombArgs = missingArgs . combType
 --- get indices of varoables in let declaration
 letBinds :: Expr -> [(VarIndex,Expr)]
 letBinds (Let vs _) = vs
+letBinds _          = error $ "Curry.ExtendedFlat.Goodies.letBinds: " ++
+                              "no let expression"
 
 --- get body of let declaration
 letBody :: Expr -> Expr
 letBody (Let _ e) = e
+letBody _         = error $ "Curry.ExtendedFlat.Goodies.letBody: " ++
+                              "no let expression"
 
 --- get variable indices from declaration of free variables
 freeVars :: Expr -> [VarIndex]
 freeVars (Free vs _) = vs
+freeVars _           = error $ "Curry.ExtendedFlat.Goodies.freeVars: " ++
+                               "no declaration of free variables"
 
 --- get expression from declaration of free variables
 freeExpr :: Expr -> Expr
 freeExpr (Free _ e) = e
+freeExpr _           = error $ "Curry.ExtendedFlat.Goodies.freeExpr: " ++
+                               "no declaration of free variables"
 
 --- get expressions from or-expression
 orExps :: Expr -> [Expr]
 orExps (Or e1 e2) = [e1,e2]
+orExps _          = error $ "Curry.ExtendedFlat.Goodies.orExps: " ++
+                            "no or expression"
 
 --- get case-type of case expression
 caseType :: Expr -> CaseType
 caseType (Case _ ct _ _) = ct
+caseType _               = error $ "Curry.ExtendedFlat.Goodies.caseType: " ++
+                                   "no case expression"
 
 --- get scrutinee of case expression
 caseExpr :: Expr -> Expr
 caseExpr (Case _ _ e _) = e
+caseExpr _              = error $ "Curry.ExtendedFlat.Goodies.caseExpr: " ++
+                                  "no case expression"
 
 --- get branch expressions from case expression
 caseBranches :: Expr -> [BranchExpr]
 caseBranches (Case _ _ _ bs) = bs
+caseBranches _               = error
+  "Curry.ExtendedFlat.Goodies.caseBranches: no case expression"
+
 
 -- Test Operations
 
 --- is expression a variable?
 isVar :: Expr -> Bool
-isVar e = case e of 
+isVar e = case e of
   Var _ -> True
   _ -> False
 
@@ -725,7 +760,7 @@ trExpr var lit comb lt fr oR cas branch (Or e1 e2) = oR (f e1) (f e2)
   f = trExpr var lit comb lt fr oR cas branch
 
 trExpr var lit comb lt fr oR cas branch (Case pos ct e bs)
-  = cas pos ct (f e) (map (\ (Branch pat e) -> branch pat (f e)) bs)
+  = cas pos ct (f e) (map (\ (Branch pat e') -> branch pat (f e')) bs)
  where
   f = trExpr var lit comb lt fr oR cas branch
 
@@ -862,7 +897,7 @@ patCons = trPattern (\name _ -> name) failed
 patArgs :: Pattern -> [VarIndex]
 patArgs = trPattern (\_ args -> args) failed
 
---- get literal from literal pattern 
+--- get literal from literal pattern
 patLiteral :: Pattern -> Literal
 patLiteral = trPattern failed id
 
@@ -907,7 +942,7 @@ patExpr = trPattern (\ name -> Comb ConsCall name . map Var) Lit
 -- required type information. Make sure that the expression is processed by
 -- Curry.ExtendedFlat.TypeInference.adjustTypeInfo.)
 typeofExpr :: Expr -> Maybe TypeExpr
-typeofExpr expr 
+typeofExpr expr
     = case expr of
         Var vi        -> typeofVar vi
         Lit l         -> Just (typeofLiteral l)
@@ -916,12 +951,12 @@ typeofExpr expr
         Let _ e       -> typeofExpr e
         Or e1 e2      -> typeofExpr e1 `mplus` typeofExpr e2
         Case _ _ _ bs -> msum (map (typeofExpr . branchExpr) bs)
-    where 
+    where
       typeofApp :: [a] -> TypeExpr -> Maybe TypeExpr
       typeofApp []      t              = Just t
       typeofApp (_:as)  (FuncType _ t) = typeofApp as t
       typeofApp (_:_)   (TVar _)       = Nothing
-      typeofApp a@(_:_) (TCons _ _)    = Nothing
+      typeofApp (_:_)   (TCons _ _)    = Nothing
       -- ierr = error "internal error in typeofExpr: FuncType expected"
 
 
