@@ -31,7 +31,8 @@ module Curry.ExtendedFlat.Type(SrcRef,Prog(..),
 
 import Data.List(intersperse)
 import Control.Monad (liftM)
-import Data.Generics hiding (Fixity)
+import Data.Generics (Data, Typeable, Typeable2
+  , dataCast2, extQ, ext1Q, gmapQ, toConstr, showConstr)
 import Data.Function(on)
 import System.FilePath
 
