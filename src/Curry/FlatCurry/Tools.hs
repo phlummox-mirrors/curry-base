@@ -705,9 +705,12 @@ mapLet f (Let bs e)
 --- update all qualified names in expression
 updQNames :: (QName -> QName) -> Expr -> Expr
 updQNames f
-  = mapComb (\ (Comb ct name args) -> Comb ct (f name) args)
-  . mapCase (\ (Case ct e bs)
-              -> Case ct e (map (updBranchPattern (updPatCons f)) bs))
+  = mapComb (\ x -> case x of 
+      (Comb ct name args) -> Comb ct (f name) args
+      _ -> error "Curry.FlatCurry.Tools.updQNames: no Comb")
+  . mapCase (\ x -> case x of
+      (Case ct e bs) -> Case ct e (map (updBranchPattern (updPatCons f)) bs)
+      _ -> error "Curry.FlatCurry.Tools.updQNames: no Case")
 
 -- CombType ------------------------------------------------------------------
 
