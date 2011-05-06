@@ -10,7 +10,7 @@
 module Curry.ExtendedFlat.LiftLetrec (liftLetrecProg) where
 
 import Data.List
-import Control.Monad.State
+import Control.Monad.State (State, get, put, modify, runState)
 import Data.Maybe
 import qualified Data.Map as Map
 import qualified Data.Set as Set
