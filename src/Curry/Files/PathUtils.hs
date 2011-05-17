@@ -9,8 +9,8 @@ module Curry.Files.PathUtils
   ( -- * Re-exports from 'System.FilePath'
     takeBaseName, dropExtension, takeExtension, takeFileName
 
-    -- * Retrieving curry fiiles
-  , lookupModule, lookupFile, lookupInterface, getCurryPath
+    -- * Retrieving curry files
+  , lookupModule, lookupInterface, lookupCurryFile, lookupFile
 
     -- * Reading and writing modules from files
   , writeModule, readModule, maybeReadModule
@@ -49,30 +49,13 @@ lookupInterface paths m = lookupFile ("" : paths) [flatIntExt] ifn
   where ifn = foldr1 combine (moduleQualifiers m)
 
 
--- |Search for a source file name and eventually return its content
-lookupFile :: [FilePath]          -- ^ list of file paths to search in
-           -> [String]            -- ^ list of possible extensions of the file
-           -> String              -- ^ initial file name
-           -> IO (Maybe FilePath) -- ^ the file path if found
-lookupFile paths exts file = lookupFile' paths' where
-  paths' = do
-           p <- paths
-           e <- exts
-           let fn = p `combine` replaceExtension file e
-           [fn, ensureCurrySubdir fn]
-  lookupFile' []      = return Nothing
-  lookupFile' (fn : ps) = do
-                          so <- doesFileExist fn
-                          if so then return (Just fn) else lookupFile' ps
-
-
 {- | Search in the given list of paths for the given file name. If the file
      name has no extension then source file extension is assumed. If the file
      name already contains a directory than the paths to search in are
      ignored.
 -}
-getCurryPath :: [FilePath] -> FilePath -> IO (Maybe FilePath)
-getCurryPath paths fn = lookupFile filepaths exts fn where
+lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
+lookupCurryFile paths fn = lookupFile filepaths exts fn where
   filepaths = "" : paths'
   fnext     = takeExtension fn
   exts   | null fnext = sourceExts
@@ -81,7 +64,22 @@ getCurryPath paths fn = lookupFile filepaths exts fn where
          | otherwise               = paths
 
 
--- Writing and reading files
+-- |Search for a file and eventually return its 'FilePath'
+lookupFile :: [FilePath]          -- ^ 'FilePath's to search in
+           -> [String]            -- ^ Accepted file extensions
+           -> String              -- ^ Initial file name
+           -> IO (Maybe FilePath) -- ^ 'FilePath' of the file if found
+lookupFile paths exts file = lookupFile' paths' where
+  paths' = do
+    p <- paths
+    e <- exts
+    let fn = p `combine` replaceExtension file e
+    [fn, ensureCurrySubdir fn]
+  lookupFile' []        = return Nothing
+  lookupFile' (fn : ps) = do
+                          so <- doesFileExist fn
+                          if so then return (Just fn) else lookupFile' ps
+
 
 {- | Write the content to a file in the given directory or in the
      'currySubdir' sub-directory if the first parameter is set to 'True'.
@@ -107,8 +105,8 @@ readModule = onExistingFileDo readFile
      reading was successful or 'Nothing' otherwise.
 -}
 maybeReadModule :: FilePath -> IO (Maybe String)
-maybeReadModule filename =
-  catch (liftM Just (readModule filename)) (\ _ -> return Nothing)
+maybeReadModule f = (Just `liftM` readModule f)
+                    `catch` (\ _ -> return Nothing)
 
 
 {- | Check whether a module exists either in the given directory or in the
@@ -122,8 +120,10 @@ doesModuleExist = onExistingFileDo doesFileExist
 getModuleModTime :: FilePath -> IO ClockTime
 getModuleModTime = onExistingFileDo getModificationTime
 
+
 tryGetModuleModTime :: FilePath -> IO (Maybe ClockTime)
-tryGetModuleModTime f = catch (Just `liftM` getModuleModTime f) (\_ -> return Nothing)
+tryGetModuleModTime f = (Just `liftM` getModuleModTime f)
+                        `catch` (\_ -> return Nothing)
 
 
 -- Helper functions
