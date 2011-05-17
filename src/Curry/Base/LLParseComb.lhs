@@ -85,17 +85,17 @@ string in this case.
 >   where discard x _ _ = returnP x
 
 > choose :: Symbol s => Parser s a b -> Lexer s b -> ParseFun s a b
-> choose (Parser e ps) lexer success fail pos s =
+> choose (Parser e ps) lexer success failp pos s =
 >   case Map.lookup s ps of
->     Just p -> p lexer success fail pos s
+>     Just p -> p lexer success failp pos s
 >     Nothing ->
 >       case e of
->         Just p -> p success fail pos s
->         Nothing -> fail pos (unexpected s)
+>         Just p -> p success failp pos s
+>         Nothing -> failp pos (unexpected s)
 
 > unexpected :: Symbol s => s -> String
 > unexpected s
->   | isEOF s = "Unexpected end-of-file"
+>   | isEOF s   = "Unexpected end-of-file"
 >   | otherwise = "Unexpected token " ++ show s
 
 \end{verbatim}

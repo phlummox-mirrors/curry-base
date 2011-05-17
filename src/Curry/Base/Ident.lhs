@@ -344,7 +344,7 @@ Identifiers for constructors
 > tupleArity :: Ident -> Int
 > tupleArity x
 >   | n > 1 && x == tupleId n = n
->   | otherwise = error "Curry.Base.Ident.tupleArity: " ++ show x
+>   | otherwise = error $ "Curry.Base.Ident.tupleArity: " ++ show x
 >   where n = length (name x) - 1
 
 \end{verbatim}
