@@ -59,10 +59,10 @@ string in this case.
 >   isEOF :: s -> Bool
 
 > type SuccessCont s a = Position -> s -> P a
-> type FailureCont a = Position -> String -> P a
-> type Lexer s a = SuccessCont s a -> FailureCont a -> P a
-> type ParseFun s a b = (a -> SuccessCont s b) -> FailureCont b
->                     -> SuccessCont s b
+> type FailureCont a   = Position -> String -> P a
+> type Lexer s a       = SuccessCont s a -> FailureCont a -> P a
+> type ParseFun s a b  = (a -> SuccessCont s b) -> FailureCont b
+>                        -> SuccessCont s b
 
 > data Parser s a b = Parser (Maybe (ParseFun s a b))
 >                            (Map.Map s (Lexer s b -> ParseFun s a b))
@@ -85,13 +85,13 @@ string in this case.
 >   where discard x _ _ = returnP x
 
 > choose :: Symbol s => Parser s a b -> Lexer s b -> ParseFun s a b
-> choose (Parser e ps) lexer success failp pos s =
+> choose (Parser e ps) lexer success fail pos s =
 >   case Map.lookup s ps of
->     Just p -> p lexer success failp pos s
+>     Just p -> p lexer success fail pos s
 >     Nothing ->
 >       case e of
->         Just p -> p success failp pos s
->         Nothing -> failp pos (unexpected s)
+>         Just p -> p success fail pos s
+>         Nothing -> fail pos (unexpected s)
 
 > unexpected :: Symbol s => s -> String
 > unexpected s
@@ -157,10 +157,10 @@ and report an ambiguous parse error if both succeed.
 >                 p2f r1 = parse' p2 (flip (select False) r1) (select False r1)
 >                 parse' p psucc pfail =
 >                   p lexer (successK psucc) (failK pfail) pos s
->                 successK k x pos' s' = k (pos,success x pos' s')
->                 failK k pos' msg = k (pos,failp pos' msg)
+>                 successK k x pos' s' = k (pos', success x pos' s')
+>                 failK k pos' msg = k (pos', failp pos' msg)
 >                 retry k (pos',p) = closeP0 p `thenP` curry k pos'
->         select suc (pos1,p1) (pos2,p2) =
+>         select suc (pos1, p1) (pos2, p2) =
 >           case pos1 `compare` pos2 of
 >             GT -> p1
 >             EQ
