@@ -1,3 +1,5 @@
+> {-# LANGUAGE DeriveDataTypeable #-}
+
 % -*- LaTeX -*-
 % $Id: Position.lhs,v 1.2 2000/10/08 09:55:43 lux Exp $
 %
@@ -16,7 +18,6 @@ A source file position consists of a filename, a line number, and a
 column number. A tab stop is assumed at every eighth column.
 \begin{verbatim}
 
-> {-# LANGUAGE DeriveDataTypeable #-}
 > module Curry.Base.Position where
 > import Data.Generics
 
@@ -58,8 +59,7 @@ The instances for standard classes or such that SrcRefs are invisible
 > -- |Increment a source code reference by a given number
 > incSrcRef :: SrcRef -> Int -> SrcRef
 > incSrcRef (SrcRef [i]) j = SrcRef [i + j]
-> incSrcRef is           _ = error $
->    "internal error: increment source ref: " ++ show is
+> incSrcRef is  _ = error $ "Curry.Base.Position.incSrcRef: " ++ show is
 
 > -- |Source code positions
 > data Position
@@ -133,6 +133,6 @@ The instances for standard classes or such that SrcRefs are invisible
 > showLine NoPos  = ""
 > showLine AST {} = ""
 > showLine Position { line = l, column = c }
->   = "(line " ++ show l ++ "." ++ show c ++ ") "
+>   = "(line " ++ show l ++ "." ++ show c ++ ")"
 
 \end{verbatim}

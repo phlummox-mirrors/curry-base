@@ -1,3 +1,5 @@
+> {-# LANGUAGE DeriveDataTypeable #-}
+
 % $Id: Ident.lhs,v 1.21 2004/10/29 13:08:09 wlux Exp $
 %
 % Copyright (c) 1999-2004, Wolfgang Lux
@@ -24,7 +26,6 @@ the fact that all qualified identifiers are greater than any
 unqualified identifier.}
 \begin{verbatim}
 
-> {-# LANGUAGE DeriveDataTypeable #-}
 > module Curry.Base.Ident
 >   ( -- * Identifiers
 >     -- ** Data types
@@ -158,7 +159,6 @@ Functions for working with identifiers
 >   where mkNewIdent c 0 = mkIdent [c]
 >         mkNewIdent c n = mkIdent $ c : show n
 
-
 > -- | Rename an 'Ident' by changing its unique number
 > renameIdent :: Ident -> Int -> Ident
 > renameIdent ident n = ident { uniqueId = n }
@@ -261,8 +261,6 @@ A few identifiers are predefined here.
 > mainMIdent :: ModuleIdent
 > mainMIdent = ModuleIdent NoPos ["main"]
 
-TODO: bjp 2011-01-12: Should it be "main" or "Main"?
-
 > -- | 'ModuleIdent' for the prelude
 > preludeMIdent :: ModuleIdent
 > preludeMIdent = ModuleIdent NoPos ["Prelude"]
@@ -335,7 +333,7 @@ Identifiers for constructors
 > tupleId :: Int -> Ident
 > tupleId n
 >   | n >= 2    = Ident NoPos ("(" ++ replicate (n - 1) ',' ++ ")") 0
->   | otherwise = error $ "internal error: tupleId with " ++ show n
+>   | otherwise = error $ "Curry.Base.Ident.tupleId: " ++ show n
 
 > -- | Check whether an 'Ident' is an identifier for an tuple type
 > isTupleId :: Ident -> Bool
@@ -346,7 +344,7 @@ Identifiers for constructors
 > tupleArity :: Ident -> Int
 > tupleArity x
 >   | n > 1 && x == tupleId n = n
->   | otherwise = error "internal error: tupleArity with no tuple type identifier"
+>   | otherwise = error "Curry.Base.Ident.tupleArity: " ++ show x
 >   where n = length (name x) - 1
 
 \end{verbatim}
