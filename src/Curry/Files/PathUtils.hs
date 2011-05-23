@@ -64,10 +64,11 @@ lookupCurryFile paths fn = lookupFile filepaths exts fn where
          | otherwise               = paths
 
 
--- |Search for a file and eventually return its 'FilePath'
-lookupFile :: [FilePath]          -- ^ 'FilePath's to search in
+-- |Search in the given directories for the file with the specified file
+--  extensions and eventually return its 'FilePath'
+lookupFile :: [FilePath]          -- ^ Directories to search in
            -> [String]            -- ^ Accepted file extensions
-           -> String              -- ^ Initial file name
+           -> FilePath            -- ^ Initial file name
            -> IO (Maybe FilePath) -- ^ 'FilePath' of the file if found
 lookupFile paths exts file = lookupFile' paths' where
   paths' = do
