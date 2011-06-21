@@ -57,3 +57,10 @@ Library
     Curry.Files.Filenames
     Curry.Files.PathUtils
     Curry.Files.Unlit
+    Curry.Syntax
+    Curry.Syntax.Lexer
+    Curry.Syntax.Parser
+    Curry.Syntax.Pretty
+    Curry.Syntax.ShowModule
+    Curry.Syntax.Type
+    Curry.Syntax.Utils
