@@ -14,10 +14,29 @@ import Control.Monad.Identity
 
 import Curry.Base.Position
 
-{- |Message monad transformer enabling the reporting of 'WarnMsg's as
-    warnings and additionally a 'WarnMsg' as an error message.
+-- |Data type for messages
+data Message = Message
+  { msgPos :: Maybe Position -- ^ optional source code position
+  , msgTxt :: String         -- ^ the message itself
+  }
+
+instance Show Message where
+  showsPrec _ (Message Nothing txt) = showString txt
+  showsPrec _ (Message (Just p)txt) = shows p . showString ": "
+                                    . showString txt
+
+-- |Show a 'Message' as a warning
+showWarning :: Message -> String
+showWarning w = "Warning: " ++ show w
+
+-- |Show a 'Message' as an error
+showError :: Message -> String
+showError w = "Error: " ++ show w
+
+{- |Message monad transformer enabling the reporting of 'Message's as
+    warnings and additionally a 'Message' as an error message.
 -}
-type MsgMonadT m = ErrorT WarnMsg (WriterT [WarnMsg] m)
+type MsgMonadT m = ErrorT Message (WriterT [Message] m)
 
 -- |Simple message monad
 type MsgMonad = MsgMonadT Identity
@@ -25,35 +44,12 @@ type MsgMonad = MsgMonadT Identity
 -- |Message monad with underlying 'IO' monad
 type MsgMonadIO = MsgMonadT IO
 
--- |Data type for warning messages
-data WarnMsg = WarnMsg
-  { warnPos :: Maybe Position -- ^ optional source code position
-  , warnTxt :: String         -- ^ the message itself
-  }
-
-instance Error WarnMsg where
-  noMsg  = WarnMsg Nothing "Failure!"
-  strMsg = WarnMsg Nothing
-
-instance Show WarnMsg where
-  show = showWarning
-
--- |Show a 'WarnMsg' as a warning
-showWarning :: WarnMsg -> String
-showWarning w = "Warning: " ++ pos ++ warnTxt w
-  where pos = case warnPos w of
-                Nothing -> ""
-                Just p  -> show p ++ ": "
-
--- |Show a 'WarnMsg' as an error
-showError :: WarnMsg -> String
-showError w = "Error: " ++ pos ++ warnTxt w
-  where pos = case warnPos w of
-                Nothing -> ""
-                Just p -> show p ++ ": "
+instance Error Message where
+  noMsg  = Message Nothing "Failure!"
+  strMsg = Message Nothing
 
 -- |Evaluate the value of a 'MsgMonad a'
-runMsg :: MsgMonad a -> (Either WarnMsg a, [WarnMsg])
+runMsg :: MsgMonad a -> (Either Message a, [Message])
 runMsg = runIdentity . runWriterT . runErrorT
 
 {- |Directly evaluate to the success value of a 'MsgMonad a'. Errors are
@@ -83,13 +79,13 @@ failWith :: (MonadError a m, Error a) => String -> m b
 failWith = throwError . strMsg
 
 -- |Abort the computation with an error message at a certain position
-failWithAt :: (MonadError WarnMsg m) => Position -> String -> m a
-failWithAt p = throwError . WarnMsg (Just p)
+failWithAt :: (MonadError Message m) => Position -> String -> m a
+failWithAt p = throwError . Message (Just p)
 
 -- |Report a warning message
-warnMessage :: (MonadWriter [WarnMsg] m) => String -> m ()
-warnMessage s = tell [WarnMsg Nothing s]
+warnMessage :: (MonadWriter [Message] m) => String -> m ()
+warnMessage s = tell [Message Nothing s]
 
 -- |Report a warning message for a given position
-warnMessageAt :: (MonadWriter [WarnMsg] m) => Position -> String -> m ()
-warnMessageAt p s  = tell [WarnMsg (Just p) s]
+warnMessageAt :: (MonadWriter [Message] m) => Position -> String -> m ()
+warnMessageAt p s  = tell [Message (Just p) s]
