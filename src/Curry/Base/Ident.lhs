@@ -31,7 +31,7 @@ unqualified identifier.}
 >     -- ** Data types
 >     Ident (..), QualIdent (..), ModuleIdent (..), SrcRefOf (..)
 >     -- ** Functions
->   , showIdent, qualName, moduleName, mkIdent, identSupply, mkMIdent
+>   , showIdent, qualName, moduleName, fromModuleName, mkIdent, identSupply, mkMIdent
 >   , renameIdent, unRenameIdent, isInfixOp, isQInfixOp
 >   , qualify, qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
 >   , localIdent, updIdentName, addPositionIdent, addPositionModuleIdent
@@ -127,6 +127,13 @@ unqualified identifier.}
 > -- | Retrieve the hierarchical name of a module
 > moduleName :: ModuleIdent -> String
 > moduleName = intercalate "." . moduleQualifiers
+
+> fromModuleName :: String -> ModuleIdent
+> fromModuleName = mkMIdent . splitQualifiers
+>   where splitQualifiers s = let (pref, rest) = break (== '.') s in
+>           pref : case rest of
+>             []     -> []
+>             (_:s') -> splitQualifiers s'
 
 > instance Show ModuleIdent where
 >   show = moduleName
