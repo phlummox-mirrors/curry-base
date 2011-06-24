@@ -21,6 +21,7 @@ Haskell parser.
 
 > import Curry.Base.Ident
 > import Curry.Syntax.Type
+> import Curry.Syntax.Utils (opName)
 
 \end{verbatim}
 Pretty print a module

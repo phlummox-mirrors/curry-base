@@ -21,6 +21,7 @@ combinators described in appendix~\ref{sec:ll-parsecomb}.
 
 > import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 > import Curry.Syntax.Type
+> import Curry.Syntax.Utils (mk, mk', mkInt, addSrcRefs)
 
 \end{verbatim}
 \paragraph{Modules}

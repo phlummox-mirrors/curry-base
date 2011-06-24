@@ -1,5 +1,3 @@
-> {-# LANGUAGE DeriveDataTypeable #-}
-
 % -*- LaTeX -*-
 % $Id: Position.lhs,v 1.2 2000/10/08 09:55:43 lux Exp $
 %
@@ -18,8 +16,11 @@ A source file position consists of a filename, a line number, and a
 column number. A tab stop is assumed at every eighth column.
 \begin{verbatim}
 
+> {-# LANGUAGE DeriveDataTypeable #-}
+
 > module Curry.Base.Position where
-> import Data.Generics
+  
+> import Data.Generics (Data(..), Typeable (..))
 
 \end{verbatim}
 A source reference is a reference to a position in the abstract syntax tree
