@@ -1,10 +1,16 @@
-{- |Transform a CurrySyntax module into a string representation without any
-    pretty printing.
-    Behaves like a derived Show instance even on parts with a specific one.
+{- |
+    Module      :  $Header$
+    Copyright   :  (c) Sebastian Fischer 2008
+    License     :  OtherLicense
 
-    @author Sebastian Fischer (sebf@informatik.uni-kiel.de)
-    @version December 2008
-    bug fixed by bbr
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
+
+    Transform a CurrySyntax module into a string representation without any
+    pretty printing.
+
+    Behaves like a derived Show instance even on parts with a specific one.
 -}
 module Curry.Syntax.ShowModule (showModule) where
 
@@ -42,16 +48,22 @@ showsExportSpec (Exporting pos exports)
 
 showsExport :: Export -> ShowS
 showsExport (Export qident)
-  = showsString "(Export " . showsQualIdent qident . showsString ")"
+  = showsString "(Export "
+  . showsQualIdent qident
+  . showsString ")"
 showsExport (ExportTypeWith qident ids)
   = showsString "(ExportTypeWith "
   . showsQualIdent qident . space
   . showsList showsIdent ids
   . showsString ")"
 showsExport (ExportTypeAll qident)
-  = showsString "(ExportTypeAll " . showsQualIdent qident . showsString ")"
+  = showsString "(ExportTypeAll "
+  . showsQualIdent qident
+  . showsString ")"
 showsExport (ExportModule m)
-  = showsString "(ExportModule " . showsModuleIdent m . showChar ')'
+  = showsString "(ExportModule "
+  . showsModuleIdent m
+  . showsString ")"
 
 showsImportSpec :: ImportSpec -> ShowS
 showsImportSpec (Importing pos imports)
@@ -67,14 +79,18 @@ showsImportSpec (Hiding pos imports)
 
 showsImport :: Import -> ShowS
 showsImport (Import ident)
-  = showsString "(Import " . showsIdent ident . showsString ")"
+  = showsString "(Import "
+  . showsIdent ident
+  . showsString ")"
 showsImport (ImportTypeWith ident idents)
   = showsString "(ImportTypeWith "
   . showsIdent ident . space
   . showsList showsIdent idents
   . showsString ")"
 showsImport (ImportTypeAll ident)
-  = showsString "(ImportTypeAll " . showsIdent ident . showsString ")"
+  = showsString "(ImportTypeAll "
+  . showsIdent ident
+  . showsString ")"
 
 showsDecl :: Decl -> ShowS
 showsDecl (ImportDecl pos mident quali mmident mimpspec)
@@ -189,11 +205,17 @@ showsTypeExpr (ConstructorType qident types)
   . showsList showsTypeExpr types
   . showsString ")"
 showsTypeExpr (VariableType ident)
-  = showsString "(VariableType " . showsIdent ident . showsString ")"
+  = showsString "(VariableType "
+  . showsIdent ident
+  . showsString ")"
 showsTypeExpr (TupleType types)
-  = showsString "(TupleType " . showsList showsTypeExpr types . showsString ")"
+  = showsString "(TupleType "
+  . showsList showsTypeExpr types
+  . showsString ")"
 showsTypeExpr (ListType typ)
-  = showsString "(ListType " . showsTypeExpr typ . showsString ")"
+  = showsString "(ListType "
+  . showsTypeExpr typ
+  . showsString ")"
 showsTypeExpr (ArrowType dom ran)
   = showsString "(ArrowType "
   . showsTypeExpr dom . space
@@ -253,14 +275,23 @@ showsCondExpr (CondExpr pos exp1 exp2)
   . showsString ")"
 
 showsLiteral :: Literal -> ShowS
-showsLiteral (Char _ c) = showsString "(Char " . shows c . showsString ")"
+showsLiteral (Char _ c)
+  = showsString "(Char "
+  . shows c
+  . showsString ")"
 showsLiteral (Int ident n)
   = showsString "(Int "
   . showsIdent ident . space
   . shows n
   . showsString ")"
-showsLiteral (Float _ x) = showsString "(Float " . shows x . showsString ")"
-showsLiteral (String _ s) = showsString "(String " . shows s . showsString ")"
+showsLiteral (Float _ x)
+  = showsString "(Float "
+  . shows x
+  . showsString ")"
+showsLiteral (String _ s)
+  = showsString "(String "
+  . shows s
+  . showsString ")"
 
 showsConsTerm :: ConstrTerm -> ShowS
 showsConsTerm (LiteralPattern lit)
@@ -327,29 +358,43 @@ showsConsTerm (RecordPattern cfields mcons)
 
 showsExpression :: Expression -> ShowS
 showsExpression (Literal lit)
-  = showsString "(Literal " . showsLiteral lit . showsString ")"
+  = showsString "(Literal "
+  . showsLiteral lit
+  . showsString ")"
 showsExpression (Variable qident)
-  = showsString "(Variable " . showsQualIdent qident . showsString ")"
+  = showsString "(Variable "
+  . showsQualIdent qident
+  . showsString ")"
 showsExpression (Constructor qident)
-  = showsString "(Constructor " . showsQualIdent qident . showsString ")"
+  = showsString "(Constructor "
+  . showsQualIdent qident
+  . showsString ")"
 showsExpression (Paren expr)
-  = showsString "(Paren " . showsExpression expr . showsString ")"
+  = showsString "(Paren "
+  . showsExpression expr
+  . showsString ")"
 showsExpression (Typed expr typ)
   = showsString "(Typed "
   . showsExpression expr . space
   . showsTypeExpr typ
   . showsString ")"
 showsExpression (Tuple _ exps)
-  = showsString "(Tuple " . showsList showsExpression exps . showsString ")"
+  = showsString "(Tuple "
+  . showsList showsExpression exps
+  . showsString ")"
 showsExpression (List _ exps)
-  = showsString "(List " . showsList showsExpression exps . showsString ")"
+  = showsString "(List "
+  . showsList showsExpression exps
+  . showsString ")"
 showsExpression (ListCompr _ expr stmts)
   = showsString "(ListCompr "
   . showsExpression expr . space
   . showsList showsStatement stmts
   . showsString ")"
 showsExpression (EnumFrom expr)
-  = showsString "(EnumFrom " . showsExpression expr . showsString ")"
+  = showsString "(EnumFrom "
+  . showsExpression expr
+  . showsString ")"
 showsExpression (EnumFromThen exp1 exp2)
   = showsString "(EnumFromThen "
   . showsExpression exp1 . space
@@ -435,15 +480,23 @@ showsExpression (RecordUpdate efields expr)
 
 showsInfixOp :: InfixOp -> ShowS
 showsInfixOp (InfixOp qident)
-  = showsString "(InfixOp " . showsQualIdent qident . showsString ")"
+  = showsString "(InfixOp "
+  . showsQualIdent qident
+  . showsString ")"
 showsInfixOp (InfixConstr qident)
-  = showsString "(InfixConstr " . showsQualIdent qident . showsString ")"
+  = showsString "(InfixConstr "
+  . showsQualIdent qident
+  . showsString ")"
 
 showsStatement :: Statement -> ShowS
 showsStatement (StmtExpr _ expr)
-  = showsString "(StmtExpr " . showsExpression expr . showsString ")"
+  = showsString "(StmtExpr "
+  . showsExpression expr
+  . showsString ")"
 showsStatement (StmtDecl decls)
-  = showsString "(StmtDecl " . showsList showsDecl decls . showsString ")"
+  = showsString "(StmtDecl "
+  . showsList showsDecl decls
+  . showsString ")"
 showsStatement (StmtBind _ cons expr)
   = showsString "(StmtBind "
   . showsConsTerm cons . space
@@ -476,12 +529,11 @@ newline :: ShowS
 newline = showsString "\n"
 
 showsMaybe :: (a -> ShowS) -> Maybe a -> ShowS
-showsMaybe shs
-  = maybe (showsString "Nothing")
-          (\x -> showsString "(Just " . shs x . showsString ")")
+showsMaybe shs = maybe (showsString "Nothing")
+                       (\x -> showsString "(Just " . shs x . showsString ")")
 
 showsList :: (a -> ShowS) -> [a] -> ShowS
-showsList _ [] = showsString "[]"
+showsList _   [] = showsString "[]"
 showsList shs (x:xs)
   = showsString "["
   . foldl (\sys y -> sys . showsString "," . shs y) (shs x) xs
@@ -491,18 +543,17 @@ showsPair :: (a -> ShowS) -> (b -> ShowS) -> (a,b) -> ShowS
 showsPair sa sb (a,b)
   = showsString "(" . sa a . showsString "," . sb b . showsString ")"
 
-
 showsIdent :: Ident -> ShowS
 showsIdent (Ident _ idName n)
   = showsString "(Ident " . shows idName . space . shows n . showsString ")"
 
 showsQualIdent :: QualIdent -> ShowS
 showsQualIdent (QualIdent mident ident)
-    = showsString "(QualIdent "
-      . showsMaybe showsModuleIdent mident
-      . space
-      . showsIdent ident
-      . showsString ")"
+  = showsString "(QualIdent "
+  . showsMaybe showsModuleIdent mident
+  . space
+  . showsIdent ident
+  . showsString ")"
 
 showsModuleIdent :: ModuleIdent -> ShowS
 showsModuleIdent = shows . moduleName

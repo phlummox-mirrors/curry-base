@@ -1,20 +1,32 @@
-{- |Filename mangling for several intermediate file formats.
+{- |
+    Module      :  $Header$
+    Description :  File names for several intermediate file formats.
+    Copyright   :  (c) Holger Siegel 2009
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
 
     The functions in this module were collected from several compiler modules
     in order to provide a unique accessing point for this functionality.
-
-    (c) 2009, Holger Siegel.
 -}
-
 module Curry.Files.Filenames
   (
     -- * Special directories
     currySubdir
 
-    -- * Common file name extensions
+    -- * File name extensions
+    -- ** Curry files
   , curryExt, lcurryExt, icurryExt
+
+    -- ** FlatCurry files
   , flatExt, extFlatExt, flatIntExt, xmlExt
+
+    -- ** AbstractCurry files
   , acyExt, uacyExt
+
+    -- ** Source and object files
   , sourceRepExt, oExt, debugExt
   , sourceExts, moduleExts, objectExts
 
@@ -26,7 +38,7 @@ module Curry.Files.Filenames
 
 import System.FilePath (replaceExtension)
 
--- |The hidden subdirectory to hide curry files
+-- |The hidden subdirectory for curry files
 currySubdir :: String
 currySubdir = ".curry"
 
@@ -41,6 +53,14 @@ lcurryExt = ".lcurry"
 -- |Filename extension for curry interface files
 icurryExt :: String
 icurryExt = ".icurry"
+
+-- |Filename extension for curry source files
+sourceExts :: [String]
+sourceExts = [curryExt, lcurryExt]
+
+-- |Filename extension for curry module files
+moduleExts :: [String]
+moduleExts = sourceExts ++ [icurryExt]
 
 -- |Filename extension for flat-curry files
 flatExt :: String
@@ -78,21 +98,13 @@ oExt = ".o"
 debugExt :: String
 debugExt = ".d.o"
 
--- |Filename extension for curry source files
-sourceExts :: [String]
-sourceExts = [curryExt, lcurryExt]
-
--- |Filename extension for curry module files
-moduleExts :: [String]
-moduleExts = sourceExts ++ [icurryExt]
-
 -- |Filename extension for object files
 objectExts :: [String]
 objectExts = [oExt]
 
-{- ---------------------------------------------------------------------------
-   Computation of file names for a given source file
---------------------------------------------------------------------------- -}
+-- ---------------------------------------------------------------------------
+-- Computation of file names for a given source file
+-- ---------------------------------------------------------------------------
 
 -- |Compute the filename of the interface file for a source file
 interfName :: FilePath -> FilePath
@@ -126,9 +138,9 @@ uacyName = replaceExtensionWith uacyExt
 sourceRepName :: FilePath -> FilePath
 sourceRepName = replaceExtensionWith sourceRepExt
 
-{- |Compute the filename of the object file for a source file.
-    If the first parameter is 'True', the debug object file name is returned
--}
+-- |Compute the filename of the object file for a source file.
+--
+--  If the first parameter is 'True', the debug object file name is returned.
 objectName :: Bool -> FilePath -> FilePath
 objectName debug = replaceExtensionWith (if debug then debugExt else oExt)
 

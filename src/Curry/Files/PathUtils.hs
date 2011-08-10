@@ -1,10 +1,13 @@
-{-
-  $Id: PathUtils.lhs,v 1.5 2003/05/04 16:12:35 wlux Exp $
+{- |
+    Module      :  $Header$
+    Description :  Utility functions for reading and writing files
+    Copyright   :  (c) 1999-2003, Wolfgang Lux
+    License     :  OtherLicense
 
-  Copyright (c) 1999-2003, Wolfgang Lux
-  See LICENSE for the full license.
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
 -}
-
 module Curry.Files.PathUtils
   ( -- * Re-exports from 'System.FilePath'
     takeBaseName, dropExtension, takeExtension, takeFileName
@@ -45,23 +48,24 @@ lookupModule paths libPaths m =
 lookupInterface :: [FilePath]          -- ^ list of paths to search in
                 -> ModuleIdent         -- ^ module identifier
                 -> IO (Maybe FilePath) -- ^ the file path if found
-lookupInterface paths m = lookupFile ("" : paths) [flatIntExt] ifn
-  where ifn = foldr1 combine (moduleQualifiers m)
+lookupInterface paths m = lookupFile ("" : paths) [flatIntExt] fn
+  where fn = foldr1 combine (moduleQualifiers m)
 
 
 {- | Search in the given list of paths for the given file name. If the file
-     name has no extension then source file extension is assumed. If the file
-     name already contains a directory than the paths to search in are
-     ignored.
+     name has no extension, then s source file extension is assumed.
+     If the file name already contains a directory, then the paths to search
+     in are ignored.
 -}
 lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
 lookupCurryFile paths fn = lookupFile filepaths exts fn where
   filepaths = "" : paths'
-  fnext     = takeExtension fn
-  exts   | null fnext = sourceExts
-         | otherwise  = [fnext]
   paths' | pathSeparator `elem` fn = []
          | otherwise               = paths
+  exts   | null fnext = sourceExts
+         | otherwise  = [fnext]
+  fnext = takeExtension fn
+
 
 
 -- |Search in the given directories for the file with the specified file
@@ -147,12 +151,13 @@ ensureSubdir :: String   -- ^ sub-directory to add
              -> FilePath -- ^ original 'FilePath'
 ensureSubdir subdir file
   = replaceDirectory file
-  $ addSub (splitDirectories $ takeDirectory file) subdir where
-  addSub :: [String] -> String -> String
-  addSub [] sub      = sub
-  addSub ds sub
-    | last ds == sub = joinPath ds
-    | otherwise      = joinPath ds </> sub
+  $ addSub (splitDirectories $ takeDirectory file) subdir
+  where
+    addSub :: [String] -> String -> String
+    addSub [] sub      = sub
+    addSub ds sub
+      | last ds == sub = joinPath ds
+      | otherwise      = joinPath ds </> sub
 
 
 {- | Perform an action on a file either in the given directory or else in the

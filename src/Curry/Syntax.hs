@@ -1,7 +1,13 @@
-{- |A simple interface for reading and manipulating Curry source code.
+{- |
+    Module      :  $Header$
+    Description :  Interface for reading and manipulating Curry source code
+    Copyright   :  (c) Holger Siegel 2009
+                       Bjorrn Peemoeller 2011
+    License     :  OtherLicense
 
-    (c) 2009, Holger Siegel
-        2011, Björn Peemöller
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
 -}
 module Curry.Syntax
   ( module Curry.Syntax.Type
@@ -24,16 +30,16 @@ import Curry.Syntax.ShowModule (showModule)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils
 
-{- |Return the result of a lexical analysis of the source program 'src'.
-    The result is a list of tuples consisting of a 'Position' and a 'Token'
--}
+-- |Return the result of a lexical analysis of the source program @src@.
+--
+--  The result is a list of tuples consisting of a 'Position' and a 'Token'.
 lexFile :: FilePath -> String -> MsgMonad [(Position, Lexer.Token)]
 lexFile fn src = unlit fn src >>= \s -> Lexer.lexFile (first fn) s False []
 
--- | Parse a curry header
+-- | Parse a Curry header
 parseHeader :: FilePath -> String -> MsgMonad Module
 parseHeader fn src = unlit fn src >>= Parser.parseHeader fn
 
--- | Parse a curry module
+-- | Parse a Curry module
 parseModule :: Bool -> FilePath -> String -> MsgMonad Module
 parseModule likeFlat fn src = unlit fn src >>= Parser.parseSource likeFlat fn

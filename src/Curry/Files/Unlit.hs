@@ -1,4 +1,14 @@
-{- |Since version 0.7 of the language report, Curry accepts literate
+{- |
+    Module      :  $Header$
+    Description :  Handling of literate Curry files
+    Copyright   :  (c) Holger Siegel 2009
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
+
+    Since version 0.7 of the language report, Curry accepts literate
     source programs. In a literate source, all program lines must begin
     with a greater sign in the first column. All other lines are assumed
     to be documentation. In order to avoid some common errors with
@@ -7,11 +17,9 @@
     preceded by a blank line and followed by a blank line.
 
     This module has been rewritten by Holger Siegel in 2009.
-
-    (c) Holger Siegel, 2009.
 -}
 
-module Curry.Files.Unlit (unlit, isLiterate) where
+module Curry.Files.Unlit (isLiterate, unlit) where
 
 import Control.Monad (when, zipWithM)
 import Data.Char (isSpace)
@@ -21,14 +29,14 @@ import Curry.Base.MessageMonad
 import Curry.Files.Filenames (lcurryExt)
 import Curry.Files.PathUtils (takeExtension)
 
+isLiterate :: FilePath -> Bool
+isLiterate = (== lcurryExt) . takeExtension
+
 -- |Data type representing different kind of lines in a literate source
 data Line
   = Program !Int String -- ^ program line with a line number and content
   | Blank               -- ^ blank line
   | Comment             -- ^ comment line
-
-isLiterate :: FilePath -> Bool
-isLiterate = (== lcurryExt) . takeExtension
 
 {- |Process a curry program into error messages (if any) and the
     corresponding non-literate program.
