@@ -32,6 +32,7 @@ module Curry.AbstractCurry
   , readCurry, writeCurry
   ) where
 
+import qualified Control.Exception as C (catch)
 import Control.Monad (liftM)
 import Data.List (intercalate)
 
@@ -294,7 +295,7 @@ readCurry = liftM read . readModule
 --  sub-directory.
 writeCurry :: Bool -> FilePath -> CurryProg -> IO ()
 writeCurry inHiddenSubdir filename prog
-  = catch (writeModule inHiddenSubdir filename $ showCurry prog) ioError
+  = C.catch (writeModule inHiddenSubdir filename $ showCurry prog) ioError
 
 -- |Show an AbstractCurry program in a nicer way
 showCurry :: CurryProg -> String

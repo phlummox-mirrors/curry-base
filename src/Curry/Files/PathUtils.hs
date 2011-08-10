@@ -20,6 +20,7 @@ module Curry.Files.PathUtils
   , doesModuleExist, getModuleModTime, tryGetModuleModTime
   ) where
 
+import qualified Control.Exception as C (IOException, catch)
 import Control.Monad (liftM)
 import System.FilePath
 import System.Directory
@@ -111,7 +112,7 @@ readModule = onExistingFileDo readFile
 -}
 maybeReadModule :: FilePath -> IO (Maybe String)
 maybeReadModule f = (Just `liftM` readModule f)
-                    `catch` (\ _ -> return Nothing)
+                    `C.catch` ignoreIOException
 
 
 {- | Check whether a module exists either in the given directory or in the
@@ -128,10 +129,13 @@ getModuleModTime = onExistingFileDo getModificationTime
 
 tryGetModuleModTime :: FilePath -> IO (Maybe ClockTime)
 tryGetModuleModTime f = (Just `liftM` getModuleModTime f)
-                        `catch` (\_ -> return Nothing)
+                        `C.catch` ignoreIOException
 
 
 -- Helper functions
+
+ignoreIOException :: C.IOException -> IO (Maybe a)
+ignoreIOException _ = return Nothing
 
 
 {- | Ensure that the 'currySubdir' is the last component of the
