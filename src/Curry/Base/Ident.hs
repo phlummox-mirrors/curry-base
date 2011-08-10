@@ -109,7 +109,7 @@ instance Ord ModuleIdent where
 instance Show ModuleIdent where
   show = moduleName
 
-instance SrcRefOf Ident where
+instance SrcRefOf ModuleIdent where
   srcRefOf = srcRefOf . positionOfModuleIdent
 
 -- | Retrieve the hierarchical name of a module

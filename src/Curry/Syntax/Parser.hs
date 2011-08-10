@@ -546,13 +546,14 @@ listExpr flat = brackets (elements `opt` mk' List [])
 
 recordExpr :: Bool -> Parser Token Expression a
 recordExpr flat = layoutOff <-*> braces content
-  where content = RecordConstr <$> fieldConstr `sepBy` comma
+  where
+    content =    RecordConstr <$> fieldConstr `sepBy` comma
             <|?> RecordUpdate <$> fieldUpdate `sepBy` comma
-	                      <*-> checkBar <*> expr flat
-  fieldConstr = Field <$> position <*> labId
-	              <*-> checkEquals <*> expr flat
-  fieldUpdate = Field <$> position <*> labId
-	              <*-> checkBinds <*> expr flat
+                              <*-> checkBar <*> expr flat
+    fieldConstr = Field <$> position <*> labId
+                  <*-> checkEquals <*> expr flat
+    fieldUpdate = Field <$> position <*> labId
+                  <*-> checkBinds <*> expr flat
 
 lambdaExpr :: Bool -> Parser Token Expression a
 lambdaExpr flat =
