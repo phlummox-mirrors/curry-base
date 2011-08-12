@@ -23,14 +23,14 @@ module Curry.Base.LexComb
     Indent, Context, P
 
     -- * Monadic functions
-  , parse, returnP, thenP, thenP_, failP, closeP0, closeP1, parseError
+  , parse, returnP, thenP, thenP_, failP, closeP0, closeP1
 
     -- * Combinators for handling layout
   , pushContext, popContext
 
-    -- * Conversion from 'String's into numbers
-  , convertSignedIntegral, convertIntegral
-  , convertSignedFloating, convertFloating
+    -- * Conversion of numbers
+  , convertSignedIntegral, convertSignedFloating
+  , convertIntegral, convertFloating
   ) where
 
 import Data.Char
@@ -46,11 +46,11 @@ type Indent = Int
 -- |Type of context for representing layout grouping
 type Context = [Indent]
 
--- |Basic lexer type in monadic continuation passing style
+-- |Basic lexer function
 type P a = Position     -- ^ Current source code position
          -> String      -- ^ 'String' to be parsed
          -> Bool        -- ^ Flag whether the beginning of a line should be
-                        --   parsed which requires layout checking
+                        --   parsed, which requires layout checking
          -> Context     -- ^ context as a stack of 'Indent's
          -> MsgMonad a
 
@@ -67,20 +67,20 @@ parse p fn s = p (first fn) s False []
 returnP :: a -> P a
 returnP x _ _ _ _ = return x
 
--- |Use the first lexer to obtain a result and use this result to compute
---  the next lexer function.
+-- |Apply the first lexer and then apply the second one, based on the result
+--  of the first lexer.
 thenP :: P a -> (a -> P b) -> P b
 thenP lexer k pos s bol ctxt
   = lexer pos s bol ctxt >>= \x -> k x pos s bol ctxt
 
--- |Use the first lexer to obtain a result and just forget it, then apply
---  the second lexer.
+-- |Apply the first lexer and then apply the second one, ignoring the first
+--  result.
 thenP_ :: P a -> P b -> P b
 p1 `thenP_` p2 = p1 `thenP` \_ -> p2
 
--- |Fail to lex (aborts the process) on a 'Position', given an error message
+-- |Fail to lex on a 'Position', given an error message
 failP :: Position -> String -> P a
-failP pos msg _ _ _ _ = failWith (parseError pos msg)
+failP pos msg _ _ _ _ = failWithAt pos msg
 
 -- |Lift a lexer into the 'P' monad, returning the lexer when evaluated.
 closeP0 :: P a -> P (P a)
@@ -90,10 +90,6 @@ closeP0 lexer pos s bol ctxt = return (\_ _ _ _ -> lexer pos s bol ctxt)
 --  function when evaluated.
 closeP1 :: (a -> P b) -> P (a -> P b)
 closeP1 f pos s bol ctxt = return (\x _ _ _ _ -> f x pos s bol ctxt)
-
--- |Construct an error message from a 'Position' and a cause
-parseError :: Position -> String -> String
-parseError p what = "\n" ++ show p ++ ": " ++ what
 
 -- ---------------------------------------------------------------------------
 -- Combinators that handle layout.
@@ -105,10 +101,10 @@ pushContext col cont pos s bol ctxt = cont pos s bol (col:ctxt)
 
 -- |Pop an 'Indent' from the context, decreasing the levels of indentation
 popContext :: P a -> P a
-popContext cont pos s bol (_:ctxt) = cont pos s bol ctxt
-popContext _cont _pos _s _bol [] =
-   error "parse error: popping layout from empty context stack. \
-         \Perhaps you have inserted too many '}'?"
+popContext cont pos s bol (_ : ctxt) = cont pos s bol ctxt
+popContext _    pos _ _   []         = failWithAt pos $
+   "Parse error: popping layout from empty context stack. " ++
+   "Perhaps you have inserted too many '}'?"
 
 -- ---------------------------------------------------------------------------
 -- Conversions from strings into numbers.
@@ -118,7 +114,7 @@ popContext _cont _pos _s _bol [] =
 convertSignedIntegral :: Num a => a -> String -> a
 convertSignedIntegral b ('+':s) = convertIntegral b s
 convertSignedIntegral b ('-':s) = - convertIntegral b s
-convertSignedIntegral b s = convertIntegral b s
+convertSignedIntegral b s       = convertIntegral b s
 
 -- |Convert a String into an unsigned intergral using a given base
 convertIntegral :: Num a => a -> String -> a

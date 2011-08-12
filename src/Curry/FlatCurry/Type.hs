@@ -1,174 +1,309 @@
-{- |Library to support meta-programming in Curry.
+{- |
+    Module      : $Header$
+    Description : Representation of FlatCurry.
+    Copyright   : (c) Michael Hanus 2003
+                      Martin Engelke 2004
+                      Bernd Brassel 2005
+    License     : OtherLicense
 
-    This library contains a definition for representing FlatCurry programs
-    in Haskell (type "Prog").
+    Maintainer  : bjp@informatik.uni-kiel.de
+    Stability   : experimental
+    Portability : portable
 
-    @author Michael Hanus
-    @version September 2003
-
-    Version for Haskell (slightly modified):
-    December 2004, Martin Engelke (men@informatik.uni-kiel.de)
-
-    Added part calls for constructors, Bernd Brassel, August 2005
+    This module contains a definition for representing FlatCurry programs
+    in Haskell in type 'Prog'.
 -}
 
 module Curry.FlatCurry.Type
-  (
-    -- * Data types for flat curry
-    Prog (..), QName, Visibility (..), TVarIndex, TypeDecl (..), ConsDecl (..)
-  , TypeExpr (..), OpDecl (..), Fixity (..), VarIndex, FuncDecl (..)
-  , Rule (..), CaseType (..), CombType (..), Expr (..), BranchExpr (..)
-  , Pattern (..), Literal (..)
-
-    -- * Functions for reading and writing flat curry terms
-  , readFlatCurry, readFlatInterface, readFlat, writeFlatCurry
+  ( -- * Data types for FlatCurry
+    QName, Visibility (..), Prog (..), TypeDecl (..), TVarIndex
+  , ConsDecl (..), TypeExpr (..), OpDecl (..), Fixity (..)
+  , FuncDecl (..), Rule (..), VarIndex, Expr (..), Literal (..)
+  , CombType (..), CaseType (..), BranchExpr (..), Pattern (..)
+    -- * Functions for reading and writing FlatCurry terms
+  , readFlatCurry, readFlatInterface, writeFlatCurry
   ) where
+
+import Control.Monad (liftM)
+import Data.Char (isSpace)
+import Data.List (intercalate)
 
 import Curry.Files.Filenames (flatName, flatIntName)
 import Curry.Files.PathUtils (writeModule, maybeReadModule)
 
-import Data.List (intercalate)
-import Data.Char (isSpace)
-import Control.Monad (liftM)
+-- ---------------------------------------------------------------------------
+-- Definition of data types for representing FlatCurry programs
+-- ---------------------------------------------------------------------------
 
-{- ---------------------------------------------------------------------------
-   Definition of data types for representing FlatCurry programs
---------------------------------------------------------------------------- -}
+{- |Qualified names.
 
-{- |Data type for representing a Curry module in the intermediate form.
-    A value of this data type has the form
-    <CODE>
-      (Prog modname imports typedecls functions opdecls translation_table)
-    </CODE>
-    where modname: name of this module,
-          imports: list of modules names that are imported,
-          typedecls, opdecls, functions, translation of type names
-          and constructor/function names: see below
--}
-data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
-            deriving (Read, Show, Eq)
-
-{- |The data type for representing qualified names.
     In FlatCurry all names are qualified to avoid name clashes.
     The first component is the module name and the second component the
     unqualified name as it occurs in the source program.
 -}
 type QName = (String, String)
 
--- |Data type to specify the visibility of various entities.
-data Visibility = Public    -- ^ public (exported) entity
-                | Private   -- ^ private entity
-                  deriving (Read, Show, Eq)
 
-{- |The data type for representing type variables.
-    They are represented by (TVar i) where i is a type variable index.
+-- |Visibility of various entities.
+data Visibility
+  = Public    -- ^ public (exported) entity
+  | Private   -- ^ private entity
+    deriving (Eq, Read, Show)
+
+
+{- |A FlatCurry module.
+
+    A value of this data type has the form
+
+    @Prog modname imports typedecls functions opdecls@
+
+    where
+
+    [@modname@]   Name of this module
+
+    [@imports@]   List of modules names that are imported
+
+    [@typedecls@] Type declarations
+
+    [@funcdecls@] Function declarations
+
+    [@ opdecls@]  Operator declarations
 -}
-type TVarIndex = Int
+data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
+    deriving (Eq, Read, Show)
 
-{- |Data type for representing definitions of algebraic data types.
-    <PRE>
+
+{- |Definitions of algebraic data types and type synonyms.
+
     A data type definition of the form
 
-    data t x1...xn = ...| c t1....tkc |...
+    @data t x1...xn = ...| c t1....tkc |...@
 
     is represented by the FlatCurry term
 
-    (Type t [i1,...,in] [...(Cons c kc [t1,...,tkc])...])
+    @Type t [i1,...,in] [...(Cons c kc [t1,...,tkc])...]@
 
-    where each ij is the index of the type variable xj
+    where each @ij@ is the index of the type variable @xj@
 
-    Note: the type variable indices are unique inside each type declaration
-          and are usually numbered from 0
+    /Note:/ The type variable indices are unique inside each type declaration
+            and are usually numbered from 0.
 
     Thus, a data type declaration consists of the name of the data type,
     a list of type parameters and a list of constructor declarations.
-    </PRE>
 -}
-data TypeDecl = Type    QName Visibility [TVarIndex] [ConsDecl]
-              | TypeSyn QName Visibility [TVarIndex] TypeExpr
-                deriving (Read, Show, Eq)
+data TypeDecl
+  = Type    QName Visibility [TVarIndex] [ConsDecl]
+  | TypeSyn QName Visibility [TVarIndex] TypeExpr
+    deriving (Eq, Read, Show)
+
+
+{- |Type variables are represented by @(TVar i)@ where @i@ is a
+    type variable index.
+-}
+type TVarIndex = Int
+
 
 {- |A constructor declaration consists of the name and arity of the
     constructor and a list of the argument types of the constructor.
 -}
 data ConsDecl = Cons QName Int Visibility [TypeExpr]
-                deriving (Read, Show, Eq)
+    deriving (Eq, Read, Show)
 
-{- |Data type for type expressions.
+
+{- |Type expressions.
+
     A type expression is either a type variable, a function type,
     or a type constructor application.
 
-    Note: the names of the predefined type constructors are
-          "Int", "Float", "Bool", "Char", "IO", "Success",
-          "()" (unit type), "(,...,)" (tuple types), "[]" (list type)
+    /Note:/ the names of the predefined type constructors are
+          @Int@, @Float@, @Bool@, @Char@, @IO@, @Success@,
+          @()@ (unit type), @(,...,)@ (tuple types), @[]@ (list type)
 -}
 data TypeExpr
   = TVar TVarIndex             -- ^ type variable
-  | FuncType TypeExpr TypeExpr -- ^ function type t1->t2
+  | FuncType TypeExpr TypeExpr -- ^ function type @t1 -> t2@
   | TCons QName [TypeExpr]     -- ^ type constructor application
-  deriving (Read, Show, Eq)
+    deriving (Eq, Read, Show)
 
 
-{- |Data type for operator declarations.
-    An operator declaration "fix p n" in Curry corresponds to the
-    FlatCurry term (Op n fix p).
-    Note: the constructor definition of 'Op' differs from the original
+{- |Operator declarations.
+
+    An operator declaration @fix p n@ in Curry corresponds to the
+    FlatCurry term @(Op n fix p)@.
+
+    /Note:/ the constructor definition of 'Op' differs from the original
     PAKCS definition using Haskell type 'Integer' instead of 'Int'
     for representing the precedence.
 -}
-data OpDecl = Op QName Fixity Int deriving (Read, Show, Eq)
+data OpDecl = Op QName Fixity Int
+    deriving (Eq, Read, Show)
 
--- |Data types for the different choices for the fixity of an operator.
+-- TODO: The fixity should better be named associativity (or Assoc for short)
+
+-- |Fixity of an operator.
 data Fixity
   = InfixOp  -- ^ non-associative infix operator
   | InfixlOp -- ^ left-associative infix operator
   | InfixrOp -- ^ right-associative infix operator
-    deriving (Read, Show, Eq)
+    deriving (Eq, Read, Show)
 
-
-{- |Data type for representing object variables.
-    Object variables occurring in expressions are represented by (Var i)
-    where i is a variable index.
--}
-type VarIndex = Int
 
 {- |Data type for representing function declarations.
-    <PRE>
+
     A function declaration in FlatCurry is a term of the form
 
-      (Func name arity type (Rule [i_1,...,i_arity] e))
+    @(Func name arity type (Rule [i_1,...,i_arity] e))@
 
     and represents the function "name" with definition
 
-      name :: type
-      name x_1...x_arity = e
+    @
+    name :: type
+    name x_1...x_arity = e
+    @
 
-    where each i_j is the index of the variable x_j
+    where each @i_j@ is the index of the variable @x_j@
 
-    Note: the variable indices are unique inside each function declaration
-          and are usually numbered from 0
+    /Note:/ The variable indices are unique inside each function declaration
+            and are usually numbered from 0.
 
-    External functions are represented as (Func name arity type (External s))
+    External functions are represented as
+
+    @Func name arity type (External s)@
+
     where s is the external name associated to this function.
 
     Thus, a function declaration consists of the name, arity, type, and rule.
-    </PRE>
 -}
 data FuncDecl = Func QName Int Visibility TypeExpr Rule
-                deriving (Read, Show, Eq)
+    deriving (Eq, Read, Show)
 
 
 {- |A rule is either a list of formal parameters together with an expression
-    or an "External" tag.
+    or an 'External' tag.
 -}
-data Rule = Rule [VarIndex] Expr
-          | External String
-            deriving (Read, Show, Eq)
+data Rule
+  = Rule [VarIndex] Expr
+  | External String
+    deriving (Eq, Read, Show)
 
-{- |Data type for classifying case expressions.
-    Case expressions can be either flexible or rigid in Curry.
+
+{- |Object variable are represented by @(Var i)@
+    where @i@ is a variable index.
 -}
-data CaseType = Rigid | Flex deriving (Read, Show, Eq)
+type VarIndex = Int
+
+
+{- |Data type for representing expressions.
+
+    Remarks:
+
+    1.if-then-else expressions are represented as function calls:
+
+       @(if e1 then e2 else e3)@
+
+      is represented as
+
+      @(Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])@
+
+    2.Higher order applications are represented as calls to the (external)
+      function @apply@. For instance, the rule
+
+      @app f x = f x@
+
+      is represented as
+
+      @(Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))@
+
+    3.A conditional rule is represented as a call to an external function
+      @cond@ where the first argument is the condition (a constraint).
+
+      For instance, the rule
+
+      @equal2 x | x=:=2 = success@
+
+      is represented as
+
+      @
+      (Rule [0]
+          (Comb FuncCall ("Prelude","cond")
+                [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
+                Comb FuncCall ("Prelude","success") []]))
+      @
+
+    4.Functions with evaluation annotation @choice@ are represented
+      by a rule whose right-hand side is enclosed in a call to the
+      external function @Prelude.commit@.
+      Furthermore, all rules of the original definition must be
+      represented by conditional expressions (i.e., (cond [c,e]))
+      after pattern matching.
+
+      Example:
+
+      @
+      m eval choice
+      m [] y = y
+      m x [] = x
+      @
+
+      is translated into (note that the conditional branches can be also
+      wrapped with Free declarations in general):
+
+      @
+      Rule [0,1]
+        (Comb FuncCall ("Prelude","commit")
+          [Or (Case Rigid (Var 0)
+                [(Pattern ("Prelude","[]") []
+                    (Comb FuncCall ("Prelude","cond")
+                          [Comb FuncCall ("Prelude","success") [],
+                            Var 1]))] )
+              (Case Rigid (Var 1)
+                [(Pattern ("Prelude","[]") []
+                    (Comb FuncCall ("Prelude","cond")
+                          [Comb FuncCall ("Prelude","success") [],
+                            Var 0]))] )])
+      @
+
+      Operational meaning of @(Prelude.commit e)@:
+      evaluate @e@ with local search spaces and commit to the first
+      @(Comb FuncCall ("Prelude","cond") [c,ge])@ in @e@ whose constraint @c@
+      is satisfied
+-}
+data Expr
+  -- |Variable, represented by unique index
+  = Var VarIndex
+  -- |Literal (Integer/Float/Char constant)
+  | Lit Literal
+  -- |Application @(f e1 ... en)@ of function/constructor @f@
+  --  with @n <= arity f@
+  | Comb CombType QName [Expr]
+  -- |Introduction of free local variables for an expression
+  | Free [VarIndex] Expr
+  -- |Local let-declarations
+  | Let [(VarIndex, Expr)] Expr
+  -- |Disjunction of two expressions
+  -- (resulting from overlapping left-hand sides)
+  | Or Expr Expr
+  -- |case expression
+  | Case CaseType Expr [BranchExpr]
+    deriving (Eq, Read, Show)
+
+
+{- |Data type for representing literals.
+
+    A literal  is either an integer, a float, or a character constant.
+
+    /Note:/ The constructor definition of 'Intc' differs from the original
+    PAKCS definition. It uses Haskell type 'Integer' instead of 'Int'
+    to provide an unlimited range of integer numbers. Furthermore,
+    float values are represented with Haskell type 'Double' instead of
+    'Float'.
+-}
+data Literal
+  = Intc   Integer
+  | Floatc Double
+  | Charc  Char
+    deriving (Eq, Read, Show)
+
 
 {- |Data type for classifying combinations
     (i.e., a function/constructor applied to some arguments).
@@ -178,132 +313,55 @@ data CombType
   = FuncCall
   -- |a call with a constructor at the top, all arguments are provided
   | ConsCall
-  {- |a partial call to a function (i.e., not all arguments are provided)
-      where the parameter is the number of missing arguments -}
+  -- |a partial call to a function (i.e., not all arguments are provided)
+  --  where the parameter is the number of missing arguments
   | FuncPartCall Int
-  -- ^ a partial call to a constructor along with number of missing arguments
+  -- |a partial call to a constructor along with number of missing arguments
   | ConsPartCall Int
-    deriving (Read, Show, Eq)
-
-{- |Data type for representing expressions.
-
-    Remarks:
-    <PRE>
-    1. if-then-else expressions are represented as function calls:
-          (if e1 then e2 else e3)
-        is represented as
-          (Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])
-
-    2. Higher order applications are represented as calls to the (external)
-        function "apply". For instance, the rule
-          app f x = f x
-        is represented as
-          (Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))
-
-    3. A conditional rule is represented as a call to an external function
-        "cond" where the first argument is the condition (a constraint).
-        For instance, the rule
-          equal2 x | x=:=2 = success
-        is represented as
-          (Rule [0]
-                (Comb FuncCall ("Prelude","cond")
-                      [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
-                      Comb FuncCall ("Prelude","success") []]))
-
-    4. Functions with evaluation annotation "choice" are represented
-        by a rule whose right-hand side is enclosed in a call to the
-        external function "Prelude.commit".
-        Furthermore, all rules of the original definition must be
-        represented by conditional expressions (i.e., (cond [c,e]))
-        after pattern matching.
-        Example:
-
-          m eval choice
-          m [] y = y
-          m x [] = x
-
-        is translated into (note that the conditional branches can be also
-        wrapped with Free declarations in general):
-
-          Rule [0,1]
-                (Comb FuncCall ("Prelude","commit")
-                  [Or (Case Rigid (Var 0)
-                        [(Pattern ("Prelude","[]") []
-                            (Comb FuncCall ("Prelude","cond")
-                                  [Comb FuncCall ("Prelude","success") [],
-                                    Var 1]))] )
-                      (Case Rigid (Var 1)
-                        [(Pattern ("Prelude","[]") []
-                            (Comb FuncCall ("Prelude","cond")
-                                  [Comb FuncCall ("Prelude","success") [],
-                                    Var 0]))] )])
-
-        Operational meaning of (Prelude.commit e):
-        evaluate e with local search spaces and commit to the first
-        (Comb FuncCall ("Prelude","cond") [c,ge]) in e whose constraint c
-        is satisfied
-    </PRE>
--}
-data Expr
-  -- |variable (represented by unique index)
-  = Var VarIndex
-  -- |literal (Integer/Float/Char constant)
-  | Lit Literal
-  -- |application (f e1 ... en) of function/constructor f with n<=arity(f)
-  | Comb CombType QName [Expr]
-  -- |introduction of free local variables
-  | Free [VarIndex] Expr
-  | Let [(VarIndex, Expr)] Expr
-  {- |disjunction of two expressions (used to translate rules with overlapping
-      left-hand sides) -}
-  | Or Expr Expr
-  -- |case distinction (rigid or flex)
-  | Case CaseType Expr [BranchExpr]
-    deriving (Read, Show, Eq)
+    deriving (Eq, Read, Show)
 
 
-{- |Data type for representing branches in a case expression.
-    <PRE>
-    Branches "(m.c x1...xn) -> e" in case expressions are represented as
+-- |Classification of case expressions, either flexible or rigid.
+data CaseType
+  = Rigid
+  | Flex
+    deriving (Eq, Read, Show)
 
-      (Branch (Pattern (m,c) [i1,...,in]) e)
 
-    where each ij is the index of the pattern variable xj, or as
+{- |Branches in a case expression.
 
-      (Branch (LPattern (Intc i)) e)
+    Branches @(m.c x1...xn) -> e@ in case expressions are represented as
+
+    @(Branch (Pattern (m,c) [i1,...,in]) e)@
+
+    where each @ij@ is the index of the pattern variable @xj@, or as
+
+    @(Branch (LPattern (Intc i)) e)@
 
     for integers as branch patterns (similarly for other literals
     like float or character constants).
-    </PRE>
 -}
-data BranchExpr = Branch Pattern Expr deriving (Read, Show, Eq)
-
--- |Data type for representing patterns in case expressions.
-data Pattern = Pattern QName [VarIndex]
-             | LPattern Literal
-               deriving (Read, Show, Eq)
-
-{- |Data type for representing literals occurring in an expression
-    or case branch. It is either an integer, a float, or a character constant.
-    Note: the constructor definition of 'Intc' differs from the original
-    PAKCS definition. It uses Haskell type 'Integer' instead of 'Int'
-    to provide an unlimited range of integer numbers. Furthermore
-    float values are represented with Haskell type 'Double' instead of
-    'Float'.
--}
-data Literal = Intc   Integer
-             | Floatc Double
-             | Charc  Char
-               deriving (Read, Show, Eq)
+data BranchExpr = Branch Pattern Expr
+    deriving (Eq, Read, Show)
 
 
-{- |Reads a FlatCurry file (extension ".fcy") and returns the corresponding
+-- |Patterns in case expressions.
+data Pattern
+  = Pattern QName [VarIndex]
+  | LPattern Literal
+    deriving (Eq, Read, Show)
+
+-- ---------------------------------------------------------------------------
+-- Functions for reading and writing FlatCurry terms
+-- ---------------------------------------------------------------------------
+
+{- |Reads a FlatCurry file (extension @.fcy@) and returns the corresponding
     FlatCurry program term (type 'Prog') as a value of type 'Maybe'.
 -}
 readFlatCurry :: FilePath -> IO (Maybe Prog)
 readFlatCurry = readFlat . flatName
 
-{- |Reads a FlatInterface file (extension ".fint") and returns the
+{- |Reads a FlatInterface file (extension @.fcy@) and returns the
     corresponding term (type 'Prog') as a value of type 'Maybe'.
 -}
 readFlatInterface :: FilePath -> IO (Maybe Prog)
@@ -323,18 +381,19 @@ readFlat = liftM (liftM (read . skipComment)) . maybeReadModule where
   dropComment (_ : xs)         = dropComment xs
   dropComment []               = []
 
-{- |Writes a FlatCurry program term into a file.
-    If the flag is set, it will be in the hidden curry sub-directory.
--}
+-- |Writes a FlatCurry program term into a file.
+
+--  If the flag is set, the file will be written into the hidden @.curry@
+--  sub-directory.
 writeFlatCurry :: Bool -> FilePath -> Prog -> IO ()
 writeFlatCurry inHiddenSubdir filename
   = writeModule inHiddenSubdir filename . showFlatCurry
 
 -- |Shows FlatCurry program in a nicer way.
 showFlatCurry :: Prog -> String
-showFlatCurry (Prog mname imps types funcs ops) =
-  "Prog " ++ show mname ++ "\n " ++
-  show imps ++ "\n [" ++
-  intercalate ",\n  " (map show types) ++ "]\n [" ++
-  intercalate ",\n  " (map show funcs) ++ "]\n " ++
-  show ops ++ "\n"
+showFlatCurry (Prog mname imps types funcs ops)
+  =  "Prog " ++ show mname ++ "\n"
+  ++ " "  ++ show imps ++ "\n"
+  ++ " [" ++ intercalate ",\n  " (map show types) ++ "]\n"
+  ++ " [" ++ intercalate ",\n  " (map show funcs) ++ "]\n"
+  ++ " "  ++ show ops ++ "\n"

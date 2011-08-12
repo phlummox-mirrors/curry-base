@@ -42,6 +42,26 @@ import Curry.Files.PathUtils (writeModule, readModule)
 -- Abstract syntax
 -- ---------------------------------------------------------------------------
 
+{- |A qualified name.
+
+    In AbstractCurry all names are qualified to avoid name clashes.
+    The first component is the module name and the second component the
+    unqualified name as it occurs in the source program.
+-}
+type QName = (String, String)
+
+
+-- |Identifiers for record labels (extended syntax).
+type CLabel = String
+
+
+-- |Data type to specify the visibility of various entities.
+data CVisibility
+  = Public    -- ^ exported entity
+  | Private   -- ^ private entity
+    deriving (Eq, Read, Show)
+
+
 {- |A Curry module in the intermediate form. A value of this type has the form
 
     @CurryProg modname imports typedecls funcdecls opdecls@
@@ -59,32 +79,8 @@ import Curry.Files.PathUtils (writeModule, readModule)
     [@ opdecls@]  Operator precedence declarations
 -}
 data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
-    deriving (Read, Show)
-
-{- |A qualified name.
-
-    In AbstractCurry all names are qualified to avoid name clashes.
-    The first component is the module name and the second component the
-    unqualified name as it occurs in the source program.
--}
-type QName = (String, String)
-
--- |Identifiers for record labels (extended syntax).
-type CLabel = String
-
--- |Data type to specify the visibility of various entities.
-data CVisibility
-  = Public    -- ^ exported entity
-  | Private   -- ^ private entity
     deriving (Eq, Read, Show)
 
-{- |The type for representing type variables.
-
-    They are represented by @(i,n)@ where @i@ is a type variable index
-    which is unique inside a function and @n@ is a name (if possible,
-    the name written in the source program).
--}
-type CTVarIName = (Int, String)
 
 {- |Definitions of algebraic data types and type synonyms.
 
@@ -108,13 +104,24 @@ type CTVarIName = (Int, String)
 data CTypeDecl
   = CType QName CVisibility [CTVarIName] [CConsDecl]  -- ^ algebraic data type
   | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr -- ^ type synonym
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
+
+
+{- |The type for representing type variables.
+
+    They are represented by @(i,n)@ where @i@ is a type variable index
+    which is unique inside a function and @n@ is a name (if possible,
+    the name written in the source program).
+-}
+type CTVarIName = (Int, String)
+
 
 {- |A constructor declaration consists of the name and arity of the
     constructor and a list of the argument types of the constructor.
 -}
 data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
+
 
 {- |Type expression.
 
@@ -126,12 +133,20 @@ data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
             @()@ (unit type), @(,...,)@ (tuple types), @[]@ (list type)
 -}
 data CTypeExpr
-  = CTVar CTVarIName               -- ^ type variable
-  | CFuncType CTypeExpr CTypeExpr  -- ^ function type @t1 -> t2@
-  | CTCons QName [CTypeExpr]       -- ^ type constructor application
+    -- |Type variable
+  = CTVar CTVarIName
+    -- |Function type @t1 -> t2@
+  | CFuncType CTypeExpr CTypeExpr
+    -- |Type constructor application
+  | CTCons QName [CTypeExpr]
+    -- |Record type (extended Curry)
   | CRecordType [CField CTypeExpr] (Maybe CTVarIName)
-    -- ^ record type (extended Curry)
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
+
+
+-- |Labeled record fields
+type CField a = (CLabel, a)
+
 
 {- |Operator precedence declaration.
 
@@ -139,7 +154,10 @@ data CTypeExpr
     AbstractCurry term @(COp n fix p)@.
 -}
 data COpDecl = COp QName CFixity Int
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
+
+
+-- TODO: The fixity should better be named associativity (or CAssoc for short)
 
 -- |Fixity declarations of infix operators
 data CFixity
@@ -148,12 +166,6 @@ data CFixity
   | CInfixrOp -- ^ right-associative infix operator
     deriving (Eq, Read, Show)
 
-{- |Object variables.
-
-    Object variables occurring in expressions are represented by @(Var i)@
-    where @i@ is a variable index.
--}
-type CVarIName = (Int, String)
 
 {- |Data type for representing function declarations.
 
@@ -182,15 +194,17 @@ type CVarIName = (Int, String)
     a list of rules.
 -}
 data CFuncDecl = CFunc QName Int CVisibility CTypeExpr CRules
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
 
-{- |A rule is either a list of general program rules with
+
+{- |A funcztion either consists of a list of general program rules with
     an evaluation annotation, or it is externally defined.
 -}
 data CRules
   = CRules CEvalAnnot [CRule]
   | CExternal String
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
+
 
 {- |Evaluation annotations for functions.
     They can be either flexible (default), rigid, or choice.
@@ -201,43 +215,31 @@ data CEvalAnnot
   | CChoice
     deriving (Eq, Read, Show)
 
+
 {- |The general form of a function rule. It consists of a list of patterns
     (left-hand side), a list of guards (@success@ if not present in the
     source text) with their corresponding right-hand sides, and
     a list of local declarations.
 -}
 data CRule = CRule [CPattern] [(CExpr, CExpr)] [CLocalDecl]
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
+
 
 -- | Local (let/where) declarations
 data CLocalDecl
   = CLocalFunc CFuncDecl                  -- ^ local function declaration
   | CLocalPat CPattern CExpr [CLocalDecl] -- ^ local pattern declaration
   | CLocalVar CVarIName                   -- ^ local free variable declaration
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
 
--- | Curry expressions.
-data CExpr
- = CVar       CVarIName            -- ^ variable (unique index / name)
- | CLit       CLiteral             -- ^ literal (Integer/Float/Char constant)
- | CSymbol    QName                -- ^ a defined symbol with module and name
- | CApply     CExpr CExpr          -- ^ application (e1 e2)
- | CLambda    [CPattern] CExpr     -- ^ lambda abstraction
- | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
- | CDoExpr    [CStatement]         -- ^ do expression
- | CListComp  CExpr [CStatement]   -- ^ list comprehension
- | CCase      CExpr [CBranchExpr]  -- ^ case expression
- | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
- | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
- | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
-   deriving (Read, Show)
 
--- |Statements in do expressions and list comprehensions.
-data CStatement
-  = CSExpr CExpr         -- ^ an expression (I/O action or boolean)
-  | CSPat CPattern CExpr -- ^ a pattern definition
-  | CSLet [CLocalDecl]   -- ^ a local let declaration
-    deriving (Read, Show)
+{- |Object variables.
+
+    Object variables occurring in expressions are represented by @(Var i)@
+    where @i@ is a variable index.
+-}
+type CVarIName = (Int, String)
+
 
 -- |Pattern expressions.
 data CPattern
@@ -256,11 +258,25 @@ data CPattern
   | CPLazy CPattern
     -- |record pattern (extended curry)
   | CPRecord [CField CPattern] (Maybe CPattern)
-    deriving (Read, Show)
+    deriving (Eq, Read, Show)
 
--- Branches in case expressions.
-data CBranchExpr = CBranch CPattern CExpr
-    deriving (Read, Show)
+
+-- | Curry expressions.
+data CExpr
+ = CVar       CVarIName            -- ^ variable (unique index / name)
+ | CLit       CLiteral             -- ^ literal (Integer/Float/Char constant)
+ | CSymbol    QName                -- ^ a defined symbol with module and name
+ | CApply     CExpr CExpr          -- ^ application (e1 e2)
+ | CLambda    [CPattern] CExpr     -- ^ lambda abstraction
+ | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
+ | CDoExpr    [CStatement]         -- ^ do expression
+ | CListComp  CExpr [CStatement]   -- ^ list comprehension
+ | CCase      CExpr [CBranchExpr]  -- ^ case expression
+ | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
+ | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
+ | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
+   deriving (Eq, Read, Show)
+
 
 {- |Literals occurring in an expression, either an integer, a float,
     or a character constant.
@@ -277,8 +293,19 @@ data CLiteral
   | CCharc  Char    -- ^ Char literal
     deriving (Eq, Read, Show)
 
--- |Labeled record fields
-type CField a = (CLabel, a)
+
+-- |Statements in do expressions and list comprehensions.
+data CStatement
+  = CSExpr CExpr         -- ^ an expression (I/O action or boolean)
+  | CSPat CPattern CExpr -- ^ a pattern definition
+  | CSLet [CLocalDecl]   -- ^ a local let declaration
+    deriving (Eq, Read, Show)
+
+
+-- Branches in case expressions.
+data CBranchExpr = CBranch CPattern CExpr
+    deriving (Eq, Read, Show)
+
 
 -- ---------------------------------------------------------------------------
 -- Reading and writing AbstractCurry terms
@@ -291,7 +318,7 @@ readCurry = liftM read . readModule
 
 -- |Write an AbstractCurry program term into a file.
 --
---  If the flag is set, the file will written into the hidden @.curry@
+--  If the flag is set, the file will be written into the hidden @.curry@
 --  sub-directory.
 writeCurry :: Bool -> FilePath -> CurryProg -> IO ()
 writeCurry inHiddenSubdir filename prog
