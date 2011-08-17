@@ -29,7 +29,7 @@ module Curry.AbstractCurry
   , CBranchExpr (..), CLiteral (..), CField
 
     -- * Reading and writing AbstractCurry terms
-  , readCurry, writeCurry
+  , readCurry, writeCurry, showCurry
   ) where
 
 import qualified Control.Exception as C (catch)
