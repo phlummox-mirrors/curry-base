@@ -12,8 +12,10 @@ module Curry.Files.PathUtils
   ( -- * Re-exports from 'System.FilePath'
     takeBaseName, dropExtension, takeExtension, takeFileName
 
+  , moduleNameToFile, fileNameToModule
+
     -- * Retrieving curry files
-  , lookupModule, lookupInterface, lookupCurryFile, lookupFile
+  , lookupModule, lookupInterface, lookupCurryFile, lookupFile, lookupModuleIn
 
     -- * Reading and writing modules from files
   , writeModule, readModule, maybeReadModule
@@ -29,32 +31,44 @@ import System.Time (ClockTime)
 import Curry.Base.Ident
 import Curry.Files.Filenames
 
+moduleNameToFile :: ModuleIdent -> FilePath
+moduleNameToFile = foldr1 (</>) . moduleQualifiers
 
-{- |Search for a given curry module in the given source file paths and
-    library paths. Note that the current directory is always searched first.
--}
+fileNameToModule :: FilePath -> ModuleIdent
+fileNameToModule = mkMIdent . splitDirectories . dropExtension . dropDrive
+
+-- |Search for a given curry module in the given source file paths and
+-- library paths. Note that the current directory is always searched first.
 lookupModule :: [FilePath]          -- ^ list of paths to source files
              -> [FilePath]          -- ^ list of paths to library files
              -> ModuleIdent         -- ^ module identifier
              -> IO (Maybe FilePath) -- ^ the file path if found
 lookupModule paths libPaths m =
-  lookupFile ("" : paths ++ libPaths) moduleExts fn
-  where fn = foldr1 combine (moduleQualifiers m)
+  lookupFile ("" : paths ++ libPaths) moduleExts $ moduleNameToFile m
 
 
-{- |Search for an interface file in the import search path using the
-    interface extension 'flatIntExt'. Note that the current directory is
-    always searched first.
--}
+-- |Search for a given curry module in the given source file paths and
+-- library paths. Note that the current directory is always searched first.
+lookupModuleIn :: [FilePath]          -- ^ list of paths to source files
+               -> [FilePath]          -- ^ list of paths to library files
+               -> ModuleIdent         -- ^ module identifier
+               -> IO (Maybe (FilePath, FilePath))
+lookupModuleIn paths libPaths m =
+  lookupFileIn ("" : paths ++ libPaths) moduleExts $ moduleNameToFile m
+
+
+-- |Search for an interface file in the import search path using the
+-- interface extension 'flatIntExt'. Note that the current directory is
+-- always searched first.
 lookupInterface :: [FilePath]          -- ^ list of paths to search in
                 -> ModuleIdent         -- ^ module identifier
                 -> IO (Maybe FilePath) -- ^ the file path if found
-lookupInterface paths m = lookupFile ("" : paths) [flatIntExt] fn
-  where fn = foldr1 combine (moduleQualifiers m)
+lookupInterface paths m =
+  lookupFile ("" : paths) [flatIntExt] $ moduleNameToFile m
 
 
 {- | Search in the given list of paths for the given file name. If the file
-     name has no extension, then s source file extension is assumed.
+     name has no extension, then a source file extension is assumed.
      If the file name already contains a directory, then the paths to search
      in are ignored.
 -}
@@ -63,10 +77,9 @@ lookupCurryFile paths fn = lookupFile filepaths exts fn where
   filepaths = "" : paths'
   paths' | pathSeparator `elem` fn = []
          | otherwise               = paths
-  exts   | null fnext = sourceExts
-         | otherwise  = [fnext]
-  fnext = takeExtension fn
-
+  exts   | null fnExt = sourceExts
+         | otherwise  = [fnExt]
+  fnExt = takeExtension fn
 
 
 -- |Search in the given directories for the file with the specified file
@@ -77,14 +90,33 @@ lookupFile :: [FilePath]          -- ^ Directories to search in
            -> IO (Maybe FilePath) -- ^ 'FilePath' of the file if found
 lookupFile paths exts file = lookupFile' paths' where
   paths' = do
-    p <- paths
-    e <- exts
-    let fn = p `combine` replaceExtension file e
+    path <- paths
+    ext <- exts
+    let fn = path </> replaceExtension file ext
     [fn, ensureCurrySubdir fn]
   lookupFile' []        = return Nothing
   lookupFile' (fn : ps) = do
                           so <- doesFileExist fn
                           if so then return (Just fn) else lookupFile' ps
+
+
+lookupFileIn :: [FilePath]          -- ^ Directories to search in
+             -> [String]            -- ^ Accepted file extensions
+             -> FilePath            -- ^ Initial file name
+             -> IO (Maybe (FilePath, FilePath))
+lookupFileIn paths exts file = lookup' files
+  where
+  paths'    = concatMap (\p -> [p, ensureCurrySubdir p]) paths
+  baseNames = map (replaceExtension file) exts
+  files     = [ (p, f) | p <- paths', f <- baseNames ]
+
+  lookup' []             = return Nothing
+  lookup' ((p, f) : pfs) = do
+    exists <- doesFileExistIn p f
+    if exists then return (Just (p, f)) else lookup' pfs
+
+doesFileExistIn :: FilePath -> FilePath -> IO Bool
+doesFileExistIn path file = doesFileExist $ path </> file
 
 
 {- | Write the content to a file in the given directory or in the
