@@ -12,6 +12,7 @@
 module Curry.Syntax
   ( module Curry.Syntax.Type
   , module Curry.Syntax.Utils
+  , Lexer.Token (..), Lexer.Category (..), Lexer.Attributes (..)
   , lexFile
   , parseHeader
   , parseModule
@@ -23,7 +24,7 @@ import Curry.Base.Position (Position, first)
 import Curry.Base.MessageMonad (MsgMonad)
 import Curry.Files.Unlit (unlit)
 
-import qualified Curry.Syntax.Lexer as Lexer (Token, lexFile)
+import qualified Curry.Syntax.Lexer as Lexer
 import qualified Curry.Syntax.Parser as Parser (parseHeader, parseSource)
 import Curry.Syntax.Pretty (ppModule, ppIDecl)
 import Curry.Syntax.ShowModule (showModule)
