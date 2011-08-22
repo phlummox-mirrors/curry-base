@@ -201,6 +201,6 @@ ensureSubdir subdir file
 -}
 onExistingFileDo :: (FilePath -> IO a) -> FilePath -> IO a
 onExistingFileDo act filename = do
-  ex <- doesFileExist filename
-  if ex then act filename
-        else act $ ensureCurrySubdir filename
+  exists <- doesFileExist filename
+  if exists then act filename
+            else act $ ensureCurrySubdir filename

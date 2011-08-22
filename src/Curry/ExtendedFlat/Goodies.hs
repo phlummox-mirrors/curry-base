@@ -17,9 +17,9 @@
 
 module Curry.ExtendedFlat.Goodies where
 
-import Control.Arrow(first, second)
-import Control.Monad(mplus, msum)
-import Data.List
+import Control.Arrow (first, second)
+import Control.Monad (mplus, msum)
+import Data.List ((\\), union)
 
 import Curry.ExtendedFlat.Type
 

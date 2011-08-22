@@ -38,9 +38,9 @@ module Curry.Base.LLParseComb
   ) where
 
 import Control.Monad
+import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Set as Set
-import qualified Data.Map as Map
 
 import Curry.Base.LexComb
 import Curry.Base.MessageMonad

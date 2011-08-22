@@ -20,12 +20,12 @@ import Curry.ExtendedFlat.Goodies
 import Curry.ExtendedFlat.MonadicGoodies
 
 data LifterState = LifterState
-  { modname :: String
-  , currentFunc :: String
-  , globals :: Set.Set QName
+  { modname       :: String
+  , currentFunc   :: String
+  , globals       :: Set.Set QName
   , globalCounter :: Map.Map QName Int
-  , localCounter :: Int
-  , lifted :: Map.Map QName FuncDecl
+  , localCounter  :: Int
+  , lifted        :: Map.Map QName FuncDecl
   }
 
 type Bind = (VarIndex, Expr)    -- (name, value)

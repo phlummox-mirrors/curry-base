@@ -16,29 +16,25 @@
 
 {-# LANGUAGE DeriveDataTypeable, RankNTypes #-}
 
-module Curry.ExtendedFlat.Type(SrcRef,Prog(..),
-                               QName(..), qnOf,mkQName,
-                               Visibility(..),
-                               TVarIndex, TypeDecl(..), ConsDecl(..), TypeExpr(..),
-                               OpDecl(..), Fixity(..),
-                               VarIndex(..), mkIdx, incVarIndex,
-                               FuncDecl(..), Rule(..), 
-                               CaseType(..), CombType(..), Expr(..), BranchExpr(..),
-                               Pattern(..), Literal(..), 
-		               readFlatCurry, readFlatInterface, readFlat, 
-		               writeFlatCurry,writeExtendedFlat,gshowsPrec
-                              ) where
+module Curry.ExtendedFlat.Type
+  ( SrcRef, Prog (..), QName (..), qnOf, mkQName
+  , Visibility (..), TVarIndex, TypeDecl (..), ConsDecl (..), TypeExpr (..)
+  , OpDecl (..), Fixity (..), VarIndex (..), mkIdx, incVarIndex
+  , FuncDecl (..), Rule(..), CaseType (..), CombType (..), Expr (..)
+  , BranchExpr (..), Pattern (..), Literal (..)
+  , readFlatCurry, readFlatInterface, readFlat
+  , writeFlatCurry, writeExtendedFlat, gshowsPrec
+  ) where
 
-import Data.List(intersperse)
 import Control.Monad (liftM)
+import Data.Function(on)
 import Data.Generics (Data, Typeable, Typeable2
   , dataCast2, extQ, ext1Q, gmapQ, toConstr, showConstr)
-import Data.Function(on)
+import Data.List(intersperse)
 import System.FilePath
 
 import Curry.Base.Position (SrcRef)
-
-import Curry.Files.Filenames(flatName, extFlatName)
+import Curry.Files.Filenames (flatName, extFlatName)
 import Curry.Files.PathUtils (writeModule, maybeReadModule)
 
 
@@ -57,8 +53,8 @@ import Curry.Files.PathUtils (writeModule, maybeReadModule)
 ---       typedecls, opdecls, functions, translation of type names
 ---       and constructor/function names: see below
 
-data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl] 
-	    deriving (Read, Show, Eq,Data,Typeable)
+data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
+    deriving (Eq, Read, Show, Data, Typeable)
 
 
 -------------------------------------------------------------------------
@@ -77,7 +73,7 @@ data QName = QName {srcRef      :: Maybe SrcRef,
 
 
 instance Read QName where
-  readsPrec d r = 
+  readsPrec d r =
       [ (QName r' t m n, s) | ((r', t, m, n),s) <- readsPrec d r ]
       ++ [ (mkQName nm,s) | (nm,s) <- readsPrec d r ]
 
@@ -93,7 +89,7 @@ instance Ord QName where compare = compare `on` qnOf
 mkQName :: (String,String) -> QName
 mkQName = uncurry (QName Nothing Nothing)
 
-qnOf :: QName -> (String,String) 
+qnOf :: QName -> (String,String)
 qnOf QName{modName=m,localName=n} = (m,n)
 
 
@@ -120,7 +116,7 @@ mkIdx = VarIndex Nothing
 
 
 instance Read VarIndex where
-  readsPrec d r = 
+  readsPrec d r =
        [ (mkIdx i,s) | (i,s) <- readsPrec d r ]
     ++ [ (VarIndex t i,s) | ((t,i),s) <- readsPrec d r ]
 
@@ -178,7 +174,7 @@ type TVarIndex = Int
 
 data TypeDecl = Type    QName Visibility [TVarIndex] [ConsDecl]
               | TypeSyn QName Visibility [TVarIndex] TypeExpr
-	      deriving (Read, Show, Eq,Data,Typeable)
+	      deriving (Eq, Read, Show, Data, Typeable)
 
 --- A constructor declaration consists of the name and arity of the
 --- constructor and a list of the argument types of the constructor.
@@ -207,7 +203,7 @@ data TypeExpr =
 --- FlatCurry term (Op n fix p).
 --- Note: the constructor definition of 'Op' differs from the original
 --- PAKCS definition using Haskell type 'Integer' instead of 'Int'
---- for representing the precedence. 
+--- for representing the precedence.
 
 data OpDecl = Op QName Fixity Integer deriving (Read, Show, Eq,Data,Typeable)
 
@@ -264,15 +260,15 @@ data CaseType = Rigid | Flex deriving (Read, Show, Eq,Data,Typeable)
 --- @cons ConsCall     - a call with a constructor at the top,
 ---                      all arguments are provided
 --- @cons FuncPartCall - a partial call to a function
----                      (i.e., not all arguments are provided) 
+---                      (i.e., not all arguments are provided)
 ---                      where the parameter is the number of
 ---                      missing arguments
---- @cons ConsPartCall - a partial call to a constructor along with 
+--- @cons ConsPartCall - a partial call to a constructor along with
 ---                      number of missing arguments
 
-data CombType = FuncCall 
-              | ConsCall 
-              | FuncPartCall Int 
+data CombType = FuncCall
+              | ConsCall
+              | FuncPartCall Int
               | ConsPartCall Int deriving (Read, Show, Eq,Data,Typeable)
 
 --- Data type for representing expressions.
@@ -283,13 +279,13 @@ data CombType = FuncCall
 ---      (if e1 then e2 else e3)
 ---    is represented as
 ---      (Comb FuncCall ("Prelude","if_then_else") [e1,e2,e3])
---- 
+---
 --- 2. Higher order applications are represented as calls to the (external)
 ---    function "apply". For instance, the rule
 ---      app f x = f x
 ---    is represented as
 ---      (Rule  [0,1] (Comb FuncCall ("Prelude","apply") [Var 0, Var 1]))
---- 
+---
 --- 3. A conditional rule is represented as a call to an external function
 ---    "cond" where the first argument is the condition (a constraint).
 ---    For instance, the rule
@@ -299,7 +295,7 @@ data CombType = FuncCall
 ---            (Comb FuncCall ("Prelude","cond")
 ---                  [Comb FuncCall ("Prelude","=:=") [Var 0, Lit (Intc 2)],
 ---                   Comb FuncCall ("Prelude","success") []]))
---- 
+---
 --- 4. Functions with evaluation annotation "choice" are represented
 ---    by a rule whose right-hand side is enclosed in a call to the
 ---    external function "Prelude.commit".
@@ -307,14 +303,14 @@ data CombType = FuncCall
 ---    represented by conditional expressions (i.e., (cond [c,e]))
 ---    after pattern matching.
 ---    Example:
---- 
+---
 ---       m eval choice
 ---       m [] y = y
 ---       m x [] = x
---- 
+---
 ---    is translated into (note that the conditional branches can be also
 ---    wrapped with Free declarations in general):
---- 
+---
 ---       Rule [0,1]
 ---            (Comb FuncCall ("Prelude","commit")
 ---              [Or (Case Rigid (Var 0)
@@ -327,7 +323,7 @@ data CombType = FuncCall
 ---                         (Comb FuncCall ("Prelude","cond")
 ---                               [Comb FuncCall ("Prelude","success") [],
 ---                                Var 0]))] )])
---- 
+---
 ---    Operational meaning of (Prelude.commit e):
 ---    evaluate e with local search spaces and commit to the first
 ---    (Comb FuncCall ("Prelude","cond") [c,ge]) in e whose constraint c
@@ -342,7 +338,7 @@ data CombType = FuncCall
 ---            with overlapping left-hand sides)
 --- @cons Case - case distinction (rigid or flex)
 
-data Expr = Var VarIndex 
+data Expr = Var VarIndex
           | Lit Literal
           | Comb CombType QName [Expr]
           | Free [VarIndex] Expr
@@ -394,7 +390,7 @@ data Literal = Intc   SrcRef Integer
 -- Reads an ExtendedFlat file (extension ".efc") and returns the corresponding
 -- FlatCurry program term (type 'Prog') as a value of type 'Maybe'.
 readFlatCurry :: FilePath -> IO (Maybe Prog)
-readFlatCurry fn 
+readFlatCurry fn
    = do let filename = flatName fn
         readFlat filename
 
@@ -409,7 +405,7 @@ readFlatInterface fn
 -- a value of type 'Maybe'.
 readFlat :: FilePath -> IO (Maybe Prog)
 readFlat = liftM (fmap read) . maybeReadModule
-  
+
 -- Writes a FlatCurry program term into a file.
 -- If the flag is set, it will be the hidden .curry sub directory.
 writeFlatCurry :: Bool -> String -> Prog -> IO ()
@@ -426,7 +422,7 @@ showFlatCurry' :: Bool -> Prog -> String
 showFlatCurry' b x = gshowsPrec b False x ""
 
 gshowsPrec :: Data a => Bool -> Bool -> a -> ShowS
-gshowsPrec showType d = 
+gshowsPrec showType d =
   genericShowsPrec d `ext1Q` showsList
                      `ext2Q` showsTuple
                      `extQ`  (const id :: SrcRef -> ShowS)
@@ -435,10 +431,10 @@ gshowsPrec showType d =
                      `extQ`  (shows :: Char -> ShowS)
                      `extQ`  showsQName d
                      `extQ`  showsVarIndex d
-                                      
+
       where
         showsQName :: Bool -> QName -> ShowS
-        showsQName d' qn@QName{modName=m,localName=n} = 
+        showsQName d' qn@QName{modName=m,localName=n} =
           if showType then showParen d' (shows qn{srcRef=Nothing})
                       else shows (m,n)
 
@@ -456,23 +452,23 @@ gshowsPrec showType d =
                                 foldr (.) id args
 
         showsList :: Data a => [a] -> ShowS
-        showsList xs = showChar '[' . 
-                       foldr (.) (showChar ']') 
-                             (intersperse (showChar ',') $ 
+        showsList xs = showChar '[' .
+                       foldr (.) (showChar ']')
+                             (intersperse (showChar ',') $
                               map (gshowsPrec showType False) xs)
-                       
+
 
         showsTuple :: (Data a,Data b) => (a,b) -> ShowS
-        showsTuple (x,y) = showChar '(' . 
-                           gshowsPrec showType False x . 
+        showsTuple (x,y) = showChar '(' .
+                           gshowsPrec showType False x .
                            showChar ',' .
                            gshowsPrec showType False y .
-                           showChar ')' 
+                           showChar ')'
 
 
 newtype Q r a = Q (a -> r)
- 
-ext2Q :: (Data d, Typeable2 t) => (d -> q) -> 
+
+ext2Q :: (Data d, Typeable2 t) => (d -> q) ->
    (forall d1 d2. (Data d1, Data d2) => t d1 d2 -> q) -> d -> q
 ext2Q def ext arg =
    case dataCast2 (Q ext) of
