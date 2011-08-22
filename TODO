@@ -1,0 +1,11 @@
+- Curry.Base.MessageMonad: Introduce new type class combining the features of
+  - Reporting of warnings
+  - Error propagation
+  - Exception handling
+  - IO capabilities
+
+  A typical instance may be:
+  newtype KicsT m a = KicsT { unKicsT :: WriterT [Message] (ErrorT Message (m (IO a))) }
+  or something similar
+
+- The Read and Show instances of Idents do not correspond

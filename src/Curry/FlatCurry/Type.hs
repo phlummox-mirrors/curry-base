@@ -138,7 +138,6 @@ data TypeExpr
 data OpDecl = Op QName Fixity Int
     deriving (Eq, Read, Show)
 
--- TODO: The fixity should better be named associativity (or Assoc for short)
 
 -- |Fixity of an operator.
 data Fixity

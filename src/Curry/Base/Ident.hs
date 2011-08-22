@@ -23,25 +23,28 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Curry.Base.Ident
-  ( -- * Identifiers
-    -- ** Data types
-    Ident (..), QualIdent (..), ModuleIdent (..), SrcRefOf (..)
-    -- ** Functions
-  , showIdent, qualName, moduleName, fromModuleName, mkIdent, identSupply, mkMIdent
-  , renameIdent, unRenameIdent, isInfixOp, isQInfixOp
-  , qualify, qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
-  , localIdent, updIdentName, addPositionIdent, addPositionModuleIdent
-  , addRef, addRefId, positionOfQualIdent, updQualIdent
+  ( -- * Module identifiers
+    ModuleIdent (..), mkMIdent, moduleName, fromModuleName
+  , addPositionModuleIdent
+
+    -- * Local identifiers
+  , Ident (..), showIdent, mkIdent, identSupply, renameIdent, unRenameIdent
+  , updIdentName, addPositionIdent, isInfixOp, addRefId
+
+    -- * Qualified identifiers
+  , QualIdent (..), qualName, positionOfQualIdent, isQInfixOp, qualify
+  , qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
+  , localIdent, updQualIdent, addRef
 
     -- * Predefined simple identifiers
     -- ** Identifiers for modules
   , emptyMIdent, mainMIdent, preludeMIdent
     -- ** Identifiers for types
-  , anonId, unitId, boolId, charId, intId, floatId, listId, ioId, successId
+  , unitId, boolId, charId, intId, floatId, listId, ioId, successId
     -- ** Identifiers for constructors
   , trueId, falseId, nilId, consId, tupleId, isTupleId, tupleArity
-    -- ** Identifiers for functions
-  , mainId, minusId, fminusId
+    -- ** Identifiers for values
+  , mainId, minusId, fminusId, anonId
 
     -- * Predefined qualified identifiers
     -- ** Identifiers for types
@@ -67,32 +70,9 @@ import Data.Maybe (isJust, fromMaybe)
 
 import Curry.Base.Position
 
--- TODO: Probably we should use \texttt{Integer} for the \emph{id}s.
-
--- | Simple identifiers
-data Ident = Ident
-  { positionOfIdent :: Position -- ^ Source code 'Position'
-  , name            :: String   -- ^ name
-  , uniqueId        :: Int      -- ^ unique number of the identifier
-  } deriving (Read, Data, Typeable)
-
-instance Eq Ident where
-  Ident _ m i == Ident _ n j = (m, i) == (n, j)
-
-instance Ord Ident where
-  Ident _ m i `compare` Ident _ n j = (m, i) `compare` (n, j)
-
-instance Show Ident where
-  show = showIdent
-
-instance SrcRefOf Ident where
-  srcRefOf = srcRefOf . positionOfIdent
-
--- | Show function for an 'Ident'
-showIdent :: Ident -> String
-showIdent (Ident _ x 0) = x
-showIdent (Ident _ x n) = x ++ '.' : show n
-
+-- ---------------------------------------------------------------------------
+-- Module identifier
+-- ---------------------------------------------------------------------------
 
 -- | Module identifiers
 data ModuleIdent = ModuleIdent
@@ -112,6 +92,11 @@ instance Show ModuleIdent where
 instance SrcRefOf ModuleIdent where
   srcRefOf = srcRefOf . positionOfModuleIdent
 
+-- | Construct a 'ModuleIdent' from a list of 'String's forming the
+--   the hierarchical module name.
+mkMIdent :: [String] -> ModuleIdent
+mkMIdent = ModuleIdent NoPos
+
 -- | Retrieve the hierarchical name of a module
 moduleName :: ModuleIdent -> String
 moduleName = intercalate "." . moduleQualifiers
@@ -124,6 +109,81 @@ fromModuleName = mkMIdent . splitQualifiers
             []     -> []
             (_:s') -> splitQualifiers s'
 
+-- | Add a 'Position' to a 'ModuleIdent'
+addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
+addPositionModuleIdent pos mi = mi { positionOfModuleIdent = pos }
+
+-- ---------------------------------------------------------------------------
+-- Simple identifier
+-- ---------------------------------------------------------------------------
+
+-- | Simple identifiers
+data Ident = Ident
+  { positionOfIdent :: Position -- ^ Source code 'Position'
+  , name            :: String   -- ^ name
+  , uniqueId        :: Integer  -- ^ unique number of the identifier
+  } deriving (Read, Data, Typeable)
+
+instance Eq Ident where
+  Ident _ m i == Ident _ n j = (m, i) == (n, j)
+
+instance Ord Ident where
+  Ident _ m i `compare` Ident _ n j = (m, i) `compare` (n, j)
+
+instance Show Ident where
+  show = showIdent
+
+instance SrcRefOf Ident where
+  srcRefOf = srcRefOf . positionOfIdent
+
+-- | Show function for an 'Ident'
+showIdent :: Ident -> String
+showIdent (Ident _ x 0) = x
+showIdent (Ident _ x n) = x ++ '.' : show n
+
+-- | Construct an 'Ident' from a 'String'
+mkIdent :: String -> Ident
+mkIdent x = Ident NoPos x 0
+
+-- |Infinite list of different 'Ident's
+identSupply :: [Ident]
+identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
+  where mkNewIdent c 0 = mkIdent [c]
+        mkNewIdent c n = mkIdent $ c : show n
+
+-- | Rename an 'Ident' by changing its unique number
+renameIdent :: Ident -> Integer -> Ident
+renameIdent ident n = ident { uniqueId = n }
+
+-- | Revert the renaming of an 'Ident' by resetting its unique number
+unRenameIdent :: Ident -> Ident
+unRenameIdent ident = renameIdent ident 0
+
+-- | Change the name of an 'Ident' using a renaming function
+updIdentName :: (String -> String) -> Ident -> Ident
+updIdentName f (Ident p n i) =
+  addPositionIdent p $ renameIdent (mkIdent $ f n) i
+
+-- | Add a 'Position' to an 'Ident'
+addPositionIdent :: Position -> Ident -> Ident
+addPositionIdent pos      (Ident NoPos x n) = Ident pos x n
+addPositionIdent (AST sr) (Ident pos x n)   = Ident pos { astRef = sr } x n
+addPositionIdent pos      (Ident _ x n)     = Ident pos x n
+
+-- | Check whether an 'Ident' identifies an infix operation
+isInfixOp :: Ident -> Bool
+isInfixOp (Ident _ ('<' : c : cs) _) =
+  last (c : cs) /= '>' || not (isAlphaNum c) && c `notElem` "_(["
+isInfixOp (Ident _ (c : _) _)    = not (isAlphaNum c) && c `notElem` "_(["
+isInfixOp (Ident _ _ _)          = False -- error "Zero-length identifier"
+
+-- | Add a 'SrcRef' to an 'Ident'
+addRefId :: SrcRef -> Ident -> Ident
+addRefId = addPositionIdent . AST
+
+-- ---------------------------------------------------------------------------
+-- Qualified identifier
+-- ---------------------------------------------------------------------------
 
 -- | Qualified identifiers
 data QualIdent = QualIdent
@@ -142,59 +202,9 @@ qualName :: QualIdent -> String
 qualName (QualIdent Nothing  x) = name x
 qualName (QualIdent (Just m) x) = moduleName m ++ "." ++ name x
 
-
--- ---------------------------------------------------------------------------
--- Functions for working with identifiers
--- ---------------------------------------------------------------------------
-
--- | Add a 'Position' to an 'Ident'
-addPositionIdent :: Position -> Ident -> Ident
-addPositionIdent pos      (Ident NoPos x n) = Ident pos x n
-addPositionIdent (AST sr) (Ident pos x n)   = Ident pos { astRef = sr } x n
-addPositionIdent pos      (Ident _ x n)     = Ident pos x n
-
--- | Add a 'Position' to a 'ModuleIdent'
-addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
-addPositionModuleIdent pos mi = mi { positionOfModuleIdent = pos }
-
 -- | Retrieve the 'Position' of a 'QualIdent'
 positionOfQualIdent :: QualIdent -> Position
 positionOfQualIdent = positionOfIdent . qualidId
-
--- | Construct an 'Ident' from a 'String'
-mkIdent :: String -> Ident
-mkIdent x = Ident NoPos x 0
-
--- |Infinite list of different 'Ident's
-identSupply :: [Ident]
-identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
-  where mkNewIdent c 0 = mkIdent [c]
-        mkNewIdent c n = mkIdent $ c : show n
-
--- | Rename an 'Ident' by changing its unique number
-renameIdent :: Ident -> Int -> Ident
-renameIdent ident n = ident { uniqueId = n }
-
--- | Revert the renaming of an 'Ident' by resetting its unique number
-unRenameIdent :: Ident -> Ident
-unRenameIdent ident = renameIdent ident 0
-
--- | Change the name of an 'Ident' using a renaming function
-updIdentName :: (String -> String) -> Ident -> Ident
-updIdentName f (Ident p n i) =
-  addPositionIdent p $ renameIdent (mkIdent (f n)) i
-
--- | Construct a 'ModuleIdent' from a list of 'String's forming the
---   the hierarchical module name.
-mkMIdent :: [String] -> ModuleIdent
-mkMIdent = ModuleIdent NoPos
-
--- | Check whether an 'Ident' identifies an infix operation
-isInfixOp :: Ident -> Bool
-isInfixOp (Ident _ ('<' : c : cs) _) =
-  last (c : cs) /= '>' || not (isAlphaNum c) && c `notElem` "_(["
-isInfixOp (Ident _ (c : _) _)    = not (isAlphaNum c) && c `notElem` "_(["
-isInfixOp (Ident _ _ _)          = False -- error "Zero-length identifier"
 
 -- | Check whether an 'QualIdent' identifies an infix operation
 isQInfixOp :: QualIdent -> Bool
@@ -253,10 +263,6 @@ updQualIdent :: (ModuleIdent -> ModuleIdent)
              -> QualIdent -> QualIdent
 updQualIdent f g (QualIdent m x) = QualIdent (liftM f m) (g x)
 
--- | Add a 'SrcRef' to an 'Ident'
-addRefId :: SrcRef -> Ident -> Ident
-addRefId = addPositionIdent . AST
-
 -- | Add a 'SrcRef' to a 'QualIdent'
 addRef :: SrcRef -> QualIdent -> QualIdent
 addRef = updQualIdent id . addRefId
@@ -276,14 +282,6 @@ mainMIdent = ModuleIdent NoPos ["main"]
 -- | 'ModuleIdent' for the prelude
 preludeMIdent :: ModuleIdent
 preludeMIdent = ModuleIdent NoPos ["Prelude"]
-
--- | Construct a 'QualIdent' for an 'Ident' using the module prelude
-qPreludeIdent :: Ident -> QualIdent
-qPreludeIdent = qualifyWith preludeMIdent
-
--- | 'Ident' for anonymous variable
-anonId :: Ident
-anonId = mkIdent "_"
 
 -- ---------------------------------------------------------------------------
 -- Identifiers for types
@@ -360,7 +358,7 @@ tupleArity x
   where n = length (name x) - 1
 
 -- ---------------------------------------------------------------------------
--- Identifiers for functions
+-- Identifiers for values
 -- ---------------------------------------------------------------------------
 
 -- | 'Ident' for the main function
@@ -375,9 +373,17 @@ minusId  = mkIdent "-"
 fminusId :: Ident
 fminusId = mkIdent "-."
 
+-- | 'Ident' for anonymous variable
+anonId :: Ident
+anonId = mkIdent "_"
+
 -- ---------------------------------------------------------------------------
 -- Qualified Identifiers for types
 -- ---------------------------------------------------------------------------
+
+-- | Construct a 'QualIdent' for an 'Ident' using the module prelude
+qPreludeIdent :: Ident -> QualIdent
+qPreludeIdent = qualifyWith preludeMIdent
 
 -- | 'QualIdent' for the type/value unit ('()')
 qUnitId :: QualIdent

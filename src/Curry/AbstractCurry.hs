@@ -157,8 +157,6 @@ data COpDecl = COp QName CFixity Int
     deriving (Eq, Read, Show)
 
 
--- TODO: The fixity should better be named associativity (or CAssoc for short)
-
 -- |Fixity declarations of infix operators
 data CFixity
   = CInfixOp  -- ^ non-associative infix operator
