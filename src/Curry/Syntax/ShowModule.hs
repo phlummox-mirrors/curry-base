@@ -23,21 +23,12 @@ showModule :: Module -> String
 showModule m = showsModule m "\n"
 
 showsModule :: Module -> ShowS
-showsModule (Module mident espec decls)
+showsModule (Module mident espec imps decls)
   = showsString "Module "
   . showsModuleIdent mident . newline
   . showsMaybe showsExportSpec espec . newline
+  . showsList (\i -> showsImportDecl i . newline) imps
   . showsList (\d -> showsDecl d . newline) decls
-
-showsPosition :: Position -> ShowS
-showsPosition Position { line = l, column = c } = showsPair shows shows (l, c)
-showsPosition _ = id
--- showsPosition (Position file row col)
---   = showsString "(Position "
---   . shows file . space
---   . shows row . space
---   . shows col
---   . showsString ")"
 
 showsExportSpec :: ExportSpec -> ShowS
 showsExportSpec (Exporting pos exports)
@@ -63,6 +54,16 @@ showsExport (ExportTypeAll qident)
 showsExport (ExportModule m)
   = showsString "(ExportModule "
   . showsModuleIdent m
+  . showsString ")"
+
+showsImportDecl :: ImportDecl -> ShowS
+showsImportDecl (ImportDecl pos mident quali mmident mimpspec)
+  = showsString "(ImportDecl "
+  . showsPosition pos . space
+  . showsModuleIdent mident . space
+  . shows quali . space
+  . showsMaybe showsModuleIdent mmident . space
+  . showsMaybe showsImportSpec mimpspec
   . showsString ")"
 
 showsImportSpec :: ImportSpec -> ShowS
@@ -93,14 +94,6 @@ showsImport (ImportTypeAll ident)
   . showsString ")"
 
 showsDecl :: Decl -> ShowS
-showsDecl (ImportDecl pos mident quali mmident mimpspec)
-  = showsString "(ImportDecl "
-  . showsPosition pos . space
-  . showsModuleIdent mident . space
-  . shows quali . space
-  . showsMaybe showsModuleIdent mmident . space
-  . showsMaybe showsImportSpec mimpspec
-  . showsString ")"
 showsDecl (InfixDecl pos infx prec idents)
   = showsString "(InfixDecl "
   . showsPosition pos . space
@@ -518,6 +511,16 @@ showsField sa (Field pos ident a)
   . showsIdent ident . space
   . sa a
   . showsString ")"
+
+showsPosition :: Position -> ShowS
+showsPosition Position { line = l, column = c } = showsPair shows shows (l, c)
+showsPosition _ = id
+-- showsPosition (Position file row col)
+--   = showsString "(Position "
+--   . shows file . space
+--   . shows row . space
+--   . shows col
+--   . showsString ")"
 
 showsString :: String -> ShowS
 showsString = (++)

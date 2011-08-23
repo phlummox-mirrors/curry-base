@@ -1,6 +1,6 @@
 module Curry.Syntax.Utils
   ( isEvalAnnot, isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl, isImportDecl
+  , isRecordDecl
   , flatLhs, mk', mk, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
@@ -11,10 +11,6 @@ import Data.Generics
 import Curry.Base.Ident
 import Curry.Base.Position
 import Curry.Syntax.Type
-
-isImportDecl :: Decl -> Bool
-isImportDecl (ImportDecl _ _ _ _ _) = True
-isImportDecl _                      = False
 
 isInfixDecl :: Decl -> Bool
 isInfixDecl (InfixDecl _ _ _ _) = True

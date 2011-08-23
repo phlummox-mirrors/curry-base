@@ -2,7 +2,8 @@
     Module      :  $Header$
     Description :  A pretty printer for Curry
     Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       Martin Engelke
+                       2005 Martin Engelke
+                       2011 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -14,11 +15,11 @@
     Haskell parser.
 -}
 module Curry.Syntax.Pretty
-  ( ppModule, ppIDecl, ppDecl, ppIdent, ppConstrTerm, ppFieldPatt, ppExpr
-  , ppOp, ppStmt, ppFieldExpr, ppTypeExpr, ppAlt
+  ( ppModule, ppInterface, ppIDecl, ppDecl, ppIdent, ppConstrTerm, ppFieldPatt
+  , ppExpr, ppOp, ppStmt, ppFieldExpr, ppTypeExpr, ppAlt
   ) where
 
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint
 
 import Curry.Base.Ident
 import Curry.Syntax.Type
@@ -29,15 +30,18 @@ import Curry.Syntax.Utils (opName)
 -- ---------------------------------------------------------------------------
 
 ppModule :: Module -> Doc
-ppModule (Module m es ds) = ppModuleHeader m es $$ ppBlock ds
+ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppBlock ds
 
 -- ---------------------------------------------------------------------------
 -- Module header
 -- ---------------------------------------------------------------------------
 
-ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> Doc
-ppModuleHeader m es =
-  text "module" <+> ppMIdent m <+> maybePP ppExportSpec es <+> text "where"
+ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> [ImportDecl] -> Doc
+ppModuleHeader m es is = text "module"
+                      <+> ppMIdent m
+                      <+> maybePP ppExportSpec es
+                      <+> text "where"
+                       $$ (vcat $ map ppImportDecl is)
 
 ppExportSpec :: ExportSpec -> Doc
 ppExportSpec (Exporting _ es) = parenList (map ppExport es)
@@ -48,6 +52,22 @@ ppExport (ExportTypeWith tc cs) = ppQIdent tc <> parenList (map ppIdent cs)
 ppExport (ExportTypeAll tc) = ppQIdent tc <> text "(..)"
 ppExport (ExportModule m) = text "module" <+> ppMIdent m
 
+ppImportDecl :: ImportDecl -> Doc
+ppImportDecl (ImportDecl _ m q asM is) =
+  text "import" <+> ppQualified q <+> ppMIdent m <+> maybePP ppAs asM
+                <+> maybePP ppImportSpec is
+  where ppQualified q' = if q' then text "qualified" else empty
+        ppAs m' = text "as" <+> ppMIdent m'
+
+ppImportSpec :: ImportSpec -> Doc
+ppImportSpec (Importing _ is) = parenList (map ppImport is)
+ppImportSpec (Hiding _ is) = text "hiding" <+> parenList (map ppImport is)
+
+ppImport :: Import -> Doc
+ppImport (Import x) = ppIdent x
+ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
+ppImport (ImportTypeAll tc) = ppIdent tc <> text "(..)"
+
 -- ---------------------------------------------------------------------------
 -- Declarations
 -- ---------------------------------------------------------------------------
@@ -56,11 +76,6 @@ ppBlock :: [Decl] -> Doc
 ppBlock = vcat . map ppDecl
 
 ppDecl :: Decl -> Doc
-ppDecl (ImportDecl _ m q asM is) =
-  text "import" <+> ppQualified q <+> ppMIdent m <+> maybePP ppAs asM
-                <+> maybePP ppImportSpec is
-  where ppQualified q' = if q' then text "qualified" else empty
-        ppAs m' = text "as" <+> ppMIdent m'
 ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 ppDecl (DataDecl _ tc tvs cs) =
   sep (ppTypeDeclLhs "data" tc tvs :
@@ -84,15 +99,6 @@ ppDecl (ExternalDecl p cc impent f ty) =
 ppDecl (FlatExternalDecl _ fs) = list (map ppIdent fs) <+> text "external"
 ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
 ppDecl (ExtraVariables _ vs) = list (map ppIdent vs) <+> text "free"
-
-ppImportSpec :: ImportSpec -> Doc
-ppImportSpec (Importing _ is) = parenList (map ppImport is)
-ppImportSpec (Hiding _ is) = text "hiding" <+> parenList (map ppImport is)
-
-ppImport :: Import -> Doc
-ppImport (Import x) = ppIdent x
-ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
-ppImport (ImportTypeAll tc) = ppIdent tc <> text "(..)"
 
 ppPrec :: Infix -> Integer -> Doc
 ppPrec fix p = ppAssoc fix <+> ppPrio p
@@ -143,13 +149,17 @@ ppLocalDefs ds
 -- Interfaces
 -- ---------------------------------------------------------------------------
 
--- ppInterface :: Interface -> Doc
--- ppInterface (Interface m ds) =
---   text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
---     $$ vcat (punctuate semi (map ppIDecl ds)) $$ rbrace
+ppInterface :: Interface -> Doc
+ppInterface (Interface m is ds)
+  =  text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
+  $$ vcat (punctuate semi $ map ppIImportDecl is)
+  $$ vcat (punctuate semi $ map ppIDecl ds)
+  $$ rbrace
+
+ppIImportDecl :: IImportDecl -> Doc
+ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
 ppIDecl :: IDecl -> Doc
-ppIDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 ppIDecl (IInfixDecl _ fix p op) = ppPrec fix p <+> ppQInfixOp op
 ppIDecl (HidingDataDecl _ tc tvs) =
   text "hiding" <+> ppITypeDeclLhs "data" (qualify tc) tvs

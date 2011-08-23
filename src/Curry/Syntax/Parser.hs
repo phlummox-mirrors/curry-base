@@ -13,7 +13,7 @@
     combinators described in appendix~\ref{sec:ll-parsecomb}.
 -}
 
-module Curry.Syntax.Parser (parseSource, parseHeader) where
+module Curry.Syntax.Parser (parseSource, parseHeader, parseInterface) where
 
 import Curry.Base.Ident
 import Curry.Base.Position
@@ -24,26 +24,27 @@ import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (mk, mk', mkInt, addSrcRefs)
 
--- ---------------------------------------------------------------------------
--- Modules
--- ---------------------------------------------------------------------------
-
 parseSource :: Bool -> FilePath -> String -> MsgMonad Module
-parseSource flat path =
-   fmap addSrcRefs . applyParser ( moduleHeader <*> decls flat) lexer path
+parseSource flat path = fmap addSrcRefs
+                      . applyParser (moduleHeader <*> decls flat) lexer path
 
 parseHeader :: FilePath -> String -> MsgMonad Module
-parseHeader = prefixParser (moduleHeader <*->
-                            (leftBrace `opt` undefined) <*>
-                            many (importDecl <*-> many semicolon))
-                           lexer
+parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
+
+parseInterface :: FilePath -> String -> MsgMonad Interface
+parseInterface = applyParser interface lexer
+
+-- ---------------------------------------------------------------------------
+-- Module header
+-- ---------------------------------------------------------------------------
 
 moduleHeader :: Parser Token ([Decl] -> Module) a
-moduleHeader = Module <$-> token KW_module
-                      <*> (mIdent <?> "module name expected")
-                      <*> ((Just <$> exportSpec) `opt` Nothing)
-                      <*-> (token KW_where <?> "where expected")
-         `opt` Module mainMIdent Nothing
+moduleHeader =  Module <$-> token KW_module
+                       <*>  (mIdent <?> "module name expected")
+                       <*>  ((Just <$> exportSpec) `opt` Nothing)
+                       <*-> (token KW_where <?> "where expected")
+                       <*>  importDecls
+            <|> Module mainMIdent Nothing <$> importDecls
 
 exportSpec :: Parser Token ExportSpec a
 exportSpec = Exporting <$> position <*> parens (export `sepBy` comma)
@@ -55,20 +56,88 @@ export = qtycon <**> (parens spec `opt` Export)
   where spec = ExportTypeAll <$-> token DotDot
            <|> flip ExportTypeWith <$> con `sepBy` comma
 
-{-
-Interfaces
-Since this modified version of MCC uses FlatCurry interfaces instead of
-".icurry" files, a separate parser is not required any longer.
+importDecls :: Parser Token [ImportDecl] a
+importDecls = (leftBrace `opt` undefined)
+           <-*> many (importDecl <*-> many semicolon)
 
-parseInterface :: FilePath -> String -> Error Interface
-parseInterface fn s = applyParser parseIface lexer fn s
+importDecl :: Parser Token ImportDecl a
+importDecl =flip . ImportDecl
+          <$> position <*-> token KW_import
+          <*> (True <$-> token Id_qualified `opt` False)
+          <*> mIdent
+          <*> (Just <$-> token Id_as <*> mIdent `opt` Nothing)
+          <*> (Just <$> importSpec `opt` Nothing)
 
-parseIface :: Parser Token Interface a
-parseIface = Interface <$-> token Id_interface
-                       <*> (mIdent <?> "module name expected")
-                       <*-> (token KW_where <?> "where expected")
-                       <*> braces intfDecls
--}
+importSpec :: Parser Token ImportSpec a
+importSpec = position
+          <**> (Hiding <$-> token Id_hiding `opt` Importing)
+          <*> parens (spec `sepBy` comma)
+  where spec = tycon <**> (parens constrs `opt` Import)
+           <|> Import <$> fun <\> tycon
+        constrs = ImportTypeAll <$-> token DotDot
+              <|> flip ImportTypeWith <$> con `sepBy` comma
+
+-- ---------------------------------------------------------------------------
+-- Interfaces
+-- ---------------------------------------------------------------------------
+
+interface :: Parser Token Interface a
+interface =   Interface
+         <$-> token Id_interface
+         <*>  (mIdent <?> "module name expected")
+         <*-> (token KW_where <?> "where expected")
+         <*-> leftBrace
+         <*>  iImportDecls
+         <*>  intfDecls
+         <*-> rightBrace
+
+iImportDecls :: Parser Token [IImportDecl] a
+iImportDecls = iImportDecl `sepBy` semicolon
+
+iImportDecl :: Parser Token IImportDecl a
+iImportDecl = IImportDecl <$> position <*-> token KW_import <*> mIdent
+
+intfDecls :: Parser Token [IDecl] a
+intfDecls = intfDecl `sepBy` semicolon
+
+intfDecl :: Parser Token IDecl a
+intfDecl = iInfixDecl
+       <|> iHidingDecl <|> iDataDecl <|> iNewtypeDecl <|> iTypeDecl
+       <|> iFunctionDecl <\> token Id_hiding
+
+iInfixDecl :: Parser Token IDecl a
+iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
+
+iHidingDecl :: Parser Token IDecl a
+iHidingDecl = position <*-> token Id_hiding <**> (hDataDecl <|> hFuncDecl)
+  where hDataDecl = hiddenData <$-> token KW_data <*> tycon <*> many tyvar
+        hFuncDecl = hidingFunc <$-> token DoubleColon <*> type0
+        hiddenData tc tvs p = HidingDataDecl p tc tvs
+        -- TODO: 0 was inserted to type check, but what is the meaning of this field?
+        hidingFunc ty p = IFunctionDecl p hidingId 0 ty
+        hidingId = qualify (mkIdent "hiding")
+
+iDataDecl :: Parser Token IDecl a
+iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs
+  where constrs = equals <-*> iConstrDecl `sepBy1` bar
+            `opt` []
+        iConstrDecl = Just <$> constrDecl False <\> token Underscore
+                  <|> Nothing <$-> token Underscore
+
+iNewtypeDecl :: Parser Token IDecl a
+iNewtypeDecl =
+  iTypeDeclLhs INewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
+
+iTypeDecl :: Parser Token IDecl a
+iTypeDecl = iTypeDeclLhs ITypeDecl KW_type <*-> equals <*> type0
+
+iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
+             -> Parser Token a b
+iTypeDeclLhs f kw = f <$> position <*-> token kw <*> qtycon <*> many tyvar
+
+iFunctionDecl :: Parser Token IDecl a
+iFunctionDecl = IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
+              <*> succeed 0 <*> type0
 
 -- ---------------------------------------------------------------------------
 -- Declarations
@@ -78,9 +147,7 @@ decls :: Bool -> Parser Token [Decl] a
 decls = layout . globalDecls
 
 globalDecls :: Bool -> Parser Token [Decl] a
-globalDecls flat =
-      (:) <$> importDecl <*> (semicolon <-*> globalDecls flat `opt` [])
-  <|> topDecl flat `sepBy` semicolon
+globalDecls flat = topDecl flat `sepBy` semicolon
 
 topDecl :: Bool -> Parser Token Decl a
 topDecl flat
@@ -97,22 +164,6 @@ valueDecls flat = localDecl flat `sepBy` semicolon
   where localDecl flat'
           | flat' = infixDecl <|> valueDecl flat'
           | otherwise = infixDecl <|> valueDecl flat' <|> externalDecl
-
-importDecl :: Parser Token Decl a
-importDecl =
-  flip . ImportDecl <$> position <*-> token KW_import
-                    <*> (True <$-> token Id_qualified `opt` False)
-                    <*> mIdent
-                    <*> (Just <$-> token Id_as <*> mIdent `opt` Nothing)
-                    <*> (Just <$> importSpec `opt` Nothing)
-
-importSpec :: Parser Token ImportSpec a
-importSpec = position <**> (Hiding <$-> token Id_hiding `opt` Importing)
-                      <*> parens (spec `sepBy` comma)
-  where spec = tycon <**> (parens constrs `opt` Import)
-           <|> Import <$> fun <\> tycon
-        constrs = ImportTypeAll <$-> token DotDot
-              <|> flip ImportTypeWith <$> con `sepBy` comma
 
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
@@ -252,56 +303,6 @@ externalDecl =
   where callConv = CallConvPrimitive <$-> token Id_primitive
                <|> CallConvCCall <$-> token Id_ccall
                <?> "Unsupported calling convention"
-
--- ---------------------------------------------------------------------------
--- Interface declarations
--- ---------------------------------------------------------------------------
-{-
-intfDecls :: Parser Token [IDecl] a
-intfDecls = (:) <$> iImportDecl <*> (semicolon <-*> intfDecls `opt` [])
-        <|> intfDecl `sepBy` semicolon
-
-intfDecl :: Parser Token IDecl a
-intfDecl = iInfixDecl
-       <|> iHidingDecl <|> iDataDecl <|> iNewtypeDecl <|> iTypeDecl
-       <|> iFunctionDecl <\> token Id_hiding
-
-iImportDecl :: Parser Token IDecl a
-iImportDecl = IImportDecl <$> position <*-> token KW_import <*> mIdent
-
-iInfixDecl :: Parser Token IDecl a
-iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
-
-iHidingDecl :: Parser Token IDecl a
-iHidingDecl = position <*-> token Id_hiding <**> (dataDecl <|> funcDecl)
-  where dataDecl = hiddenData <$-> token KW_data <*> tycon <*> many tyvar
-        funcDecl = hidingFunc <$-> token DoubleColon <*> type0
-        hiddenData tc tvs p = HidingDataDecl p tc tvs
-        hidingFunc ty p = IFunctionDecl p hidingId ty
-        hidingId = qualify (mkIdent "hiding")
-
-iDataDecl :: Parser Token IDecl a
-iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs
-  where constrs = equals <-*> iConstrDecl `sepBy1` bar
-            `opt` []
-        iConstrDecl = Just <$> constrDecl False <\> token Underscore
-                  <|> Nothing <$-> token Underscore
-
-iNewtypeDecl :: Parser Token IDecl a
-iNewtypeDecl =
-  iTypeDeclLhs INewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
-
-iTypeDecl :: Parser Token IDecl a
-iTypeDecl = iTypeDeclLhs ITypeDecl KW_type <*-> equals <*> type0
-
-iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
-             -> Parser Token a b
-iTypeDeclLhs f kw = f <$> position <*-> token kw <*> qtycon <*> many tyvar
-
-iFunctionDecl :: Parser Token IDecl a
-iFunctionDecl = IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
-                              <*> type0
--}
 
 -- ---------------------------------------------------------------------------
 -- Types

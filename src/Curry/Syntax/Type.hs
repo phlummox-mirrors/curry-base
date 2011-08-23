@@ -17,27 +17,18 @@
     an unlimited range of integer constants in Curry programs.
 -}
 
--- TODO: Extract the import declarations and move them to top-level:
---
--- data Module = Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
---     deriving (Eq, Read, Show, Data, Typeable)
---
--- data ImportDecl = ImportDecl Position ModuleIdent Qualified
---                              (Maybe ModuleIdent) (Maybe ImportSpec)
---
--- data Interface = Interface ModuleIdent [IImportDecl] [IDecl]
---     deriving (Eq, Read, Show, Data, Typeable)
---
--- data IImportDecl = IImportDecl Position ModuleIdent
-
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Curry.Syntax.Type
-  ( -- * Data types
-    Module (..), ExportSpec (..), Export (..), Decl (..), ImportSpec (..)
-  , Import (..), Qualified, ConstrDecl (..), NewConstrDecl (..), Infix (..)
-  , EvalAnnotation (..), CallConv (..), Interface (..), IDecl (..)
-  , TypeExpr (..), Equation (..), Lhs (..), Rhs (..), CondExpr (..)
+  ( -- * Module header
+    Module (..), ExportSpec (..), Export (..)
+  , ImportDecl (..), ImportSpec (..), Import (..), Qualified
+    -- * Interface
+  , Interface (..), IImportDecl (..), IDecl (..)
+    -- * Declarations
+  , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..)
+  , EvalAnnotation (..), CallConv (..), TypeExpr (..)
+  , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), ConstrTerm (..), Expression (..), InfixOp (..)
   , Statement (..), Alt (..), Field (..)
   ) where
@@ -51,7 +42,7 @@ import Curry.Base.Position
 -- Modules
 -- ---------------------------------------------------------------------------
 
-data Module = Module ModuleIdent (Maybe ExportSpec) [Decl]
+data Module = Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -63,34 +54,18 @@ data ExportSpec = Exporting Position [Export]
 
 data Export
   = Export         QualIdent         -- f/T
-  | ExportTypeWith QualIdent [Ident] -- T(C1,...,Cn)
-  | ExportTypeAll  QualIdent         -- T(..)
+  | ExportTypeWith QualIdent [Ident] -- T (C1,...,Cn)
+  | ExportTypeAll  QualIdent         -- T (..)
   | ExportModule   ModuleIdent       -- module M
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
--- Module declarations
+-- Import declaration and specification
 -- ---------------------------------------------------------------------------
 
-data Decl
-  = ImportDecl       Position ModuleIdent Qualified (Maybe ModuleIdent)
-                     (Maybe ImportSpec)
-  | InfixDecl        Position Infix Integer [Ident]
-  | DataDecl         Position Ident [Ident] [ConstrDecl]
-  | NewtypeDecl      Position Ident [Ident] NewConstrDecl
-  | TypeDecl         Position Ident [Ident] TypeExpr
-  | TypeSig          Position [Ident] TypeExpr
-  | EvalAnnot        Position [Ident] EvalAnnotation
-  | FunctionDecl     Position Ident [Equation]
-  | ExternalDecl     Position CallConv (Maybe String) Ident TypeExpr
-  | FlatExternalDecl Position [Ident]
-  | PatternDecl      Position ConstrTerm Rhs
-  | ExtraVariables   Position [Ident]
+data ImportDecl = ImportDecl Position ModuleIdent Qualified
+                             (Maybe ModuleIdent) (Maybe ImportSpec)
     deriving (Eq, Read, Show, Data, Typeable)
-
--- ---------------------------------------------------------------------------
--- Import specification
--- ---------------------------------------------------------------------------
 
 type Qualified = Bool
 
@@ -101,8 +76,51 @@ data ImportSpec
 
 data Import
   = Import         Ident            -- f/T
-  | ImportTypeWith Ident [Ident]    -- T(C1,...,Cn)
-  | ImportTypeAll  Ident            -- T(..)
+  | ImportTypeWith Ident [Ident]    -- T (C1,...,Cn)
+  | ImportTypeAll  Ident            -- T (..)
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- ---------------------------------------------------------------------------
+-- Module interfaces
+-- ---------------------------------------------------------------------------
+
+-- | Module interfaces
+--
+-- Interface declarations are restricted to type declarations and signatures.
+-- Note that an interface function declaration additionaly contains the
+-- function arity (= number of parameters) in order to generate
+-- correct FlatCurry function applications.
+data Interface = Interface ModuleIdent [IImportDecl] [IDecl]
+    deriving (Eq, Read, Show, Data, Typeable)
+
+data IImportDecl = IImportDecl Position ModuleIdent
+    deriving (Eq, Read, Show, Data, Typeable)
+
+data IDecl
+  = IInfixDecl     Position Infix Integer QualIdent
+  | HidingDataDecl Position Ident [Ident]
+  | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
+  | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
+  | ITypeDecl      Position QualIdent [Ident] TypeExpr
+  | IFunctionDecl  Position QualIdent Int TypeExpr
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- ---------------------------------------------------------------------------
+-- Module declarations
+-- ---------------------------------------------------------------------------
+
+data Decl
+  = InfixDecl        Position Infix Integer [Ident]
+  | DataDecl         Position Ident [Ident] [ConstrDecl]
+  | NewtypeDecl      Position Ident [Ident] NewConstrDecl
+  | TypeDecl         Position Ident [Ident] TypeExpr
+  | TypeSig          Position [Ident] TypeExpr
+  | EvalAnnot        Position [Ident] EvalAnnotation
+  | FunctionDecl     Position Ident [Equation]
+  | ExternalDecl     Position CallConv (Maybe String) Ident TypeExpr
+  | FlatExternalDecl Position [Ident]
+  | PatternDecl      Position ConstrTerm Rhs
+  | ExtraVariables   Position [Ident]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -128,42 +146,29 @@ data ConstrDecl
 -- Newtype declaration
 -- ---------------------------------------------------------------------------
 
-data NewConstrDecl
- = NewConstrDecl Position [Ident] Ident TypeExpr
+data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
    deriving (Eq, Read, Show, Data, Typeable)
+
+-- ---------------------------------------------------------------------------
+-- Evaluation annotation
+-- ---------------------------------------------------------------------------
 
 data EvalAnnotation
   = EvalRigid
   | EvalChoice
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- ---------------------------------------------------------------------------
+-- C calling convention
+-- ---------------------------------------------------------------------------
+
 data CallConv
   = CallConvPrimitive
   | CallConvCCall
     deriving (Eq, Read, Show, Data, Typeable)
 
--- | Module interfaces
---
--- Interface declarations are restricted to type declarations and signatures.
--- Note that an interface function declaration additionaly contains the
--- function arity (= number of parameters) in order to generate
--- correct FlatCurry function applications.
-
-data Interface = Interface ModuleIdent [IDecl]
-    deriving (Eq, Read, Show, Data, Typeable)
-
-data IDecl
-  = IImportDecl    Position ModuleIdent
-  | IInfixDecl     Position Infix Integer QualIdent
-  | HidingDataDecl Position Ident [Ident]
-  | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
-  | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
-  | ITypeDecl      Position QualIdent [Ident] TypeExpr
-  | IFunctionDecl  Position QualIdent Int TypeExpr
-    deriving (Eq, Read, Show, Data, Typeable)
-
 -- ---------------------------------------------------------------------------
--- Types
+-- Type expressions
 -- ---------------------------------------------------------------------------
 
 data TypeExpr
