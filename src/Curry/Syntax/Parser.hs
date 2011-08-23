@@ -719,7 +719,7 @@ ident = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
 
 qIdent :: Parser Token QualIdent a
 qIdent = qualify <$> ident <|> mkQIdent <$> position <*> token QId
-  where mkQIdent p a = qualifyWith (mkMIdent (modul a))
+  where mkQIdent p a = qualifyWith (mkMIdent (modulVal a))
                                    (mkIdentPosition p (sval a))
 
 mIdent :: Parser Token ModuleIdent a
@@ -727,7 +727,7 @@ mIdent = mIdent' <$> position <*>
      tokens [Id,QId,Id_as,Id_ccall,Id_forall,Id_hiding,
              Id_interface,Id_primitive,Id_qualified]
   where mIdent' p a = addPositionModuleIdent p $
-                     mkMIdent (modul a ++ [sval a])
+                     mkMIdent (modulVal a ++ [sval a])
 
 sym :: Parser Token Ident a
 sym = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
@@ -735,7 +735,7 @@ sym = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
 
 qSym :: Parser Token QualIdent a
 qSym = qualify <$> sym <|> mkQIdent <$> position <*> token QSym
-  where mkQIdent p a = qualifyWith (mkMIdent (modul a))
+  where mkQIdent p a = qualifyWith (mkMIdent (modulVal a))
                                    (mkIdentPosition p (sval a))
 
 colon :: Parser Token QualIdent a

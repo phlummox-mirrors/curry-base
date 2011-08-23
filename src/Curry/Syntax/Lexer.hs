@@ -27,6 +27,9 @@ import Curry.Base.LexComb
 import Curry.Base.LLParseComb (Symbol (..))
 import Curry.Base.Position
 
+-- TODO: Think about a Token representation with arguments instead of the
+-- category.
+
 -- ---------------------------------------------------------------------------
 -- Tokens; note that the equality and ordering instances of Token
 -- disregard the attributes.
@@ -150,12 +153,12 @@ data Category
 -- |Attributes associated to a token
 data Attributes
   = NoAttributes
-  | CharAttributes    { cval    :: Char    , original :: String}
-  | IntAttributes     { ival    :: Int     , original :: String}
-  | FloatAttributes   { fval    :: Double  , original :: String}
-  | IntegerAttributes { intval  :: Integer , original :: String}
-  | StringAttributes  { sval    :: String  , original :: String}
-  | IdentAttributes   { modul   :: [String], sval     :: String}
+  | CharAttributes    { cval     :: Char    , original :: String}
+  | IntAttributes     { ival     :: Int     , original :: String}
+  | FloatAttributes   { fval     :: Double  , original :: String}
+  | IntegerAttributes { intval   :: Integer , original :: String}
+  | StringAttributes  { sval     :: String  , original :: String}
+  | IdentAttributes   { modulVal :: [String], sval     :: String}
 
 instance Show Attributes where
   showsPrec _ NoAttributes             = showChar '_'
@@ -180,7 +183,7 @@ tok t = Token t NoAttributes
 -- |Construct a 'Token' for identifiers
 idTok :: Category -> [String] -> String -> Token
 idTok t mIdent ident = Token t
-  IdentAttributes { modul = mIdent, sval = ident }
+  IdentAttributes { modulVal = mIdent, sval = ident }
 
 -- |Construct a 'Token' for a single 'Char'
 charTok :: Char -> String -> Token
