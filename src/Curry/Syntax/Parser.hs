@@ -1,8 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  A Parser for Curry
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       Martin Engelke, Björn Peemöller
+    Copyright   :  (c) 1999-2004 Wolfgang Lux
+                       2005 Martin Engelke
+                       2011 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -24,13 +25,16 @@ import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (mk, mk', mkInt, addSrcRefs)
 
+-- |Parse a module
 parseSource :: Bool -> FilePath -> String -> MsgMonad Module
 parseSource flat path = fmap addSrcRefs
                       . applyParser (moduleHeader <*> decls flat) lexer path
 
+-- |Parse a module header
 parseHeader :: FilePath -> String -> MsgMonad Module
 parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
 
+-- |Parse an interface
 parseInterface :: FilePath -> String -> MsgMonad Interface
 parseInterface = applyParser interface lexer
 
@@ -38,6 +42,7 @@ parseInterface = applyParser interface lexer
 -- Module header
 -- ---------------------------------------------------------------------------
 
+-- |Parser for a module header
 moduleHeader :: Parser Token ([Decl] -> Module) a
 moduleHeader =  Module <$-> token KW_module
                        <*>  (mIdent <?> "module name expected")
@@ -46,41 +51,48 @@ moduleHeader =  Module <$-> token KW_module
                        <*>  importDecls
             <|> Module mainMIdent Nothing <$> importDecls
 
+-- |Parser for an export specification
 exportSpec :: Parser Token ExportSpec a
 exportSpec = Exporting <$> position <*> parens (export `sepBy` comma)
 
+-- |Parser for an export item
 export :: Parser Token Export a
-export = qtycon <**> (parens spec `opt` Export)
-     <|> Export <$> qfun <\> qtycon
-     <|> ExportModule <$-> token KW_module <*> mIdent
-  where spec = ExportTypeAll <$-> token DotDot
-           <|> flip ExportTypeWith <$> con `sepBy` comma
+export =  qtycon <**> (parens spec `opt` Export)
+      <|> Export <$> qfun <\> qtycon
+      <|> ExportModule <$-> token KW_module <*> mIdent
+  where spec =  ExportTypeAll <$-> token DotDot
+            <|> flip ExportTypeWith <$> con `sepBy` comma
 
+-- |Parser for import declarations
 importDecls :: Parser Token [ImportDecl] a
-importDecls = (leftBrace `opt` undefined)
+importDecls =   (leftBrace `opt` undefined)
            <-*> many (importDecl <*-> many semicolon)
 
+-- |Parser for a single import declaration
 importDecl :: Parser Token ImportDecl a
-importDecl =flip . ImportDecl
+importDecl =  flip . ImportDecl
           <$> position <*-> token KW_import
           <*> (True <$-> token Id_qualified `opt` False)
           <*> mIdent
           <*> (Just <$-> token Id_as <*> mIdent `opt` Nothing)
           <*> (Just <$> importSpec `opt` Nothing)
 
+-- |Parser for an import specification
 importSpec :: Parser Token ImportSpec a
-importSpec = position
+importSpec =   position
           <**> (Hiding <$-> token Id_hiding `opt` Importing)
-          <*> parens (spec `sepBy` comma)
-  where spec = tycon <**> (parens constrs `opt` Import)
+          <*>  parens (spec `sepBy` comma)
+  where
+    spec    =  tycon <**> (parens constrs `opt` Import)
            <|> Import <$> fun <\> tycon
-        constrs = ImportTypeAll <$-> token DotDot
-              <|> flip ImportTypeWith <$> con `sepBy` comma
+    constrs =  ImportTypeAll <$-> token DotDot
+           <|> flip ImportTypeWith <$> con `sepBy` comma
 
 -- ---------------------------------------------------------------------------
 -- Interfaces
 -- ---------------------------------------------------------------------------
 
+-- |Parser for an interface
 interface :: Parser Token Interface a
 interface =   Interface
          <$-> token Id_interface
@@ -91,53 +103,60 @@ interface =   Interface
          <*>  intfDecls
          <*-> rightBrace
 
+-- |Parser for interface import declarations
 iImportDecls :: Parser Token [IImportDecl] a
 iImportDecls = iImportDecl `sepBy` semicolon
 
+-- |Parser for a single interface import declaration
 iImportDecl :: Parser Token IImportDecl a
 iImportDecl = IImportDecl <$> position <*-> token KW_import <*> mIdent
 
+-- |Parser for interface declarations
 intfDecls :: Parser Token [IDecl] a
 intfDecls = intfDecl `sepBy` semicolon
 
+-- |Parser for a single interface declaration
 intfDecl :: Parser Token IDecl a
-intfDecl = iInfixDecl
-       <|> iHidingDecl <|> iDataDecl <|> iNewtypeDecl <|> iTypeDecl
-       <|> iFunctionDecl <\> token Id_hiding
+intfDecl =  iInfixDecl <|> iHidingDecl <|> iDataDecl <|> iNewtypeDecl
+        <|> iTypeDecl  <|> iFunctionDecl <\> token Id_hiding
 
+-- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
 iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
 
+-- |Parser for an interface hiding declaration
 iHidingDecl :: Parser Token IDecl a
 iHidingDecl = position <*-> token Id_hiding <**> (hDataDecl <|> hFuncDecl)
-  where hDataDecl = hiddenData <$-> token KW_data <*> tycon <*> many tyvar
+  where hDataDecl = hiddenData <$-> token KW_data     <*> tycon <*> many tyvar
         hFuncDecl = hidingFunc <$-> token DoubleColon <*> type0
         hiddenData tc tvs p = HidingDataDecl p tc tvs
         -- TODO: 0 was inserted to type check, but what is the meaning of this field?
         hidingFunc ty p = IFunctionDecl p hidingId 0 ty
         hidingId = qualify (mkIdent "hiding")
 
+-- |Parser for an interface data declaration
 iDataDecl :: Parser Token IDecl a
-iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs
-  where constrs = equals <-*> iConstrDecl `sepBy1` bar
-            `opt` []
-        iConstrDecl = Just <$> constrDecl False <\> token Underscore
-                  <|> Nothing <$-> token Underscore
+iDataDecl = iTypeDeclLhs IDataDecl KW_data <*-> equals <*> constrs
+  where constrs = iConstrDecl `sepBy1` bar `opt` []
+        iConstrDecl =  Just    <$>  constrDecl <\> token Underscore
+                   <|> Nothing <$-> token Underscore
 
+-- |Parser for an interface newtype declaration
 iNewtypeDecl :: Parser Token IDecl a
-iNewtypeDecl =
-  iTypeDeclLhs INewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
+iNewtypeDecl = iTypeDeclLhs INewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
+-- |Parser for an interface type synonym declaration
 iTypeDecl :: Parser Token IDecl a
 iTypeDecl = iTypeDeclLhs ITypeDecl KW_type <*-> equals <*> type0
+
+-- |Parser for an interface function declaration
+iFunctionDecl :: Parser Token IDecl a
+iFunctionDecl = IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
+              <*> succeed 0 <*> type0
 
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
 iTypeDeclLhs f kw = f <$> position <*-> token kw <*> qtycon <*> many tyvar
-
-iFunctionDecl :: Parser Token IDecl a
-iFunctionDecl = IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
-              <*> succeed 0 <*> type0
 
 -- ---------------------------------------------------------------------------
 -- Declarations
@@ -151,70 +170,65 @@ globalDecls flat = topDecl flat `sepBy` semicolon
 
 topDecl :: Bool -> Parser Token Decl a
 topDecl flat
-  | flat      = infixDecl <|> dataDecl flat <|> typeDecl <|> functionDecl flat
-  | otherwise = infixDecl <|> dataDecl flat <|> newtypeDecl <|> typeDecl
-            <|> functionDecl flat <|> externalDecl
-
-localDefs :: Bool -> Parser Token [Decl] a
-localDefs flat = token KW_where <-*> layout (valueDecls flat)
-           `opt` []
-
-valueDecls :: Bool -> Parser Token [Decl] a
-valueDecls flat = localDecl flat `sepBy` semicolon
-  where localDecl flat'
-          | flat' = infixDecl <|> valueDecl flat'
-          | otherwise = infixDecl <|> valueDecl flat' <|> externalDecl
+  | flat      =  infixDecl <|> dataDecl                 <|> typeDecl
+             <|> functionDecl flat
+  | otherwise =  infixDecl <|> dataDecl <|> newtypeDecl <|> typeDecl
+             <|> functionDecl flat <|> externalDecl
 
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
 
 infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
 infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> integer
-  where infixKW = [(KW_infix,Infix),(KW_infixl,InfixL),(KW_infixr,InfixR)]
+  where infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
-dataDecl :: Bool -> Parser Token Decl a
-dataDecl flat = typeDeclLhs DataDecl KW_data <*> constrs
-  where constrs = equals <-*> constrDecl flat `sepBy1` bar
-            `opt` []
+dataDecl :: Parser Token Decl a
+dataDecl = typeDeclLhs DataDecl KW_data  <*-> equals <*> constrs
+  where constrs = constrDecl `sepBy1` bar `opt` []
 
 newtypeDecl :: Parser Token Decl a
-newtypeDecl =
-  typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
+newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
 typeDecl :: Parser Token Decl a
-typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> typeDeclRhs --type0
+typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> typeDeclRhs --was type0
+  where typeDeclRhs = type0 <|> recordDecl
 
 typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
             -> Parser Token a b
 typeDeclLhs f kw = f <$> position <*-> token kw <*> tycon <*> many typeVar
-  where typeVar = tyvar <|> anonId <$-> token Underscore
+  where typeVar = tyvar <|> anonIdent
 
-typeDeclRhs :: Parser Token TypeExpr a
-typeDeclRhs = type0
-           <|> flip RecordType Nothing
-           <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
-
-labelDecls :: Parser Token ([Ident], TypeExpr) a
-labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0
-
-constrDecl :: Bool -> Parser Token ConstrDecl a
-constrDecl _flat = position <**> (existVars <**> constr)
-  where constr = conId <**> identDecl
-             <|> leftParen <-*> parenDecl
-             <|> type1 <\> conId <\> leftParen <**> opDecl
+constrDecl :: Parser Token ConstrDecl a
+constrDecl = position <**> (existVars <**> constr)
+  where constr =  conId     <**> identDecl
+              <|> leftParen <-*> parenDecl
+              <|> type1 <\> conId <\> leftParen <**> opDecl
         identDecl = many type2 <**> (conType <$> opDecl `opt` conDecl)
-        parenDecl = conOpDeclPrefix
-              <$> conSym <*-> rightParen <*> type2 <*> type2
-                <|> tupleType <*-> rightParen <**> opDecl
+        parenDecl =  conOpDeclPrefix
+                 <$> conSym <*-> rightParen <*> type2 <*> type2
+                 <|> tupleType <*-> rightParen <**> opDecl
         opDecl = conOpDecl <$> conop <*> type1
-        conType f tys c = f (ConstructorType (qualify c) tys)
-        conDecl tys c tvs p = ConstrDecl p tvs c tys
-        conOpDecl op ty2 ty1 tvs p = ConOpDecl p tvs ty1 op ty2
+        conType f tys c                  = f $ ConstructorType (qualify c) tys
+        conDecl tys c tvs p              = ConstrDecl p tvs c tys
+        conOpDecl op ty2 ty1 tvs p       = ConOpDecl p tvs ty1 op ty2
         conOpDeclPrefix op ty1 ty2 tvs p = ConOpDecl p tvs ty1 op ty2
 
 newConstrDecl :: Parser Token NewConstrDecl a
 newConstrDecl =
   NewConstrDecl <$> position <*> existVars <*> con <*> type2
+
+recordDecl :: Parser Token TypeExpr a
+recordDecl =  flip RecordType Nothing
+          <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
+
+labelDecls :: Parser Token ([Ident], TypeExpr) a
+labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0
+
+valueDecls :: Bool -> Parser Token [Decl] a
+valueDecls flat = localDecl `sepBy` semicolon
+  where localDecl
+          | flat      = infixDecl <|> valueDecl flat
+          | otherwise = infixDecl <|> valueDecl flat <|> externalDecl
 
 existVars :: Parser Token [Ident] a
 {-
@@ -228,21 +242,21 @@ functionDecl :: Bool -> Parser Token Decl a
 functionDecl flat = position <**> decl
   where decl = fun `sepBy1` comma <**> funListDecl flat
           <|?> funDecl <$> lhs <*> declRhs flat
-        lhs = (\f -> (f,FunLhs f [])) <$> fun
+        lhs = (\f -> (f, FunLhs f [])) <$> fun
          <|?> funLhs
 
 valueDecl :: Bool -> Parser Token Decl a
 valueDecl flat = position <**> decl
-  where decl = var `sepBy1` comma <**> valListDecl flat
-          <|?> valDecl <$> constrTerm0 <*> declRhs flat
-          <|?> funDecl <$> curriedLhs <*> declRhs flat
+  where decl =   var `sepBy1` comma <**> valListDecl flat
+            <|?> valDecl <$> constrTerm0 <*> declRhs flat
+            <|?> funDecl <$> curriedLhs <*> declRhs flat
         valDecl (ConstructorPattern c ts)
           | not (isConstrId c) = funDecl (f,FunLhs f ts)
           where f = unqualify c
         valDecl t = opDecl id t
         opDecl f (InfixPattern t1 op t2)
           | isConstrId op = opDecl (f . InfixPattern t1 op) t2
-          | otherwise = funDecl (op',OpLhs (f t1) op' t2)
+          | otherwise    = funDecl (op', OpLhs (f t1) op' t2)
           where op' = unqualify op
         opDecl f t = patDecl (f t)
         isConstrId c = c == qConsId || isQualified c || isQTupleId c
@@ -255,14 +269,14 @@ patDecl t rhs' p = PatternDecl p t rhs'
 
 funListDecl :: Bool -> Parser Token ([Ident] -> Position -> Decl) a
 funListDecl flat
-  | flat = typeSig <$-> token DoubleColon <*> type0
-       <|> evalAnnot <$-> token KW_eval <*> tokenOps evalKW
-       <|> externalDecl' <$-> token KW_external
-  | otherwise = typeSig <$-> token DoubleColon <*> type0
-            <|> evalAnnot <$-> token KW_eval <*> tokenOps evalKW
-  where typeSig ty vs p = TypeSig p vs ty
-        evalAnnot ev vs p = EvalAnnot p vs ev
-        evalKW = [(KW_rigid,EvalRigid),(KW_choice,EvalChoice)]
+  | flat      =  typeSig       <$-> token DoubleColon <*> type0
+             <|> evalAnnot     <$-> token KW_eval     <*> tokenOps evalKW
+             <|> externalDecl' <$-> token KW_external
+  | otherwise =  typeSig       <$-> token DoubleColon <*> type0
+             <|> evalAnnot     <$-> token KW_eval     <*> tokenOps evalKW
+  where typeSig ty vs p    = TypeSig p vs ty
+        evalAnnot ev vs p  = EvalAnnot p vs ev
+        evalKW             = [(KW_rigid, EvalRigid), (KW_choice, EvalChoice)]
         externalDecl' vs p = FlatExternalDecl p vs
 
 valListDecl :: Bool -> Parser Token ([Ident] -> Position -> Decl) a
@@ -292,17 +306,20 @@ declRhs flat = rhs flat equals
 
 rhs :: Bool -> Parser Token a b -> Parser Token Rhs b
 rhs flat eq = rhsExpr <*> localDefs flat
-  where rhsExpr = SimpleRhs <$-> eq <*> position <*> expr flat
-              <|> GuardedRhs <$> many1 (condExpr flat eq)
+  where rhsExpr =  SimpleRhs <$-> eq <*> position <*> expr flat
+               <|> GuardedRhs <$> many1 (condExpr flat eq)
+
+localDefs :: Bool -> Parser Token [Decl] a
+localDefs flat = token KW_where <-*> layout (valueDecls flat) `opt` []
 
 externalDecl :: Parser Token Decl a
-externalDecl =
-  ExternalDecl <$> position <*-> token KW_external
-               <*> callConv <*> (Just <$> string `opt` Nothing)
-               <*> fun <*-> token DoubleColon <*> type0
-  where callConv = CallConvPrimitive <$-> token Id_primitive
-               <|> CallConvCCall <$-> token Id_ccall
-               <?> "Unsupported calling convention"
+externalDecl = ExternalDecl
+            <$> position <*-> token KW_external
+            <*> callConv <*> (Just <$> string `opt` Nothing)
+            <*> fun <*-> token DoubleColon <*> type0
+  where callConv =  CallConvPrimitive <$-> token Id_primitive
+                <|> CallConvCCall <$-> token Id_ccall
+                <?> "Unsupported calling convention"
 
 -- ---------------------------------------------------------------------------
 -- Types
@@ -313,13 +330,13 @@ type0 = type1 `chainr1` (ArrowType <$-> token RightArrow)
 
 type1 :: Parser Token TypeExpr a
 type1 = ConstructorType <$> qtycon <*> many type2
-    <|> type2 <\> qtycon
+     <|> type2 <\> qtycon
 
 type2 :: Parser Token TypeExpr a
 type2 = anonType <|> identType <|> parenType <|> listType
 
 anonType :: Parser Token TypeExpr a
-anonType = VariableType anonId <$-> token Underscore
+anonType = VariableType <$> anonIdent
 
 identType :: Parser Token TypeExpr a
 identType = VariableType <$> tyvar
@@ -331,7 +348,7 @@ parenType = parens tupleType
 tupleType :: Parser Token TypeExpr a
 tupleType = type0 <??> (tuple <$> many1 (comma <-*> type0))
       `opt` TupleType []
-  where tuple tys ty = TupleType (ty:tys)
+  where tuple tys ty = TupleType (ty : tys)
 
 listType :: Parser Token TypeExpr a
 listType = ListType <$> brackets type0
@@ -354,40 +371,41 @@ constrTerm0 :: Parser Token ConstrTerm a
 constrTerm0 = constrTerm1 `chainr1` (flip InfixPattern <$> gconop)
 
 constrTerm1 :: Parser Token ConstrTerm a
-constrTerm1 = varId <**> identPattern'
-    <|> ConstructorPattern <$> qConId <\> varId <*> many constrTerm2
-          <|> minus <**> negNum
-          <|> fminus <**> negFloat
-          <|> leftParen <-*> parenPattern'
-          <|> constrTerm2 <\> qConId <\> leftParen
-  where identPattern' = optAsPattern
-                   <|> conPattern <$> many1 constrTerm2
-        parenPattern' = minus <**> minusPattern negNum
-                   <|> fminus <**> minusPattern negFloat
-                   <|> gconPattern
-                   <|> funSym <\> minus <\> fminus <*-> rightParen
-                                                   <**> identPattern'
-                   <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
-        minusPattern p = rightParen <-*> identPattern'
-                     <|> parenMinusPattern p <*-> rightParen
-        gconPattern = ConstructorPattern <$> gconId <*-> rightParen
-                                         <*> many constrTerm2
-        conPattern ts = flip ConstructorPattern ts . qualify
+constrTerm1 =  varId <**> identPattern'
+           <|> ConstructorPattern <$> qConId <\> varId <*> many constrTerm2
+           <|> minus <**> negNum
+           <|> fminus <**> negFloat
+           <|> leftParen <-*> parenPattern'
+           <|> constrTerm2 <\> qConId <\> leftParen
+  where
+    identPattern' =  optAsPattern
+                  <|> conPattern <$> many1 constrTerm2
+    parenPattern' = minus <**> minusPattern negNum
+                  <|> fminus <**> minusPattern negFloat
+                  <|> gconPattern
+                  <|> funSym <\> minus <\> fminus <*-> rightParen
+                                                  <**> identPattern'
+                  <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
+    minusPattern p = rightParen <-*> identPattern'
+                  <|> parenMinusPattern p <*-> rightParen
+    gconPattern = ConstructorPattern <$> gconId <*-> rightParen
+                                      <*> many constrTerm2
+    conPattern ts = flip ConstructorPattern ts . qualify
 
 constrTerm2 :: Parser Token ConstrTerm a
-constrTerm2 = literalPattern <|> anonPattern <|> identPattern
-          <|> parenPattern <|> listPattern <|> lazyPattern
-    <|> recordPattern
+constrTerm2 =  literalPattern <|> anonPattern <|> identPattern
+           <|> parenPattern   <|> listPattern <|> lazyPattern
+           <|> recordPattern
 
 literalPattern :: Parser Token ConstrTerm a
 literalPattern = LiteralPattern <$> literal
 
 anonPattern :: Parser Token ConstrTerm a
-anonPattern = VariablePattern anonId <$-> token Underscore
+anonPattern = VariablePattern <$> anonIdent
 
 identPattern :: Parser Token ConstrTerm a
-identPattern = varId <**> optAsPattern
-           <|> flip ConstructorPattern [] <$> qConId <\> varId
+identPattern =  varId <**> optAsPattern
+            <|> flip ConstructorPattern [] <$> qConId <\> varId
 
 parenPattern :: Parser Token ConstrTerm a
 parenPattern = leftParen <-*> parenPattern'
@@ -479,20 +497,16 @@ expr2 flat = lambdaExpr flat <|> letExpr flat <|> doExpr flat
                    <|?> (\es e -> foldl1 Apply (e:es))
                     <$> many (expr3 flat)
 
--- 2011-02-17 (bjp): Anonymous free variables added
-
 expr3 :: Bool -> Parser Token Expression a
-expr3 flat = expr3'
-  where
-  expr3' = constant <|> anonFreeVariable <|> variable
-       <|> parenExpr flat <|> listExpr flat <|> recordExpr flat
+expr3 flat =  constant       <|> anonFreeVariable <|> variable
+          <|> parenExpr flat <|> listExpr flat    <|> recordExpr flat
 
 constant :: Parser Token Expression a
 constant = Literal <$> literal
 
 anonFreeVariable :: Parser Token Expression a
-anonFreeVariable = Variable . qualify . (\pos -> addPositionIdent pos anonId)
-                   <$> position <*-> token Underscore
+anonFreeVariable =  (\ p v -> Variable $ qualify $ addPositionIdent p v)
+                <$> position <*> anonIdent
 
 variable :: Parser Token Expression a
 variable = Variable <$> qFunId
@@ -557,9 +571,9 @@ recordExpr flat = layoutOff <-*> braces content
                   <*-> checkBinds <*> expr flat
 
 lambdaExpr :: Bool -> Parser Token Expression a
-lambdaExpr flat =
-  mk Lambda <$-> token Backslash <*> many1 constrTerm2
-         <*-> (token RightArrow <?> "-> expected") <*> expr flat
+lambdaExpr flat =   mk Lambda
+               <$-> token Backslash <*> many1 constrTerm2
+               <*-> (token RightArrow <?> "-> expected") <*> expr flat
 
 letExpr :: Bool -> Parser Token Expression a
 letExpr flat = Let <$-> token KW_let <*> layout (valueDecls flat)
@@ -569,10 +583,10 @@ doExpr :: Bool -> Parser Token Expression a
 doExpr flat = uncurry Do <$-> token KW_do <*> layout (stmts flat)
 
 ifExpr :: Bool -> Parser Token Expression a
-ifExpr flat =
-  mk IfThenElse <$-> token KW_if <*> expr flat
-             <*-> (token KW_then <?> "then expected") <*> expr flat
-             <*-> (token KW_else <?> "else expected") <*> expr flat
+ifExpr flat =   mk IfThenElse
+           <$-> token KW_if <*> expr flat
+           <*-> (token KW_then <?> "then expected") <*> expr flat
+           <*-> (token KW_else <?> "else expected") <*> expr flat
 
 caseExpr :: Bool -> Parser Token Expression a
 caseExpr flat = mk Case <$-> token KW_case <*> expr flat
@@ -582,7 +596,8 @@ alts :: Bool -> Parser Token [Alt] a
 alts flat = alt flat `sepBy1` semicolon
 
 alt :: Bool -> Parser Token Alt a
-alt flat = Alt <$> position <*> constrTerm0
+alt flat = Alt <$> position
+               <*> constrTerm0
                <*> rhs flat (token RightArrow <?> "-> expected")
 
 -- ---------------------------------------------------------------------------
@@ -713,15 +728,8 @@ gconop = gConSym <|> backquotes (qConId <?> "operator name expected")
 -- qconop :: Parser Token QualIdent a
 -- qconop = qConSym <|> backquotes (qConId <?> "operator name expected")
 
-ident :: Parser Token Ident a
-ident = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
-       tokens [Id,Id_as,Id_ccall,Id_forall,Id_hiding,
-               Id_interface,Id_primitive,Id_qualified]
-
-qIdent :: Parser Token QualIdent a
-qIdent = qualify <$> ident <|> mkQIdent <$> position <*> token QId
-  where mkQIdent p a = qualifyWith (mkMIdent (modulVal a))
-                                   (mkIdentPosition p (sval a))
+anonIdent :: Parser Token Ident a
+anonIdent = anonId <$-> token Underscore
 
 mIdent :: Parser Token ModuleIdent a
 mIdent = mIdent' <$> position <*>
@@ -729,6 +737,17 @@ mIdent = mIdent' <$> position <*>
              Id_interface,Id_primitive,Id_qualified]
   where mIdent' p a = addPositionModuleIdent p $
                      mkMIdent (modulVal a ++ [sval a])
+
+ident :: Parser Token Ident a
+ident = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
+       tokens [Id,Id_as,Id_ccall,Id_forall,Id_hiding,
+               Id_interface,Id_primitive,Id_qualified]
+
+qIdent :: Parser Token QualIdent a
+qIdent =  qualify  <$> ident
+      <|> mkQIdent <$> position <*> token QId
+  where mkQIdent p a = qualifyWith (mkMIdent (modulVal a))
+                                   (mkIdentPosition p (sval a))
 
 sym :: Parser Token Ident a
 sym = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
@@ -760,17 +779,23 @@ tupleCommas = (\ p -> qualify . addPositionIdent p . tupleId . succ . length )
 -- ---------------------------------------------------------------------------
 
 layout :: Parser Token a b -> Parser Token a b
-layout p = layoutOff <-*> bracket leftBraceSemicolon p rightBrace
-       <|> layoutOn <-*> p <*-> (token VRightBrace <|> layoutEnd)
+layout p =  layoutOff <-*> bracket leftBraceSemicolon p rightBrace
+        <|> layoutOn  <-*> p <*-> (token VRightBrace <|> layoutEnd)
 
 -- ---------------------------------------------------------------------------
--- More combinators
+-- Bracket combinators
 -- ---------------------------------------------------------------------------
 
-braces, brackets, parens, backquotes :: Parser Token a b -> Parser Token a b
+braces :: Parser Token a b -> Parser Token a b
 braces p = bracket leftBrace p rightBrace
+
+brackets :: Parser Token a b -> Parser Token a b
 brackets p = bracket leftBracket p rightBracket
+
+parens :: Parser Token a b -> Parser Token a b
 parens p = bracket leftParen p rightParen
+
+backquotes :: Parser Token a b -> Parser Token a b
 backquotes p = bracket backquote p checkBackquote
 
 -- ---------------------------------------------------------------------------
@@ -785,7 +810,7 @@ tokens :: [Category] -> Parser Token Attributes a
 tokens = foldr1 (<|>) . map token
 
 tokenOps :: [(Category,a)] -> Parser Token a b
-tokenOps cs = ops [(Token c NoAttributes,x) | (c,x) <- cs]
+tokenOps cs = ops [(Token c NoAttributes, x) | (c,x) <- cs]
 
 comma, semicolon, bar, equals, binds :: Parser Token Attributes a
 comma = token Comma
