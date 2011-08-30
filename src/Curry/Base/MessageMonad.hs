@@ -50,6 +50,9 @@ showWarning w = "Warning: " ++ show w
 showError :: Message -> String
 showError w = "Error: " ++ show w
 
+toMessage :: Position -> String -> Message
+toMessage pos msg = Message (Just pos) msg
+
 -- ---------------------------------------------------------------------------
 -- Message Monad
 -- ---------------------------------------------------------------------------
@@ -64,7 +67,7 @@ failWith = throwError . strMsg
 
 -- |Abort the computation with an error message at a certain position
 failWithAt :: (MonadError Message m) => Position -> String -> m a
-failWithAt p = throwError . Message (Just p)
+failWithAt p msg = throwError $ toMessage p msg
 
 -- |Report a warning message
 warnMessage :: (MonadWriter [Message] m) => String -> m ()
@@ -72,7 +75,7 @@ warnMessage s = tell [Message Nothing s]
 
 -- |Report a warning message for a given position
 warnMessageAt :: (MonadWriter [Message] m) => Position -> String -> m ()
-warnMessageAt p s  = tell [Message (Just p) s]
+warnMessageAt p s  = tell [toMessage p s]
 
 -- ---------------------------------------------------------------------------
 -- Simple Message Monad
