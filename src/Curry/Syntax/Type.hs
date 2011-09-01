@@ -107,17 +107,17 @@ data IDecl
 -- ---------------------------------------------------------------------------
 
 data Decl
-  = InfixDecl        Position Infix Integer [Ident]
-  | DataDecl         Position Ident [Ident] [ConstrDecl]
-  | NewtypeDecl      Position Ident [Ident] NewConstrDecl
-  | TypeDecl         Position Ident [Ident] TypeExpr
-  | TypeSig          Position [Ident] TypeExpr
-  | EvalAnnot        Position [Ident] EvalAnnotation
-  | FunctionDecl     Position Ident [Equation]
-  | ExternalDecl     Position CallConv (Maybe String) Ident TypeExpr
-  | FlatExternalDecl Position [Ident]
-  | PatternDecl      Position ConstrTerm Rhs
-  | ExtraVariables   Position [Ident]
+  = InfixDecl        Position Infix Integer [Ident]        -- infixl5 (op1), (op2)
+  | DataDecl         Position Ident [Ident] [ConstrDecl]   -- data C a b = C1 a | C2 b
+  | NewtypeDecl      Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
+  | TypeDecl         Position Ident [Ident] TypeExpr       -- type C a b = D a b
+  | TypeSig          Position [Ident] TypeExpr             -- f, g :: Bool
+  | EvalAnnot        Position [Ident] EvalAnnotation       -- ???
+  | FunctionDecl     Position Ident [Equation]             -- f True = ... ; f False = ...
+  | ExternalDecl     Position CallConv (Maybe String) Ident TypeExpr -- ???
+  | FlatExternalDecl Position [Ident]                      -- ???
+  | PatternDecl      Position ConstrTerm Rhs               -- Just x = ...
+  | ExtraVariables   Position [Ident]                      -- x, y free
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
