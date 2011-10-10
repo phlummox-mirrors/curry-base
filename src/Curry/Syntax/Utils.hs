@@ -1,6 +1,6 @@
 module Curry.Syntax.Utils
   ( isEvalAnnot, isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl
+  , isRecordDecl, patchModuleId
   , flatLhs, mk', mk, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
@@ -11,6 +11,19 @@ import Data.Generics
 import Curry.Base.Ident
 import Curry.Base.Position
 import Curry.Syntax.Type
+
+import Curry.Files.PathUtils
+
+-- A module which doesn't contain a \texttt{module ... where} declaration
+-- obtains its filename as module identifier (unlike the definition in
+-- Haskell and original MCC where a module obtains \texttt{main}).
+
+patchModuleId :: FilePath -> Module -> Module
+patchModuleId fn m@(Module mid es is ds)
+  | mid == mainMIdent
+    = Module (mkMIdent [takeBaseName fn]) es is ds
+  | otherwise
+    = m
 
 isInfixDecl :: Decl -> Bool
 isInfixDecl (InfixDecl _ _ _ _) = True
