@@ -223,8 +223,8 @@ nestedCommentTok s = Token NestedComment
   StringAttributes { sval = s, original = s }
 
 -- |Construct a 'Token' for a compiler pragma
-pragmaTok :: String -> Token
-pragmaTok s = Token Pragma StringAttributes { sval = s, original = s }
+-- pragmaTok :: String -> Token
+-- pragmaTok s = Token Pragma StringAttributes { sval = s, original = s }
 
 -- ---------------------------------------------------------------------------
 -- The \texttt{Show} instance of \texttt{Token} is designed to display
@@ -421,7 +421,7 @@ lexer success fail = skipBlanks
     skipBlanks p ('\t':s) bol  = skipBlanks (tab p) s bol
     skipBlanks p ('\n':s) _bol = skipBlanks (nl p) s True
     skipBlanks p ('-':'-':s) _bol    = skipBlanks (nl p) (tail' (dropWhile (/= '\n') s)) True
-    skipBlanks p ('{':'-':'#':s) bol = lexPragma id p success fail (incr p 3) s bol
+--     skipBlanks p ('{':'-':'#':s) bol = lexPragma id p success fail (incr p 3) s bol
     skipBlanks p ('{':'-':s) bol =
       skipNestedComment p skipBlanks fail (incr p 2) s bol
     skipBlanks p (c:s) bol
@@ -438,7 +438,7 @@ fullLexer success fail = skipBlanks
     skipBlanks p ('\t':s) bol = skipBlanks (tab p) s bol
     skipBlanks p ('\n':s) _bol = skipBlanks (nl p) s True
     skipBlanks p s@('-':'-':_) bol = lexLineComment success p s bol
-    skipBlanks p s@('{':'-':'#':_) bol = lexPragma id p success fail p s bol
+--     skipBlanks p s@('{':'-':'#':_) bol = lexPragma id p success fail (incr p 3) s bol
     skipBlanks p s@('{':'-':_) bol     = lexNestedComment 0 id p success fail p s bol
     skipBlanks p (c:s) bol
       | isSpace c = skipBlanks (next p) s bol
@@ -449,17 +449,17 @@ lexLineComment :: SuccessP a -> P a
 lexLineComment success p s = case break (=='\n') s of
   (comment,rest) -> success p (lineCommentTok comment) (incr p (length comment)) rest
 
-lexPragma :: (String -> String) -> Position -> SuccessP a -> FailP a -> P a
-lexPragma prag p0 success _ p ('#':'-':'}':s)
-  = success p0 (pragmaTok (prag "#-}")) (incr p 3) s
-lexPragma prag p0 success fail p (c@'\t':s)
-  = lexPragma (prag . (c:)) p0 success fail (tab p) s
-lexPragma prag p0 success fail p (c@'\n':s)
-  = lexPragma (prag . (c:)) p0 success fail (nl p) s
-lexPragma prag p0 success fail p (c:s)
-  = lexPragma (prag . (c:)) p0 success fail (next p) s
-lexPragma _ p0 _ fail p ""
-  = fail p0 "Unterminated pragma" p []
+-- lexPragma :: (String -> String) -> Position -> SuccessP a -> FailP a -> P a
+-- lexPragma prag p0 success _ p ('#':'-':'}':s)
+--   = success p0 (pragmaTok (prag "")) (incr p 3) s
+-- lexPragma prag p0 success fail p (c@'\t':s)
+--   = lexPragma (prag . (c:)) p0 success fail (tab p) s
+-- lexPragma prag p0 success fail p (c@'\n':s)
+--   = lexPragma (prag . (c:)) p0 success fail (nl p) s
+-- lexPragma prag p0 success fail p (c:s)
+--   = lexPragma (prag . (c:)) p0 success fail (next p) s
+-- lexPragma _ p0 _ fail p ""
+--   = fail p0 "Unterminated pragma" p []
 
 lexNestedComment :: Int -> (String -> String) ->
                     Position -> SuccessP a -> FailP a -> P a
