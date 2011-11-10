@@ -2,6 +2,7 @@
     Module      :  $Header$
     Description :  Identifiers
     Copyright   :  (c) 1999-2004, Wolfgang Lux
+                       2011, Björn Peemöller (bjp@informatik.uni-kiel.de)
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -24,7 +25,7 @@
 
 module Curry.Base.Ident
   ( -- * Module identifiers
-    ModuleIdent (..), mkMIdent, moduleName, fromModuleName
+    ModuleIdent (..), mkMIdent, moduleName, fromModuleName, isModuleName
   , addPositionModuleIdent
 
     -- * Local identifiers
@@ -62,7 +63,7 @@ module Curry.Base.Ident
   ) where
 
 import Control.Monad (liftM)
-import Data.Char (isAlphaNum)
+import Data.Char (isAlpha, isAlphaNum)
 import Data.Function (on)
 import Data.Generics (Data(..), Typeable(..))
 import Data.List (intercalate, isInfixOf, isPrefixOf)
@@ -101,13 +102,26 @@ mkMIdent = ModuleIdent NoPos
 moduleName :: ModuleIdent -> String
 moduleName = intercalate "." . moduleQualifiers
 
+isModuleName :: String -> Bool
+isModuleName [] = False -- Module names may not be empty
+isModuleName qs = all isModuleIdentifier $ splitIdentifiers qs
+  where
+  -- components of a module identifier may not be null
+  isModuleIdentifier []     = False
+  -- components of a module identifier must start with a letter and consist
+  -- of letter, digits, underscores or single quotes
+  isModuleIdentifier (c:cs) = isAlpha c && all isIdent cs
+  isIdent c = isAlphaNum c || c `elem` "'_"
+
+splitIdentifiers :: String -> [String]
+splitIdentifiers s = let (pref, rest) = break (== '.') s in
+  pref : case rest of
+    []     -> []
+    (_:s') -> splitIdentifiers s'
+
 -- | Resemble the hierarchical module name from a 'String'
 fromModuleName :: String -> ModuleIdent
-fromModuleName = mkMIdent . splitQualifiers
-  where splitQualifiers s = let (pref, rest) = break (== '.') s in
-          pref : case rest of
-            []     -> []
-            (_:s') -> splitQualifiers s'
+fromModuleName = mkMIdent . splitIdentifiers
 
 -- | Add a 'Position' to a 'ModuleIdent'
 addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
@@ -342,7 +356,7 @@ consId  = mkIdent ":"
 -- | Construct an 'Ident' for an n-ary tuple where n >= 2
 tupleId :: Int -> Ident
 tupleId n
-  | n >= 2    = Ident NoPos ("(" ++ replicate (n - 1) ',' ++ ")") 0
+  | n >= 2    = mkIdent $ "(" ++ replicate (n - 1) ',' ++ ")"
   | otherwise = error $ "Curry.Base.Ident.tupleId: " ++ show n
 
 -- | Check whether an 'Ident' is an identifier for an tuple type
@@ -455,7 +469,7 @@ qTupleArity = tupleArity . unqualify
 
 -- | Construct an 'Ident' for a function pattern
 fpSelectorId :: Int -> Ident
-fpSelectorId n = Ident NoPos (fpSelExt ++ show n) 0
+fpSelectorId n = mkIdent $ fpSelExt ++ show n
 
 -- | Check whether an 'Ident' is an identifier for a function pattern
 isFpSelectorId :: Ident -> Bool

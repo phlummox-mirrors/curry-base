@@ -38,7 +38,7 @@ module Curry.Files.Filenames
 
 import System.FilePath (replaceExtension)
 
--- |The hidden subdirectory for curry files
+-- |The standard hidden subdirectory for curry files
 currySubdir :: String
 currySubdir = ".curry"
 
@@ -54,11 +54,20 @@ lcurryExt = ".lcurry"
 icurryExt :: String
 icurryExt = ".icurry"
 
--- |Filename extension for curry source files
+-- |Filename extension for curry source files.
+--
+-- /Note:/ The order of the extensions defines the order in which source files
+-- should be searched for, i.e. given a module name @M@, the search order
+-- should be the following:
+--
+-- 1. @M.curry@
+-- 2. @M.lcurry@
+--
 sourceExts :: [String]
 sourceExts = [curryExt, lcurryExt]
 
 -- |Filename extension for curry module files
+-- TODO: Is the order correct?
 moduleExts :: [String]
 moduleExts = sourceExts ++ [icurryExt]
 
