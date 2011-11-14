@@ -29,7 +29,7 @@ import Data.Char (isSpace)
 import Data.List (intercalate)
 
 import Curry.Files.Filenames (flatName, flatIntName)
-import Curry.Files.PathUtils (writeModule, maybeReadModule)
+import Curry.Files.PathUtils (writeModule, readModule)
 
 -- ---------------------------------------------------------------------------
 -- Definition of data types for representing FlatCurry programs
@@ -372,7 +372,7 @@ readFlatInterface = readFlat . flatIntName
     at the beginning of the file enclosed in {- ... -}.
 -}
 readFlat :: FilePath -> IO (Maybe Prog)
-readFlat = liftM (liftM (read . skipComment)) . maybeReadModule where
+readFlat = liftM (liftM (read . skipComment)) . readModule where
   skipComment s = case dropWhile isSpace s of
       '{' : '-' : s' -> dropComment s'
       s'             -> s'

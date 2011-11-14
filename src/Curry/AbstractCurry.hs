@@ -311,8 +311,8 @@ data CBranchExpr = CBranch CPattern CExpr
 
 -- |Read an AbstractCurry file and return the corresponding AbstractCurry
 --  program term of type 'CurryProg'
-readCurry :: FilePath -> IO CurryProg
-readCurry = liftM read . readModule
+readCurry :: FilePath -> IO (Maybe CurryProg)
+readCurry = liftM (fmap read) . readModule
 
 -- |Write an AbstractCurry program term into a file.
 --

@@ -35,7 +35,7 @@ import System.FilePath
 
 import Curry.Base.Position (SrcRef)
 import Curry.Files.Filenames (flatName, extFlatName)
-import Curry.Files.PathUtils (writeModule, maybeReadModule)
+import Curry.Files.PathUtils (writeModule, readModule)
 
 
 
@@ -404,7 +404,7 @@ readFlatInterface fn
 -- Reads a Flat file and returns the corresponding term (type 'Prog') as
 -- a value of type 'Maybe'.
 readFlat :: FilePath -> IO (Maybe Prog)
-readFlat = liftM (fmap read) . maybeReadModule
+readFlat = liftM (fmap read) . readModule
 
 -- Writes a FlatCurry program term into a file.
 -- If the flag is set, it will be the hidden .curry sub directory.

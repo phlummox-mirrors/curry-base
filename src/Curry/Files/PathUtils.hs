@@ -22,8 +22,7 @@ module Curry.Files.PathUtils
   , lookupFileIn          , lookupFile
 
     -- * Reading and writing modules from files
-  , writeModule, readModule, tryReadModule
-  , doesModuleExist, getModuleModTime, tryGetModuleModTime
+  , doesModuleExist, getModuleModTime, writeModule, readModule
   ) where
 
 import qualified Control.Exception as C (IOException, handle)
@@ -140,10 +139,10 @@ writeModule inSubdir fn contents = do
   createDirectoryIfMissing True $ takeDirectory fn'
   writeFile fn' contents
 
--- | Tries to read the specified module and returns either 'Just String' if
+-- | Read the specified module and returns either 'Just String' if
 -- reading was successful or 'Nothing' otherwise.
-tryReadModule :: FilePath -> IO (Maybe String)
-tryReadModule = tryOnExistingFile readFile
+readModule :: FilePath -> IO (Maybe String)
+readModule = tryOnExistingFile readFile
 
 -- | Check whether a module exists either in the given directory or in the
 -- 'currySubdir'.
@@ -151,19 +150,9 @@ doesModuleExist :: FilePath -> IO Bool
 doesModuleExist f = liftM2 (||) (doesFileExist f)
                                 (doesFileExist $ ensureCurrySubdir f)
 
-tryGetModuleModTime :: FilePath -> IO (Maybe ClockTime)
-tryGetModuleModTime = tryOnExistingFile getModificationTime
-
--- | Read the content from a file in the given directory or in the
--- 'currySubdir' sub-directory of the given sub-directory.
-{-# DEPRECATED readModule "Don't use this function as it may raise an IOError; use 'tryReadModule' instead." #-}
-readModule :: FilePath -> IO String
-readModule = onExistingFileDo readFile
-
--- | Get the modification time of a file, may raise an IO error
-{-# DEPRECATED getModuleModTime "Don't use this function as it may raise an IOError; use 'tryGetModuleModTime' instead." #-}
-getModuleModTime :: FilePath -> IO ClockTime
-getModuleModTime = onExistingFileDo getModificationTime
+-- | Get the modification time of a file, if existent
+getModuleModTime :: FilePath -> IO (Maybe ClockTime)
+getModuleModTime = tryOnExistingFile getModificationTime
 
 -- ---------------------------------------------------------------------------
 -- Helper functions
@@ -193,15 +182,6 @@ ensureSubdir subdir file
   addSub dirs | null dirs           = subdir
               | last dirs == subdir = joinPath dirs
               | otherwise           = joinPath dirs </> subdir
-
--- | Perform an action on a file either in the given directory or else in the
--- 'currySubdir' sub-directory.
--- BAD: Throws exception on non-existent file
-onExistingFileDo :: (FilePath -> IO a) -> FilePath -> IO a
-onExistingFileDo act fn = do
-  exists <- doesFileExist fn
-  if exists then act fn
-            else act $ ensureCurrySubdir fn
 
 tryOnExistingFile :: (FilePath -> IO a) -> FilePath -> IO (Maybe a)
 tryOnExistingFile action fn = C.handle ignoreIOException $ do
