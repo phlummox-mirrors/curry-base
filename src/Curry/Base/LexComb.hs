@@ -8,14 +8,14 @@
     Stability   :  experimental
     Portability :  portable
 
-    This module provides the basic types and combinators
-    to implement the lexers. The combinators use continuation passing code
-    in a monadic style. The first argument of the continuation function is
-    the current position, and the second is the string to be parsed. The third
-    argument is a flag which signals the lexer that it is lexing the
-    beginning of a line and therefore has to check for layout tokens. The
-    fourth argument is a stack of indentations that is used to handle
-    nested layout groups.
+    This module provides the basic types and combinators to implement the
+    lexers. The combinators use continuation passing code in a monadic style.
+
+    The first argument of the continuation function is the current position,
+    and the second is the string to be parsed. The third argument is a flag
+    which signals the lexer that it is lexing the beginning of a line and
+    therefore has to check for layout tokens. The fourth argument is a stack
+    of indentations that is used to handle nested layout groups.
 -}
 
 module Curry.Base.LexComb
@@ -60,7 +60,7 @@ parse :: P a -> FilePath -> String -> MsgMonad a
 parse p fn s = p (first fn) s False []
 
 -- ---------------------------------------------------------------------------
--- Monad functions for the lexer.
+-- Monadic functions for the lexer.
 -- ---------------------------------------------------------------------------
 
 -- |Lift a value into the lexer type
@@ -92,12 +92,12 @@ closeP1 :: (a -> P b) -> P (a -> P b)
 closeP1 f pos s bol ctxt = return (\x _ _ _ _ -> f x pos s bol ctxt)
 
 -- ---------------------------------------------------------------------------
--- Combinators that handle layout.
+-- Combinators for handling layout.
 -- ---------------------------------------------------------------------------
 
 -- |Push an 'Indent' to the context, increasing the levels of indentation
 pushContext :: Indent -> P a -> P a
-pushContext col cont pos s bol ctxt = cont pos s bol (col:ctxt)
+pushContext col cont pos s bol ctxt = cont pos s bol (col : ctxt)
 
 -- |Pop an 'Indent' from the context, decreasing the levels of indentation
 popContext :: P a -> P a
@@ -107,7 +107,7 @@ popContext _    pos _ _   []         = failWithAt pos $
    "Perhaps you have inserted too many '}'?"
 
 -- ---------------------------------------------------------------------------
--- Conversions from strings into numbers.
+-- Conversions from 'String's into numbers.
 -- ---------------------------------------------------------------------------
 
 -- |Convert a String into a signed intergral using a given base

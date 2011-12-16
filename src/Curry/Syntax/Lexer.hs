@@ -10,7 +10,7 @@
     Portability :  portable
 -}
 module Curry.Syntax.Lexer
-  ( -- * Data types
+  ( -- * Data types for tokens
     Token (..), Category (..), Attributes (..)
 
     -- * lexing functions
@@ -23,17 +23,17 @@ import Data.Char (chr, ord, isAlpha, isAlphaNum, isSpace, isUpper
 import Data.List (intercalate)
 import qualified Data.Map as Map (Map, union, lookup, fromList)
 
-import Curry.Base.LexComb
+import Curry.Base.LexComb (P, thenP, failP, returnP, convertIntegral, convertFloating)
 import Curry.Base.LLParseComb (Symbol (..))
 import Curry.Base.Position
 
--- TODO: Think about a Token representation with arguments instead of the
--- category.
+-- ---------------------------------------------------------------------------
+-- Tokens; note that the equality and ordering instances of Token disregard
+-- the attributes.
+-- ---------------------------------------------------------------------------
 
--- ---------------------------------------------------------------------------
--- Tokens; note that the equality and ordering instances of Token
--- disregard the attributes.
--- ---------------------------------------------------------------------------
+-- TODO@bjp: Think about a Token representation with arguments instead of the
+-- category.
 
 -- |Data type for curry lexer tokens
 data Token = Token Category Attributes
@@ -141,7 +141,7 @@ data Category
 
   -- end-of-file token
   | EOF
-    deriving (Eq,Ord)
+    deriving (Eq, Ord)
 
 -- There are different kinds of attributes associated with the tokens.
 -- Most attributes simply save the string corresponding to the token.
@@ -167,9 +167,8 @@ instance Show Attributes where
   showsPrec _ (FloatAttributes   fv _) = shows fv
   showsPrec _ (IntegerAttributes iv _) = shows iv
   showsPrec _ (StringAttributes  sv _) = shows sv
-  showsPrec _ (IdentAttributes mIdent ident) = showsEscaped
-                                             $ intercalate "."
-                                             $ mIdent ++ [ident]
+  showsPrec _ (IdentAttributes  mid i) = showsEscaped
+                                       $ intercalate "." $ mid ++ [i]
 
 -- ---------------------------------------------------------------------------
 -- The following functions can be used to construct tokens with
@@ -203,14 +202,13 @@ floatTok mant frac expo rest =
 
 -- |Construct a 'Token' for an integer value
 integerTok :: Integer -> String -> Token
-integerTok base digits = Token IntegerTok
-  IntegerAttributes { intval = (convertIntegral base digits) :: Integer
-                    , original = digits }
+integerTok base digts = Token IntegerTok
+  IntegerAttributes { intval = convertIntegral base digts, original = digts }
 
 -- |Construct a 'Token' for a string value
 stringTok :: String -> String -> Token
-stringTok cs o = Token StringTok
-  StringAttributes { sval = cs, original = o }
+stringTok cs s = Token StringTok
+  StringAttributes { sval = cs, original = s }
 
 -- |Construct a 'Token' for a line comment
 lineCommentTok :: String -> Token
@@ -231,8 +229,6 @@ nestedCommentTok s = Token NestedComment
 -- all tokens in their source representation.
 -- ---------------------------------------------------------------------------
 
--- Helper for showing
-
 showsEscaped :: String -> ShowS
 showsEscaped s = showChar '`' . showString s . showChar '\''
 
@@ -250,11 +246,9 @@ showsSpecialOperator s = showString "operator " . showsEscaped s
 
 instance Show Token where
   showsPrec _ (Token Id         a) = showsIdentifier a
-  showsPrec _ (Token QId        a) = showString "qualified "
-                                   . showsIdentifier a
+  showsPrec _ (Token QId        a) = showString "qualified " . showsIdentifier a
   showsPrec _ (Token Sym        a) = showsOperator a
-  showsPrec _ (Token QSym       a) = showString "qualified "
-                                   . showsOperator a
+  showsPrec _ (Token QSym       a) = showString "qualified " . showsOperator a
   showsPrec _ (Token IntTok     a) = showString "integer "   . shows a
   showsPrec _ (Token FloatTok   a) = showString "float "     . shows a
   showsPrec _ (Token CharTok    a) = showString "character " . shows a
@@ -287,42 +281,42 @@ instance Show Token where
   showsPrec _ (Token RightArrow         _) = showsEscaped "->"
   showsPrec _ (Token Tilde              _) = showsEscaped "~"
   showsPrec _ (Token Binds              _) = showsEscaped ":="
-  showsPrec _ (Token SymDot      _) = showsSpecialOperator "."
-  showsPrec _ (Token SymMinus    _) = showsSpecialOperator "-"
-  showsPrec _ (Token SymMinusDot _) = showsSpecialOperator "-."
-  showsPrec _ (Token KW_case      _) = showsEscaped "case"
-  showsPrec _ (Token KW_choice    _) = showsEscaped "choice"
-  showsPrec _ (Token KW_data      _) = showsEscaped "data"
-  showsPrec _ (Token KW_do        _) = showsEscaped "do"
-  showsPrec _ (Token KW_else      _) = showsEscaped "else"
-  showsPrec _ (Token KW_eval      _) = showsEscaped "eval"
-  showsPrec _ (Token KW_external  _) = showsEscaped "external"
-  showsPrec _ (Token KW_free      _) = showsEscaped "free"
-  showsPrec _ (Token KW_if        _) = showsEscaped "if"
-  showsPrec _ (Token KW_import    _) = showsEscaped "import"
-  showsPrec _ (Token KW_in        _) = showsEscaped "in"
-  showsPrec _ (Token KW_infix     _) = showsEscaped "infix"
-  showsPrec _ (Token KW_infixl    _) = showsEscaped "infixl"
-  showsPrec _ (Token KW_infixr    _) = showsEscaped "infixr"
-  showsPrec _ (Token KW_let       _) = showsEscaped "let"
-  showsPrec _ (Token KW_module    _) = showsEscaped "module"
-  showsPrec _ (Token KW_newtype   _) = showsEscaped "newtype"
-  showsPrec _ (Token KW_of        _) = showsEscaped "of"
-  showsPrec _ (Token KW_rigid     _) = showsEscaped "rigid"
-  showsPrec _ (Token KW_then      _) = showsEscaped "then"
-  showsPrec _ (Token KW_type      _) = showsEscaped "type"
-  showsPrec _ (Token KW_where     _) = showsEscaped "where"
-  showsPrec _ (Token Id_as        _) = showsSpecialIdentifier "as"
-  showsPrec _ (Token Id_ccall     _) = showsSpecialIdentifier "ccall"
-  showsPrec _ (Token Id_forall    _) = showsSpecialIdentifier "forall"
-  showsPrec _ (Token Id_hiding    _) = showsSpecialIdentifier "hiding"
-  showsPrec _ (Token Id_interface _) = showsSpecialIdentifier "interface"
-  showsPrec _ (Token Id_primitive _) = showsSpecialIdentifier "primitive"
-  showsPrec _ (Token Id_qualified _) = showsSpecialIdentifier "qualified"
-  showsPrec _ (Token Pragma        a) = shows a
-  showsPrec _ (Token LineComment   a) = shows a
-  showsPrec _ (Token NestedComment a) = shows a
-  showsPrec _ (Token EOF          _) = showString "<end-of-file>"
+  showsPrec _ (Token SymDot             _) = showsSpecialOperator "."
+  showsPrec _ (Token SymMinus           _) = showsSpecialOperator "-"
+  showsPrec _ (Token SymMinusDot        _) = showsSpecialOperator "-."
+  showsPrec _ (Token KW_case            _) = showsEscaped "case"
+  showsPrec _ (Token KW_choice          _) = showsEscaped "choice"
+  showsPrec _ (Token KW_data            _) = showsEscaped "data"
+  showsPrec _ (Token KW_do              _) = showsEscaped "do"
+  showsPrec _ (Token KW_else            _) = showsEscaped "else"
+  showsPrec _ (Token KW_eval            _) = showsEscaped "eval"
+  showsPrec _ (Token KW_external        _) = showsEscaped "external"
+  showsPrec _ (Token KW_free            _) = showsEscaped "free"
+  showsPrec _ (Token KW_if              _) = showsEscaped "if"
+  showsPrec _ (Token KW_import          _) = showsEscaped "import"
+  showsPrec _ (Token KW_in              _) = showsEscaped "in"
+  showsPrec _ (Token KW_infix           _) = showsEscaped "infix"
+  showsPrec _ (Token KW_infixl          _) = showsEscaped "infixl"
+  showsPrec _ (Token KW_infixr          _) = showsEscaped "infixr"
+  showsPrec _ (Token KW_let             _) = showsEscaped "let"
+  showsPrec _ (Token KW_module          _) = showsEscaped "module"
+  showsPrec _ (Token KW_newtype         _) = showsEscaped "newtype"
+  showsPrec _ (Token KW_of              _) = showsEscaped "of"
+  showsPrec _ (Token KW_rigid           _) = showsEscaped "rigid"
+  showsPrec _ (Token KW_then            _) = showsEscaped "then"
+  showsPrec _ (Token KW_type            _) = showsEscaped "type"
+  showsPrec _ (Token KW_where           _) = showsEscaped "where"
+  showsPrec _ (Token Id_as              _) = showsSpecialIdentifier "as"
+  showsPrec _ (Token Id_ccall           _) = showsSpecialIdentifier "ccall"
+  showsPrec _ (Token Id_forall          _) = showsSpecialIdentifier "forall"
+  showsPrec _ (Token Id_hiding          _) = showsSpecialIdentifier "hiding"
+  showsPrec _ (Token Id_interface       _) = showsSpecialIdentifier "interface"
+  showsPrec _ (Token Id_primitive       _) = showsSpecialIdentifier "primitive"
+  showsPrec _ (Token Id_qualified       _) = showsSpecialIdentifier "qualified"
+  showsPrec _ (Token Pragma             a) = shows a
+  showsPrec _ (Token LineComment        a) = shows a
+  showsPrec _ (Token NestedComment      a) = shows a
+  showsPrec _ (Token EOF                _) = showString "<end-of-file>"
 
 -- ---------------------------------------------------------------------------
 -- Tables for reserved operators and identifiers
@@ -379,7 +373,7 @@ keywords = Map.fromList
   , ("where"   , KW_where   )
   ]
 
--- |Map of reserved and special identifiers
+-- |Map of keywords and special identifiers
 keywordsSpecialIds :: Map.Map String Category
 keywordsSpecialIds = Map.union keywords $ Map.fromList
   [ ("as"       , Id_as       )
@@ -405,49 +399,50 @@ isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 -- Lexing functions
 -- ---------------------------------------------------------------------------
 
-type SuccessP a = Position -> Token -> P a
-type FailP a = Position -> String -> P a
+type SuccessP a = Position -> Token  -> P a
+type FailP    a = Position -> String -> P a
+type Lexer    a = SuccessP a -> FailP a -> P a
 
-lexFile :: P [(Position,Token)]
+lexFile :: P [(Position, Token)]
 lexFile = fullLexer tokens failP
   where tokens p t@(Token c _)
-          | c == EOF = returnP [(p, t)]
+          | c == EOF  = returnP [(p, t)]
           | otherwise = lexFile `thenP` returnP . ((p, t) :)
 
-lexer :: SuccessP a -> FailP a -> P a
-lexer success fail = skipBlanks
+lexer :: Lexer a
+lexer suc fail = skipBlanks
   where -- skipBlanks moves past whitespace and comments
-    skipBlanks p [] bol = success p (tok EOF) p [] bol
-    skipBlanks p ('\t':s) bol  = skipBlanks (tab p) s bol
-    skipBlanks p ('\n':s) _bol = skipBlanks (nl p) s True
-    skipBlanks p ('-':'-':s) _bol    = skipBlanks (nl p) (tail' (dropWhile (/= '\n') s)) True
+  skipBlanks p []          bol = suc p (tok EOF) p [] bol
+  skipBlanks p ('\t':s)    bol = skipBlanks (tab p) s bol
+  skipBlanks p ('\n':s)    _   = skipBlanks (nl  p) s True
+  skipBlanks p ('-':'-':s) _   = skipBlanks (nl  p) (safeTail (dropWhile (/= '\n') s)) True
 --     skipBlanks p ('{':'-':'#':s) bol = lexPragma id p success fail (incr p 3) s bol
-    skipBlanks p ('{':'-':s) bol =
-      skipNestedComment p skipBlanks fail (incr p 2) s bol
-    skipBlanks p (c:s) bol
-      | isSpace c = skipBlanks (next p) s bol
-      | otherwise =
-          (if bol then lexBOL else lexToken) success fail p (c:s) bol
-    tail' [] = []
-    tail' (_:tl) = tl
+  skipBlanks p ('{':'-':s) bol =
+    skipNestedComment p skipBlanks fail (incr p 2) s bol
+  skipBlanks p (c:s) bol
+    | isSpace c = skipBlanks (next p) s bol
+    | bol       = lexBOL suc fail p (c:s) bol
+    | otherwise = lexToken suc fail p (c:s) bol
+  safeTail []     = []
+  safeTail (_:tl) = tl
 
-fullLexer :: SuccessP a -> FailP a -> P a
-fullLexer success fail = skipBlanks
+fullLexer :: Lexer a
+fullLexer suc fail = skipBlanks
   where -- skipBlanks moves past whitespace
-    skipBlanks p [] bol = success p (tok EOF) p [] bol
-    skipBlanks p ('\t':s) bol = skipBlanks (tab p) s bol
-    skipBlanks p ('\n':s) _bol = skipBlanks (nl p) s True
-    skipBlanks p s@('-':'-':_) bol = lexLineComment success p s bol
---     skipBlanks p s@('{':'-':'#':_) bol = lexPragma id p success fail (incr p 3) s bol
-    skipBlanks p s@('{':'-':_) bol     = lexNestedComment 0 id p success fail p s bol
-    skipBlanks p (c:s) bol
-      | isSpace c = skipBlanks (next p) s bol
-      | otherwise =
-          (if bol then lexBOL else lexToken) success fail p (c:s) bol
+  skipBlanks p []            bol = suc p (tok EOF) p [] bol
+  skipBlanks p ('\t':s)      bol = skipBlanks (tab p) s bol
+  skipBlanks p ('\n':s)      _   = skipBlanks (nl  p) s True
+  skipBlanks p s@('-':'-':_) bol = lexLineComment suc fail p s bol
+--   skipBlanks p s@('{':'-':'#':_) bol = lexPragma id p suc fail (incr p 3) s bol
+  skipBlanks p s@('{':'-':_) bol = lexNestedComment 0 id p suc fail p s bol
+  skipBlanks p (c:s)         bol
+    | isSpace c = skipBlanks (next p) s bol
+    | bol       = lexBOL suc fail p (c:s) bol
+    | otherwise = lexToken suc fail p (c:s) bol
 
-lexLineComment :: SuccessP a -> P a
-lexLineComment success p s = case break (=='\n') s of
-  (comment,rest) -> success p (lineCommentTok comment) (incr p (length comment)) rest
+lexLineComment :: Lexer a
+lexLineComment suc _ p s = case break (== '\n') s of
+  (cmnt, rest) -> suc p (lineCommentTok cmnt) (incr p $ length cmnt) rest
 
 -- lexPragma :: (String -> String) -> Position -> SuccessP a -> FailP a -> P a
 -- lexPragma prag p0 success _ p ('#':'-':'}':s)
@@ -461,8 +456,7 @@ lexLineComment success p s = case break (=='\n') s of
 -- lexPragma _ p0 _ fail p ""
 --   = fail p0 "Unterminated pragma" p []
 
-lexNestedComment :: Int -> (String -> String) ->
-                    Position -> SuccessP a -> FailP a -> P a
+lexNestedComment :: Int -> (String -> String) -> Position -> Lexer a
 lexNestedComment 1 comment p0 success _    p ('-':'}':s) =
   success p0 (nestedCommentTok (comment "-}") ) (incr p 2) s
 lexNestedComment n comment p0 success fail p ('{':'-':s) =
@@ -491,33 +485,33 @@ skipNestedComment p0 success fail p (_:s) =
 skipNestedComment p0 _         fail p [] =
   fail p0 "Unterminated nested comment at end-of-file" p []
 
-lexBOL :: SuccessP a -> FailP a -> P a
-lexBOL success fail p s _ [] = lexToken success fail p s False []
+lexBOL :: Lexer a
+lexBOL success fail p s _ []            = lexToken success fail p s False []
 lexBOL success fail p s _ ctxt@(n:rest)
-  | col < n = success p (tok VRightBrace) p s True rest
-  | col == n = success p (tok VSemicolon) p s False ctxt
+  | col < n   = success p (tok VRightBrace) p s True rest
+  | col == n  = success p (tok  VSemicolon) p s False ctxt
   | otherwise = lexToken success fail p s False ctxt
   where col = column p
 
-lexToken :: SuccessP a -> FailP a -> P a
-lexToken success _    p [] = success p (tok EOF) p []
+lexToken :: Lexer a
+lexToken success _    p []    = success p (tok EOF) p []
 lexToken success fail p (c:s)
-  | c == '(' = token LeftParen
-  | c == ')' = token RightParen
-  | c == ',' = token Comma
-  | c == ';' = token Semicolon
-  | c == '[' = token LeftBracket
-  | c == ']' = token RightBracket
-  | c == '_' = token Underscore
-  | c == '`' = token Backquote
-  | c == '{' = lexLeftBrace (success p) (next p) s
-  | c == '}' = \bol -> token RightBrace bol . drop 1
-  | c == '\'' = lexChar   p success fail (next p) s
-  | c == '\"' = lexString p success fail (next p) s
-  | isAlpha  c = lexIdent  (success p) p (c:s)
-  | isSymbol c = lexSymbol (success p) p (c:s)
-  | isDigit  c = lexNumber (success p) p (c:s)
-  | otherwise  = fail p ("Illegal character " ++ show c) p s
+  | c == '('    = token LeftParen
+  | c == ')'    = token RightParen
+  | c == ','    = token Comma
+  | c == ';'    = token Semicolon
+  | c == '['    = token LeftBracket
+  | c == ']'    = token RightBracket
+  | c == '_'    = token Underscore
+  | c == '`'    = token Backquote
+  | c == '{'    = lexLeftBrace (success p) (next p) s
+  | c == '}'    = \bol -> token RightBrace bol . drop 1
+  | c == '\''   = lexChar   p success fail (next p) s
+  | c == '\"'   = lexString p success fail (next p) s
+  | isAlpha  c  = lexIdent  (success p) p (c:s)
+  | isSymbol c  = lexSymbol (success p) p (c:s)
+  | isDigit  c  = lexNumber (success p) p (c:s)
+  | otherwise   = fail p ("Illegal character " ++ show c) p s
   where token t = success p (tok t) (next p) s
 
 lexLeftBrace :: (Token -> P a) -> P a
@@ -545,11 +539,10 @@ lexSymbol cont p s =
 
 lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
 lexOptQual cont token mIdent p ('.':c:s)
-  | isAlpha  c = lexQualIdent cont identCont mIdent (next p) (c:s)
-  | isSymbol c = lexQualSymbol cont identCont mIdent (next p) (c:s)
-  | c=='(' || c=='['
-    = lexQualPreludeSymbol cont token identCont mIdent (next p) (c:s)
- where identCont _ _ = cont token p ('.':c:s)
+  | isAlpha  c       = lexQualIdent cont identCont mIdent (next p) (c:s)
+  | isSymbol c       = lexQualSymbol cont identCont mIdent (next p) (c:s)
+  | c=='(' || c=='[' = lexQualPreludeSymbol cont token identCont mIdent (next p) (c:s)
+  where identCont _ _ = cont token p ('.':c:s)
 lexOptQual cont token _      p s = cont token p s
 
 lexQualIdent :: (Token -> P a) -> P a -> [String] -> P a
@@ -567,14 +560,13 @@ lexQualSymbol cont identCont mIdent p s =
         (incr p (length sym)) rest
   where (sym,rest) = span isSymbol s
 
-
 lexQualPreludeSymbol :: (Token -> P a) -> Token -> P a -> [String] -> P a
 lexQualPreludeSymbol cont _ _ mIdent p ('[':']':rest) =
   cont (idTok QId mIdent "[]") (incr p 2) rest
 lexQualPreludeSymbol cont _ _ mIdent p ('(':rest)
-  | not (null rest') && head rest'==')'
+  | not (null rest') && head rest' == ')'
   = cont (idTok QId mIdent ('(':tup++")")) (incr p (length tup+2)) (tail rest')
-  where (tup,rest') = span (==',') rest
+  where (tup,rest') = span (== ',') rest
 lexQualPreludeSymbol cont token _ _ p s =  cont token p s
 
 -- ---------------------------------------------------------------------------
@@ -584,25 +576,24 @@ lexQualPreludeSymbol cont token _ _ p s =  cont token p s
 
 lexNumber :: (Token -> P a) -> P a
 lexNumber cont p ('0':c:s)
-  | c `elem` "oO" = lexOctal cont nullCont (incr p 2) s
-  | c `elem` "xX" = lexHexadecimal cont nullCont (incr p 2) s
+  | c `elem` "oO"  = lexOctal       cont nullCont (incr p 2) s
+  | c `elem` "xX"  = lexHexadecimal cont nullCont (incr p 2) s
   where nullCont _ _ = cont (intTok 10 "0") (next p) (c:s)
-lexNumber cont p s
-    = lexOptFraction cont (integerTok 10 digits) digits
-                     (incr p (length digits)) rest
-  where (digits,rest) = span isDigit s
+lexNumber cont p s = lexOptFraction cont (integerTok 10 digits) digits
+                     (incr p $ length digits) rest
+  where (digits, rest) = span isDigit s
 
 lexOctal :: (Token -> P a) -> P a -> P a
 lexOctal cont nullCont p s
   | null digits = nullCont undefined undefined
-  | otherwise = cont (integerTok 8 digits) (incr p (length digits)) rest
-  where (digits,rest) = span isOctDigit s
+  | otherwise   = cont (integerTok 8 digits) (incr p $ length digits) rest
+  where (digits, rest) = span isOctDigit s
 
 lexHexadecimal :: (Token -> P a) -> P a -> P a
 lexHexadecimal cont nullCont p s
   | null digits = nullCont undefined undefined
-  | otherwise = cont (integerTok 16 digits) (incr p (length digits)) rest
-  where (digits,rest) = span isHexDigit s
+  | otherwise   = cont (integerTok 16 digits) (incr p $ length digits) rest
+  where (digits, rest) = span isHexDigit s
 
 lexOptFraction :: (Token -> P a) -> Token -> String -> P a
 lexOptFraction cont _ mant p ('.':c:s)
@@ -635,8 +626,8 @@ lexExponent cont mant frac e expSign p s =
   where (digits, rest) = span isDigit s
         expo = expSign (convertIntegral 10 digits)
 
-lexChar :: Position -> SuccessP a -> FailP a -> P a
-lexChar p0 _       fail p [] = fail p0 "Illegal character constant" p []
+lexChar :: Position -> Lexer a
+lexChar p0 _       fail p []    = fail p0 "Illegal character constant" p []
 lexChar p0 success fail p (c:s)
   | c == '\\' = lexEscape p (lexCharEnd p0 success fail) fail (next p) s
   | c == '\n' = fail p0 "Illegal character constant" p (c:s)
@@ -648,7 +639,7 @@ lexCharEnd p0 success _    c o p ('\'':s) = success p0 (charTok c o) (next p) s
 lexCharEnd p0 _       fail _ _ p s        =
   fail p0 "Improperly terminated character constant" p s
 
-lexString :: Position -> SuccessP a -> FailP a -> P a
+lexString :: Position -> Lexer a
 lexString p0 success fail = lexStringRest p0 success fail "" id
 
 lexStringRest :: Position -> SuccessP a -> FailP a -> String -> (String -> String) -> P a
@@ -691,58 +682,61 @@ lexEscape _  success _    p ('\\':s) = success '\\' "\\\\" (next p) s
 lexEscape _  success _    p ('"':s) = success '\"' "\\\"" (next p) s
 lexEscape _  success _    p ('\'':s) = success '\'' "\\\'" (next p) s
 lexEscape _  success _    p ('^':c:s)
-  | isUpper c || c `elem` "@[\\]^_" =
-      success (chr (ord c `mod` 32)) ("\\^"++[c]) (incr p 2) s
+  | isUpper c || c `elem` "@[\\]^_"
+  = success (chr (ord c `mod` 32)) ("\\^"++[c]) (incr p 2) s
 lexEscape p0 success fail p ('o':c:s)
-  | isOctDigit c = numEscape p0 success fail 8 isOctDigit ("\\o"++) (next p) (c:s)
+  | isOctDigit c
+  = numEscape p0 success fail 8 isOctDigit ("\\o"++) (next p) (c:s)
 lexEscape p0 success fail p ('x':c:s)
-  | isHexDigit c = numEscape p0 success fail 16 isHexDigit ("\\x"++) (next p) (c:s)
+  | isHexDigit c
+  = numEscape p0 success fail 16 isHexDigit ("\\x"++) (next p) (c:s)
 lexEscape p0 success fail p (c:s)
-  | isDigit    c = numEscape p0 success fail 10 isDigit ("\\"++) p (c:s)
+  | isDigit    c
+  = numEscape p0 success fail 10 isDigit ("\\"++) p (c:s)
 lexEscape p0 success fail p s = asciiEscape p0 success fail p s
 
 asciiEscape :: Position -> (Char -> String -> P a) -> FailP a -> P a
-asciiEscape _  success _    p ('N':'U':'L':s) = success '\NUL' "\\NUL" (incr p 3) s
-asciiEscape _  success _    p ('S':'O':'H':s) = success '\SOH' "\\SOH" (incr p 3) s
-asciiEscape _  success _    p ('S':'T':'X':s) = success '\STX' "\\STX" (incr p 3) s
-asciiEscape _  success _    p ('E':'T':'X':s) = success '\ETX' "\\ETX" (incr p 3) s
-asciiEscape _  success _    p ('E':'O':'T':s) = success '\EOT' "\\EOT" (incr p 3) s
-asciiEscape _  success _    p ('E':'N':'Q':s) = success '\ENQ' "\\ENQ" (incr p 3) s
-asciiEscape _  success _    p ('A':'C':'K':s) = success '\ACK' "\\ACK" (incr p 3) s
-asciiEscape _  success _    p ('B':'E':'L':s) = success '\BEL' "\\BEL" (incr p 3) s
-asciiEscape _  success _    p ('B':'S':s)     = success '\BS'  "\\BS"  (incr p 2) s
-asciiEscape _  success _    p ('H':'T':s)     = success '\HT'  "\\HT"  (incr p 2) s
-asciiEscape _  success _    p ('L':'F':s)     = success '\LF'  "\\LF"  (incr p 2) s
-asciiEscape _  success _    p ('V':'T':s)     = success '\VT'  "\\VT"  (incr p 2) s
-asciiEscape _  success _    p ('F':'F':s)     = success '\FF'  "\\FF"  (incr p 2) s
-asciiEscape _  success _    p ('C':'R':s)     = success '\CR'  "\\CR"  (incr p 2) s
-asciiEscape _  success _    p ('S':'O':s)     = success '\SO'  "\\SO"  (incr p 2) s
-asciiEscape _  success _    p ('S':'I':s)     = success '\SI'  "\\SI"  (incr p 2) s
-asciiEscape _  success _    p ('D':'L':'E':s) = success '\DLE' "\\DLE" (incr p 3) s
-asciiEscape _  success _    p ('D':'C':'1':s) = success '\DC1' "\\DC1" (incr p 3) s
-asciiEscape _  success _    p ('D':'C':'2':s) = success '\DC2' "\\DC2" (incr p 3) s
-asciiEscape _  success _    p ('D':'C':'3':s) = success '\DC3' "\\DC3" (incr p 3) s
-asciiEscape _  success _    p ('D':'C':'4':s) = success '\DC4' "\\DC4" (incr p 3) s
-asciiEscape _  success _    p ('N':'A':'K':s) = success '\NAK' "\\NAK" (incr p 3) s
-asciiEscape _  success _    p ('S':'Y':'N':s) = success '\SYN' "\\SYN" (incr p 3) s
-asciiEscape _  success _    p ('E':'T':'B':s) = success '\ETB' "\\ETB" (incr p 3) s
-asciiEscape _  success _    p ('C':'A':'N':s) = success '\CAN' "\\CAN" (incr p 3) s
-asciiEscape _  success _    p ('E':'M':s)     = success '\EM'  "\\EM"  (incr p 2) s
-asciiEscape _  success _    p ('S':'U':'B':s) = success '\SUB' "\\SUB" (incr p 3) s
-asciiEscape _  success _    p ('E':'S':'C':s) = success '\ESC' "\\ESC" (incr p 3) s
-asciiEscape _  success _    p ('F':'S':s)     = success '\FS'  "\\FS"  (incr p 2) s
-asciiEscape _  success _    p ('G':'S':s)     = success '\GS'  "\\GS"  (incr p 2) s
-asciiEscape _  success _    p ('R':'S':s)     = success '\RS'  "\\RS"  (incr p 2) s
-asciiEscape _  success _    p ('U':'S':s)     = success '\US'  "\\US"  (incr p 2) s
-asciiEscape _  success _    p ('S':'P':s)     = success '\SP'  "\\SP"  (incr p 2) s
-asciiEscape _  success _    p ('D':'E':'L':s) = success '\DEL' "\\DEL" (incr p 3) s
-asciiEscape p0 _       fail p s               = fail p0 "Illegal escape sequence" p s
+asciiEscape _  suc _    p ('N':'U':'L':s) = suc '\NUL' "\\NUL" (incr p 3) s
+asciiEscape _  suc _    p ('S':'O':'H':s) = suc '\SOH' "\\SOH" (incr p 3) s
+asciiEscape _  suc _    p ('S':'T':'X':s) = suc '\STX' "\\STX" (incr p 3) s
+asciiEscape _  suc _    p ('E':'T':'X':s) = suc '\ETX' "\\ETX" (incr p 3) s
+asciiEscape _  suc _    p ('E':'O':'T':s) = suc '\EOT' "\\EOT" (incr p 3) s
+asciiEscape _  suc _    p ('E':'N':'Q':s) = suc '\ENQ' "\\ENQ" (incr p 3) s
+asciiEscape _  suc _    p ('A':'C':'K':s) = suc '\ACK' "\\ACK" (incr p 3) s
+asciiEscape _  suc _    p ('B':'E':'L':s) = suc '\BEL' "\\BEL" (incr p 3) s
+asciiEscape _  suc _    p ('B':'S':s)     = suc '\BS'  "\\BS"  (incr p 2) s
+asciiEscape _  suc _    p ('H':'T':s)     = suc '\HT'  "\\HT"  (incr p 2) s
+asciiEscape _  suc _    p ('L':'F':s)     = suc '\LF'  "\\LF"  (incr p 2) s
+asciiEscape _  suc _    p ('V':'T':s)     = suc '\VT'  "\\VT"  (incr p 2) s
+asciiEscape _  suc _    p ('F':'F':s)     = suc '\FF'  "\\FF"  (incr p 2) s
+asciiEscape _  suc _    p ('C':'R':s)     = suc '\CR'  "\\CR"  (incr p 2) s
+asciiEscape _  suc _    p ('S':'O':s)     = suc '\SO'  "\\SO"  (incr p 2) s
+asciiEscape _  suc _    p ('S':'I':s)     = suc '\SI'  "\\SI"  (incr p 2) s
+asciiEscape _  suc _    p ('D':'L':'E':s) = suc '\DLE' "\\DLE" (incr p 3) s
+asciiEscape _  suc _    p ('D':'C':'1':s) = suc '\DC1' "\\DC1" (incr p 3) s
+asciiEscape _  suc _    p ('D':'C':'2':s) = suc '\DC2' "\\DC2" (incr p 3) s
+asciiEscape _  suc _    p ('D':'C':'3':s) = suc '\DC3' "\\DC3" (incr p 3) s
+asciiEscape _  suc _    p ('D':'C':'4':s) = suc '\DC4' "\\DC4" (incr p 3) s
+asciiEscape _  suc _    p ('N':'A':'K':s) = suc '\NAK' "\\NAK" (incr p 3) s
+asciiEscape _  suc _    p ('S':'Y':'N':s) = suc '\SYN' "\\SYN" (incr p 3) s
+asciiEscape _  suc _    p ('E':'T':'B':s) = suc '\ETB' "\\ETB" (incr p 3) s
+asciiEscape _  suc _    p ('C':'A':'N':s) = suc '\CAN' "\\CAN" (incr p 3) s
+asciiEscape _  suc _    p ('E':'M':s)     = suc '\EM'  "\\EM"  (incr p 2) s
+asciiEscape _  suc _    p ('S':'U':'B':s) = suc '\SUB' "\\SUB" (incr p 3) s
+asciiEscape _  suc _    p ('E':'S':'C':s) = suc '\ESC' "\\ESC" (incr p 3) s
+asciiEscape _  suc _    p ('F':'S':s)     = suc '\FS'  "\\FS"  (incr p 2) s
+asciiEscape _  suc _    p ('G':'S':s)     = suc '\GS'  "\\GS"  (incr p 2) s
+asciiEscape _  suc _    p ('R':'S':s)     = suc '\RS'  "\\RS"  (incr p 2) s
+asciiEscape _  suc _    p ('U':'S':s)     = suc '\US'  "\\US"  (incr p 2) s
+asciiEscape _  suc _    p ('S':'P':s)     = suc '\SP'  "\\SP"  (incr p 2) s
+asciiEscape _  suc _    p ('D':'E':'L':s) = suc '\DEL' "\\DEL" (incr p 3) s
+asciiEscape p0 _   fail p s               = fail p0 "Illegal escape sequence" p s
 
 numEscape :: Position -> (Char -> String -> P a) -> FailP a -> Int
           -> (Char -> Bool) -> (String -> String) -> P a
 numEscape p0 success fail b isDigit' so p s
   | n >= minB && n <= maxB = success (chr n) (so digits) (incr p (length digits)) rest
-  | otherwise = fail p0 "Numeric escape out-of-range" p s
+  | otherwise              = fail p0 "Numeric escape out-of-range" p s
   where (digits,rest) = span isDigit' s
         n = convertIntegral b digits
         minB = ord minBound

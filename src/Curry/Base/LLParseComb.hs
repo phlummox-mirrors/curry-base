@@ -107,10 +107,12 @@ unexpected s
 -- Basic combinators
 -- ---------------------------------------------------------------------------
 
+-- |Return the current position without consuming the input
 position :: Symbol s => Parser s Position b
 position = Parser (Just p) Map.empty
   where p success _ pos = success pos pos
 
+-- |Always succeeding parser
 succeed :: Symbol s => a -> Parser s a b
 succeed x = Parser (Just p) Map.empty
   where p success _ = success x
@@ -152,37 +154,36 @@ Parser e1 ps1 <|> Parser e2 ps2
 Parser e1 ps1 <|?> Parser e2 ps2
   | isJust e1 && isJust e2 = error "Ambiguous parser for empty word"
   | otherwise = Parser (e1 `mplus` e2) (Map.union ps1' ps2)
-  where ps1' = Map.fromList [(s,maybe p (try p) (Map.lookup s ps2))
-                          | (s,p) <- Map.toList ps1]
-        try p1 p2 lexer success failp pos s =
-          closeP1 p2s `thenP` \p2s' ->
-          closeP1 p2f `thenP` \p2f' ->
-          parse' p1 (retry p2s') (retry p2f')
-          where p2s r1 = parse' p2 (select True r1) (select False r1)
-                p2f r1 = parse' p2 (flip (select False) r1) (select False r1)
-                parse' p psucc pfail =
-                  p lexer (successK psucc) (failK pfail) pos s
-                successK k x pos' s' = k (pos', success x pos' s')
-                failK k pos' msg = k (pos', failp pos' msg)
-                retry k (pos',p) = closeP0 p `thenP` curry k pos'
-        select suc (pos1, p1) (pos2, p2) =
-          case pos1 `compare` pos2 of
-            GT -> p1
-            EQ
-              | suc -> error ("Ambiguous parse before " ++ show pos1)
-              | otherwise -> p1
-            LT -> p2
+  where
+  ps1' = Map.fromList [ (s, maybe p (try p) (Map.lookup s ps2))
+                      | (s, p) <- Map.toList ps1
+                      ]
+  try p1 p2 lexer success failp pos s =
+    closeP1 p2s `thenP` \p2s' ->
+    closeP1 p2f `thenP` \p2f' ->
+    parse' p1 (retry p2s') (retry p2f')
+    where p2s r1 = parse' p2 (select True r1) (select False r1)
+          p2f r1 = parse' p2 (flip (select False) r1) (select False r1)
+          parse' p psucc pfail =
+            p lexer (successK psucc) (failK pfail) pos s
+          successK k x pos' s' = k (pos', success x pos' s')
+          failK k pos' msg = k (pos', failp pos' msg)
+          retry k (pos',p) = closeP0 p `thenP` curry k pos'
+  select suc (pos1, p1) (pos2, p2) = case pos1 `compare` pos2 of
+    GT -> p1
+    EQ | suc       -> error $ "Ambiguous parse before " ++ show pos1
+       | otherwise -> p1
+    LT -> p2
 
 -- |Apply the result function of the first parser to the result of the
 --  second parser.
 (<*>) :: Symbol s => Parser s (a -> b) c -> Parser s a c -> Parser s b c
-Parser (Just p1) ps1 <*> ~p2@(Parser e2 ps2) =
-  Parser (fmap (seqEE p1) e2)
-         (Map.union (fmap (flip seqPP p2) ps1) (fmap (seqEP p1) ps2))
-Parser Nothing ps1 <*> p2 = Parser Nothing (fmap (flip seqPP p2) ps1)
+Parser Nothing   ps1 <*> p2                  = Parser Nothing
+  (fmap (flip seqPP p2) ps1)
+Parser (Just p1) ps1 <*> ~p2@(Parser e2 ps2) = Parser (fmap (seqEE p1) e2)
+  (Map.union (fmap (flip seqPP p2) ps1) (fmap (seqEP p1) ps2))
 
-seqEE :: Symbol s => ParseFun s (a -> b) c -> ParseFun s a c
-      -> ParseFun s b c
+seqEE :: Symbol s => ParseFun s (a -> b) c -> ParseFun s a c -> ParseFun s b c
 seqEE p1 p2 success failp = p1 (\f -> p2 (success . f) failp) failp
 
 seqEP :: Symbol s => ParseFun s (a -> b) c -> (Lexer s c -> ParseFun s a c)
@@ -212,41 +213,51 @@ Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 -- paper, but were taken from the implementation found on the web.
 -- ---------------------------------------------------------------------------
 
+ -- |Try the first parser, but return the second argument if it didn't succeed
 opt :: Symbol s => Parser s a b -> a -> Parser s a b
 p `opt` x = p <|> succeed x
 
--- | Apply a function to the result of a parser.
---   The result is a parser accepting the same language but with its result
---   modified by the given function.
+-- |Apply a function to the result of a parser.
 (<$>) :: Symbol s => (a -> b) -> Parser s a c -> Parser s b c
 f <$> p = succeed f <*> p
 
+-- |Replace the result of the parser with the first argument
 (<$->) :: Symbol s => a -> Parser s b c -> Parser s a c
 f <$-> p = const f <$> p
 
+-- |Apply two parsers in sequence, but return only the result of the first
+-- parser
 (<*->) :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
 p <*-> q = const <$> p <*> q
 
+-- |Apply two parsers in sequence, but return only the result of the second
+-- parser
 (<-*>) :: Symbol s => Parser s a c -> Parser s b c -> Parser s b c
 p <-*> q = const id <$> p <*> q
 
+-- |Apply the parsers in sequence and apply the result function of the second
+-- parse to the result of the first
 (<**>) :: Symbol s => Parser s a c -> Parser s (a -> b) c -> Parser s b c
 p <**> q = flip ($) <$> p <*> q
 
+-- |Same as (<**>), but only applies the function if the second parser
+-- succeeded.
 (<??>) :: Symbol s => Parser s a b -> Parser s (a -> a) b -> Parser s a b
 p <??> q = p <**> (q `opt` id)
 
+-- |Flipped function composition on parsers
 (<.>) :: Symbol s => Parser s (a -> b) d -> Parser s (b -> c) d
       -> Parser s (a -> c) d
 p1 <.> p2 = p1 <**> ((.) <$> p2)
 
+-- |Repeatedly apply a parser for 0 or more occurences
 many :: Symbol s => Parser s a b -> Parser s [a] b
 many p = many1 p `opt` []
 
+-- |Repeatedly apply a parser for 1 or more occurences
 many1 :: Symbol s => Parser s a b -> Parser s [a] b
 -- many1 p = (:) <$> p <*> many p
 many1 p = (:) <$> p <*> (many1 p `opt` [])
-
 -- The first definition of \texttt{many1} is commented out because it
 -- does not compile under nhc. This is due to a -- known -- bug in the
 -- type checker of nhc which expects a default declaration when compiling
@@ -254,9 +265,11 @@ many1 p = (:) <$> p <*> (many1 p `opt` [])
 -- default can be given in the above case because neither of the types
 -- involved is a numeric type.
 
+-- |Parse a list with is separated by a seperator
 sepBy :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
 p `sepBy` q = p `sepBy1` q `opt` []
 
+-- |Parse a non-empty list with is separated by a seperator
 sepBy1 :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
 p `sepBy1` q = (:) <$> p <*> many (q <-*> p)
 
@@ -279,13 +292,15 @@ chainl1 p op = foldF <$> p <*> many (flip <$> op <*> p)
   where foldF x [] = x
         foldF x (f:fs) = foldF (f x) fs
 
+-- |Parse an bracketed expression, with parsers provided for the opening
+-- and closing bracket
 bracket :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
         -> Parser s b c
 bracket open p close = open <-*> p <*-> close
 
 ops :: Symbol s => [(s,a)] -> Parser s a b
-ops [] = error "internal error: ops"
-ops [(s,x)] = x <$-> symbol s
+ops []           = error "internal error: Curry.Base.LLParseComb.ops: empty list"
+ops [(s,x)]      = x <$-> symbol s
 ops ((s,x):rest) = x <$-> symbol s <|> ops rest
 
 -- ---------------------------------------------------------------------------
@@ -295,14 +310,18 @@ ops ((s,x):rest) = x <$-> symbol s <|> ops rest
 -- the same token and an undefined result.
 -- ---------------------------------------------------------------------------
 
-layoutOn :: Symbol s => Parser s a b
-layoutOn = Parser (Just on) Map.empty
-  where on success _ pos = pushContext (column pos) . success undefined pos
-
+-- |Disable layout-awareness for the following
 layoutOff :: Symbol s => Parser s a b
 layoutOff = Parser (Just off) Map.empty
   where off success _ pos = pushContext (-1) . success undefined pos
 
+-- |Add a new scope for layout
+layoutOn :: Symbol s => Parser s a b
+layoutOn = Parser (Just on) Map.empty
+  where on success _ pos = pushContext (column pos) . success undefined pos
+
+-- |End the current layout scope (or re-enable layout-awareness if it is
+-- currently disabled
 layoutEnd :: Symbol s => Parser s a b
 layoutEnd = Parser (Just end) Map.empty
   where end success _ pos = popContext . success undefined pos
