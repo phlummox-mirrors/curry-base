@@ -21,7 +21,7 @@ module Curry.Files.Filenames
   , curryExt, lcurryExt, icurryExt
 
     -- ** FlatCurry files
-  , flatExt, extFlatExt, flatIntExt, xmlExt
+  , flatExt, extFlatExt, flatIntExt, xmlExt, xmlSuffix
 
     -- ** AbstractCurry files
   , acyExt, uacyExt
@@ -36,7 +36,7 @@ module Curry.Files.Filenames
   , sourceRepName, objectName
   ) where
 
-import System.FilePath (replaceExtension)
+import System.FilePath (takeBaseName, replaceBaseName, replaceExtension)
 
 -- |The standard hidden subdirectory for curry files
 currySubdir :: String
@@ -85,7 +85,11 @@ flatIntExt = ".fint"
 
 -- |Filename extension for extended-flat-curry xml files
 xmlExt :: String
-xmlExt = "_flat.xml"
+xmlExt = ".xml"
+
+-- |Basename suffix for extended-flat-curry xml files
+xmlSuffix :: String
+xmlSuffix = "_flat"
 
 -- |Filename extension for abstract-curry files
 acyExt :: String
@@ -133,7 +137,8 @@ flatIntName = replaceExtensionWith flatIntExt
 
 -- |Compute the filename of the flat curry xml file for a source file
 xmlName :: FilePath -> FilePath
-xmlName = replaceExtensionWith xmlExt
+xmlName fn = replaceExtensionWith xmlExt
+           $ replaceBaseName fn (takeBaseName fn ++ xmlSuffix)
 
 -- |Compute the filename of the abstract curry file for a source file
 acyName :: FilePath -> FilePath
