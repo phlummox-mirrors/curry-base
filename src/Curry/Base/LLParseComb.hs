@@ -213,7 +213,7 @@ Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 -- paper, but were taken from the implementation found on the web.
 -- ---------------------------------------------------------------------------
 
- -- |Try the first parser, but return the second argument if it didn't succeed
+-- |Try the first parser, but return the second argument if it didn't succeed
 opt :: Symbol s => Parser s a b -> a -> Parser s a b
 p `opt` x = p <|> succeed x
 
