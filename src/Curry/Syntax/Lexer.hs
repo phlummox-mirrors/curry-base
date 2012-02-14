@@ -403,12 +403,14 @@ type SuccessP a = Position -> Token  -> P a
 type FailP    a = Position -> String -> P a
 type Lexer    a = SuccessP a -> FailP a -> P a
 
+-- |Lex a given file
 lexFile :: P [(Position, Token)]
 lexFile = fullLexer tokens failP
   where tokens p t@(Token c _)
           | c == EOF  = returnP [(p, t)]
           | otherwise = lexFile `thenP` returnP . ((p, t) :)
 
+-- |CPS-Lexer for Curry
 lexer :: Lexer a
 lexer suc fail = skipBlanks
   where -- skipBlanks moves past whitespace and comments

@@ -29,6 +29,7 @@ module Curry.Base.Position
   ) where
 
 import Data.Generics (Data(..), Typeable (..))
+import System.FilePath
 
 -- |Source code positions
 data Position
@@ -53,7 +54,7 @@ instance Read Position where
 
 instance Show Position where
   showsPrec _ (Position f l c _)
-    = (if null f then id else shows f . showString ", ")
+    = (if null f then id else showString (normalise f) . showString ", ")
     . showString "line " . shows l
     . (if c > 0 then showChar '.' . shows c else id)
   showsPrec _ (AST _) = id

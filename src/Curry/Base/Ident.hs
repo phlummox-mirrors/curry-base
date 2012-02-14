@@ -102,6 +102,7 @@ mkMIdent = ModuleIdent NoPos
 moduleName :: ModuleIdent -> String
 moduleName = intercalate "." . moduleQualifiers
 
+-- |Check whether a 'String' is a valid module name
 isModuleName :: String -> Bool
 isModuleName [] = False -- Module names may not be empty
 isModuleName qs = all isModuleIdentifier $ splitIdentifiers qs

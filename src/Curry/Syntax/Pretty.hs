@@ -25,16 +25,9 @@ import Curry.Base.Ident
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (opName)
 
--- ---------------------------------------------------------------------------
--- Pretty print a module
--- ---------------------------------------------------------------------------
-
+-- |Pretty print a module
 ppModule :: Module -> Doc
 ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppBlock ds
-
--- ---------------------------------------------------------------------------
--- Module header
--- ---------------------------------------------------------------------------
 
 ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> [ImportDecl] -> Doc
 ppModuleHeader m es is = text "module"
@@ -68,13 +61,10 @@ ppImport (Import x) = ppIdent x
 ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
 ppImport (ImportTypeAll tc) = ppIdent tc <> text "(..)"
 
--- ---------------------------------------------------------------------------
--- Declarations
--- ---------------------------------------------------------------------------
-
 ppBlock :: [Decl] -> Doc
 ppBlock = vcat . map ppDecl
 
+-- |Pretty print a declaration
 ppDecl :: Decl -> Doc
 ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
 ppDecl (DataDecl _ tc tvs cs) =
@@ -149,6 +139,7 @@ ppLocalDefs ds
 -- Interfaces
 -- ---------------------------------------------------------------------------
 
+-- |Pretty print an interface
 ppInterface :: Interface -> Doc
 ppInterface (Interface m is ds)
   =  text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
@@ -159,6 +150,8 @@ ppInterface (Interface m is ds)
 ppIImportDecl :: IImportDecl -> Doc
 ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
+
+-- |Pretty print an interface declaration
 ppIDecl :: IDecl -> Doc
 ppIDecl (IInfixDecl _ fix p op) = ppPrec fix p <+> ppQInfixOp op
 ppIDecl (HidingDataDecl _ tc tvs) =
@@ -180,24 +173,22 @@ ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
 -- Types
 -- ---------------------------------------------------------------------------
 
+-- |Pretty print a type expression
 ppTypeExpr :: Int -> TypeExpr -> Doc
-ppTypeExpr p (ConstructorType tc tys) =
-  parenExp (p > 1 && not (null tys))
-           (ppQIdent tc <+> fsep (map (ppTypeExpr 2) tys))
-ppTypeExpr _ (VariableType tv) = ppIdent tv
-ppTypeExpr _ (TupleType tys) = parenList (map (ppTypeExpr 0) tys)
-ppTypeExpr _ (ListType ty) = brackets (ppTypeExpr 0 ty)
-ppTypeExpr p (ArrowType ty1 ty2) =
-  parenExp (p > 0) (fsep (ppArrowType (ArrowType ty1 ty2)))
-  where ppArrowType (ArrowType ty1' ty2') =
-          ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
-        ppArrowType ty = [ppTypeExpr 0 ty]
-ppTypeExpr _ (RecordType fs rty) =
-  braces (list (map ppTypedField fs)
-          <> maybe empty (\ty -> space <> char '|' <+> ppTypeExpr 0 ty) rty)
+ppTypeExpr p (ConstructorType tc tys) = parenExp (p > 1 && not (null tys))
+  (ppQIdent tc <+> fsep (map (ppTypeExpr 2) tys))
+ppTypeExpr _ (VariableType   tv) = ppIdent tv
+ppTypeExpr _ (TupleType     tys) = parenList (map (ppTypeExpr 0) tys)
+ppTypeExpr _ (ListType       ty) = brackets (ppTypeExpr 0 ty)
+ppTypeExpr p (ArrowType ty1 ty2) = parenExp (p > 0)
+  (fsep (ppArrowType (ArrowType ty1 ty2)))
   where
-  ppTypedField (ls,ty) =
-    list (map ppIdent ls) <> text "::" <> ppTypeExpr 0 ty
+  ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
+  ppArrowType ty                    = [ppTypeExpr 0 ty]
+ppTypeExpr _ (RecordType fs rty) = braces (list (map ppTypedField fs)
+    <> maybe empty (\ty -> space <> char '|' <+> ppTypeExpr 0 ty) rty)
+  where
+  ppTypedField (ls,ty) = list (map ppIdent ls) <> text "::" <> ppTypeExpr 0 ty
 
 -- ---------------------------------------------------------------------------
 -- Literals
@@ -213,6 +204,7 @@ ppLiteral (String _ s) = text (show s)
 -- Patterns
 -- ---------------------------------------------------------------------------
 
+-- |Pretty print a constructor term
 ppConstrTerm :: Int -> ConstrTerm -> Doc
 ppConstrTerm p (LiteralPattern l) =
   parenExp (p > 1 && isNegative l) (ppLiteral l)
@@ -246,6 +238,7 @@ ppConstrTerm _ (RecordPattern fs rt) =
   braces (list (map ppFieldPatt fs)
          <> (maybe empty (\t -> space <> char '|' <+> ppConstrTerm 0 t) rt))
 
+-- |Pretty print a record field pattern
 ppFieldPatt :: Field ConstrTerm -> Doc
 ppFieldPatt (Field _ l t) = ppIdent l <> equals <> ppConstrTerm 0 t
 
@@ -257,6 +250,7 @@ ppCondExpr :: Doc -> CondExpr -> Doc
 ppCondExpr eq (CondExpr _ g e) =
   vbar <+> sep [ppExpr 0 g <+> eq,indent (ppExpr 0 e)]
 
+-- |Pretty print an expression
 ppExpr :: Int -> Expression -> Doc
 ppExpr _ (Literal l) = ppLiteral l
 ppExpr _ (Variable v) = ppQIdent v
@@ -312,17 +306,21 @@ ppExpr _ (RecordUpdate fs e) =
   braces (list (map (ppFieldExpr (text ":=")) fs)
          <+> char '|' <+> ppExpr 0 e)
 
+-- |Pretty print a statement
 ppStmt :: Statement -> Doc
 ppStmt (StmtExpr _ e) = ppExpr 0 e
 ppStmt (StmtBind _ t e) = sep [ppConstrTerm 0 t <+> larrow,indent (ppExpr 0 e)]
 ppStmt (StmtDecl ds) = text "let" <+> ppBlock ds
 
+-- |Pretty print an alternative in a case expression
 ppAlt :: Alt -> Doc
 ppAlt (Alt _ t rhs) = ppRule (ppConstrTerm 0 t) rarrow rhs
 
+-- |Pretty print a record field expression
 ppFieldExpr :: Doc -> Field Expression -> Doc
 ppFieldExpr comb (Field _ l e) = ppIdent l <> comb <> ppExpr 0 e
 
+-- |Pretty print an operator
 ppOp :: InfixOp -> Doc
 ppOp (InfixOp op) = ppQInfixOp op
 ppOp (InfixConstr op) = ppQInfixOp op
@@ -331,6 +329,7 @@ ppOp (InfixConstr op) = ppQInfixOp op
 -- Names
 -- ---------------------------------------------------------------------------
 
+-- |Pretty print an identifier
 ppIdent :: Ident -> Doc
 ppIdent x = parenExp (isInfixOp x) (text (name x))
 

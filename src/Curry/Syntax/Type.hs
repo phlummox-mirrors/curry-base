@@ -39,16 +39,15 @@ import Curry.Base.Position
 -- Modules
 -- ---------------------------------------------------------------------------
 
+-- |Curry module
 data Module = Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Export specification
--- ---------------------------------------------------------------------------
-
+-- |Export specification
 data ExportSpec = Exporting Position [Export]
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Single exported entity
 data Export
   = Export         QualIdent         -- f/T
   | ExportTypeWith QualIdent [Ident] -- T (C1,...,Cn)
@@ -56,21 +55,21 @@ data Export
   | ExportModule   ModuleIdent       -- module M
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Import declaration and specification
--- ---------------------------------------------------------------------------
-
+-- |Import declaration
 data ImportDecl = ImportDecl Position ModuleIdent Qualified
                              (Maybe ModuleIdent) (Maybe ImportSpec)
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Flag to signal qualified import
 type Qualified = Bool
 
+-- |Import specification
 data ImportSpec
   = Importing Position [Import]
   | Hiding Position [Import]
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Single imported entity
 data Import
   = Import         Ident            -- f/T
   | ImportTypeWith Ident [Ident]    -- T (C1,...,Cn)
@@ -81,7 +80,7 @@ data Import
 -- Module interfaces
 -- ---------------------------------------------------------------------------
 
--- | Module interfaces
+-- | Module interface
 --
 -- Interface declarations are restricted to type declarations and signatures.
 -- Note that an interface function declaration additionaly contains the
@@ -90,9 +89,11 @@ data Import
 data Interface = Interface ModuleIdent [IImportDecl] [IDecl]
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Interface import declaration
 data IImportDecl = IImportDecl Position ModuleIdent
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Interface declaration
 data IDecl
   = IInfixDecl     Position Infix Integer QualIdent
   | HidingDataDecl Position Ident [Ident]
@@ -103,11 +104,12 @@ data IDecl
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
--- Module declarations
+-- Declarations (local or top-level)
 -- ---------------------------------------------------------------------------
 
+-- |Declaration in a module
 data Decl
-  = InfixDecl        Position Infix Integer [Ident]        -- infixl5 (op1), (op2)
+  = InfixDecl        Position Infix Integer [Ident]        -- infixl 5 (op1), (op2)
   | DataDecl         Position Ident [Ident] [ConstrDecl]   -- data C a b = C1 a | C2 b
   | NewtypeDecl      Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
   | TypeDecl         Position Ident [Ident] TypeExpr       -- type C a b = D a b
@@ -124,50 +126,36 @@ data Decl
 -- Infix declaration
 -- ---------------------------------------------------------------------------
 
+-- |Fixity of operators
 data Infix
-  = InfixL
-  | InfixR
-  | Infix
+  = InfixL -- ^ left-associative
+  | InfixR -- ^ right-associative
+  | Infix  -- ^ no associativity
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Data declaration
--- ---------------------------------------------------------------------------
-
+-- |Constructor declaration for algebraic data types
 data ConstrDecl
   = ConstrDecl Position [Ident] Ident [TypeExpr]
   | ConOpDecl  Position [Ident] TypeExpr Ident TypeExpr
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Newtype declaration
--- ---------------------------------------------------------------------------
-
+-- |Constructor declaration for renaming types (newtypes)
 data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
    deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Evaluation annotation
--- ---------------------------------------------------------------------------
-
+-- |Evaluation annotation
 data EvalAnnotation
   = EvalRigid
   | EvalChoice
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- C calling convention
--- ---------------------------------------------------------------------------
-
+-- |Calling convention for C code
 data CallConv
   = CallConvPrimitive
   | CallConvCCall
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Type expressions
--- ---------------------------------------------------------------------------
-
+-- |Type expressions
 data TypeExpr
   = ConstructorType QualIdent [TypeExpr]
   | VariableType    Ident
@@ -182,24 +170,28 @@ data TypeExpr
 -- Functions
 -- ---------------------------------------------------------------------------
 
+-- |Function defining equation
 data Equation = Equation Position Lhs Rhs
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Left-hand-side of an 'Equation' (function identifier and patterns)
 data Lhs
   = FunLhs Ident [ConstrTerm]
   | OpLhs  ConstrTerm Ident ConstrTerm
   | ApLhs  Lhs [ConstrTerm]
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Right-hand-side of an 'Equation'
 data Rhs
   = SimpleRhs  Position Expression [Decl]
   | GuardedRhs [CondExpr] [Decl]
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Conditional expression (conditioned by a guard expression)
 data CondExpr = CondExpr Position Expression Expression
     deriving (Eq, Read, Show, Data, Typeable)
 
--- |Literals
+-- |Literal
 -- The 'Ident' argument of an @Int@ literal is used for supporting ad-hoc
 -- polymorphism on integer numbers. An integer literal can be used either as
 -- an integer number or as a floating-point number depending on its context.
@@ -212,10 +204,7 @@ data Literal
   | String SrcRef String
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Patterns
--- ---------------------------------------------------------------------------
-
+-- |Constructor term (used for patterns)
 data ConstrTerm
   = LiteralPattern     Literal
   | NegativePattern    Ident Literal
@@ -233,10 +222,7 @@ data ConstrTerm
         -- {l1 = p1, ..., ln = pn}  oder {l1 = p1, ..., ln = pn | p}
     deriving (Eq, Read, Show, Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- Expressions
--- ---------------------------------------------------------------------------
-
+-- |Expression
 data Expression
   = Literal         Literal
   | Variable        QualIdent
@@ -265,20 +251,24 @@ data Expression
   | RecordUpdate    [Field Expression] Expression -- {l1 := e1,...,ln := en | e}
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Infix operation
 data InfixOp
   = InfixOp     QualIdent
   | InfixConstr QualIdent
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Statement (used for do-sequence and list comprehensions)
 data Statement
   = StmtExpr SrcRef Expression
   | StmtDecl [Decl]
   | StmtBind SrcRef ConstrTerm Expression
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Single case alternative
 data Alt = Alt Position ConstrTerm Rhs
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Record field
 data Field a = Field Position Ident a
     deriving (Eq, Read, Show, Data, Typeable)
 

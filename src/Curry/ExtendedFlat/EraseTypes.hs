@@ -18,6 +18,7 @@ import Curry.ExtendedFlat.Goodies
 -- small, we stick with that for now.
 type TVarSet = [TVarIndex]
 
+-- |Erase type annotations
 eraseTypes :: Prog -> Prog
 eraseTypes = updProg id id id (map eraseTypesInFunc) id
 

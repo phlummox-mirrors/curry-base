@@ -37,10 +37,10 @@ import Curry.Syntax.Utils
 lexFile :: FilePath -> String -> MsgMonad [(Position, Lexer.Token)]
 lexFile fn src = unlit fn src >>= \s -> Lexer.lexFile (first fn) s False []
 
--- | Parse a Curry header
+-- |Parse a Curry header
 parseHeader :: FilePath -> String -> MsgMonad Module
 parseHeader fn src = unlit fn src >>= Parser.parseHeader fn
 
--- | Parse a Curry module
+-- |Parse a Curry module
 parseModule :: Bool -> FilePath -> String -> MsgMonad Module
 parseModule likeFlat fn src = unlit fn src >>= Parser.parseSource likeFlat fn

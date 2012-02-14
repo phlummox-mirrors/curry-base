@@ -57,6 +57,7 @@ infixl 2 <?>, `opt`
 
 -- |Type class for symbols
 class (Ord s, Show s) => Symbol s where
+  -- |Does the 'Symbol' represent the end of the input?
   isEOF :: s -> Bool
 
 type SuccessCont s a = Position -> s -> P a
@@ -65,8 +66,12 @@ type Lexer s a       = SuccessCont s a -> FailureCont a -> P a
 type ParseFun s a b  = (a -> SuccessCont s b) -> FailureCont b
                        -> SuccessCont s b
 
-data Parser s a b = Parser (Maybe (ParseFun s a b))
-                           (Map.Map s (Lexer s b -> ParseFun s a b))
+-- |CPS-Parser type
+data Parser s a b = Parser
+  -- Parsing function for empty word
+  (Maybe (ParseFun s a b))
+  -- Lookup table (continuations for 'Symbol's recognized by the parser)
+  (Map.Map s (Lexer s b -> ParseFun s a b))
 
 instance Symbol s => Show (Parser s a b) where
   showsPrec p (Parser e ps) = showParen (p >= 10) $
@@ -77,27 +82,32 @@ instance Symbol s => Show (Parser s a b) where
 -- Parser application
 -- ---------------------------------------------------------------------------
 
+-- |Apply a parser and lexer to a 'String', whereas the 'FilePath' is used
+-- to identify the origin of the 'String' in case of parsing errors.
 applyParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
             -> MsgMonad a
 applyParser p lexer = parse (lexer (choose p lexer done failP) failP)
   where done x pos s
-          | isEOF s = returnP x
+          | isEOF s   = returnP x
           | otherwise = failP pos (unexpected s)
 
+-- |Apply a parser and lexer to parse the beginning of a 'String'.
+-- The 'FilePath' is used to identify the origin of the 'String' in case of
+-- parsing errors.
 prefixParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
              -> MsgMonad a
 prefixParser p lexer = parse (lexer (choose p lexer discard failP) failP)
   where discard x _ _ = returnP x
 
+-- |Choose the appropriate parsing function w.r.t. to the next 'Symbol'.
 choose :: Symbol s => Parser s a b -> Lexer s b -> ParseFun s a b
-choose (Parser e ps) lexer success failp pos s =
-  case Map.lookup s ps of
-    Just p -> p lexer success failp pos s
-    Nothing ->
-      case e of
-        Just p -> p success failp pos s
-        Nothing -> failp pos (unexpected s)
+choose (Parser e ps) lexer success failp pos s = case Map.lookup s ps of
+  Just p  -> p lexer success failp pos s
+  Nothing -> case e of
+    Just p  -> p success failp pos s
+    Nothing -> failp pos (unexpected s)
 
+-- |Fail on an unexpected 'Symbol'
 unexpected :: Symbol s => s -> String
 unexpected s
   | isEOF s   = "Unexpected end-of-file"
@@ -122,16 +132,17 @@ symbol :: Symbol s => s -> Parser s s a
 symbol s = Parser Nothing (Map.singleton s p)
   where p lexer success failp _pos s' = lexer (success s') failp
 
--- |Behave like the given parser, but if it fails to accept the word the
---  error message is used
+-- |Behave like the given parser, but use the given 'String' as the error
+-- message if the parser fails
 (<?>) :: Symbol s => Parser s a b -> String -> Parser s a b
 p <?> msg = p <|> Parser (Just pfail) Map.empty
   where pfail _ failp pos _ = failp pos msg
 
--- |
+-- |Deterministic choice between two parsers.
+-- The appropriate parser is chosen based on the next 'Symbol'
 (<|>) :: Symbol s => Parser s a b -> Parser s a b -> Parser s a b
 Parser e1 ps1 <|> Parser e2 ps2
-  | isJust e1 && isJust e2 = error "Ambiguous parser for empty word"
+  | isJust e1 && isJust e2 = error $ "Ambiguous parser for empty word"
   | not (Set.null common)  = error $ "Ambiguous parser for " ++ show common
   | otherwise = Parser (e1 `mplus` e2) (Map.union ps1 ps2)
   where common = Map.keysSet ps1 `Set.intersection` Map.keysSet ps2
@@ -150,6 +161,7 @@ Parser e1 ps1 <|> Parser e2 ps2
 -- and report an ambiguous parse error if both succeed.
 -- ---------------------------------------------------------------------------
 
+-- |Non-deterministic choice between two parsers
 (<|?>) :: Symbol s => Parser s a b -> Parser s a b -> Parser s a b
 Parser e1 ps1 <|?> Parser e2 ps2
   | isJust e1 && isJust e2 = error "Ambiguous parser for empty word"
@@ -201,9 +213,11 @@ seqPP p1 p2 lexer success failp =
 -- with an overlapping first set with the deterministic combinator <|>.
 -- ---------------------------------------------------------------------------
 
+-- |Restrict the first parser by the first 'Symbol's of the second
 (<\>) :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
 p <\> Parser _ ps = p <\\> Map.keys ps
 
+-- |Restrict a parser by a list of first 'Symbol's
 (<\\>) :: Symbol s => Parser s a b -> [s] -> Parser s a b
 Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 
@@ -273,21 +287,26 @@ p `sepBy` q = p `sepBy1` q `opt` []
 sepBy1 :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
 p `sepBy1` q = (:) <$> p <*> many (q <-*> p)
 
-chainr :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a
-       -> Parser s a b
+-- |@chainr p op x@ parses zero or more occurrences of @p@, separated by @op@.
+-- Returns a value produced by a *right* associative application of all
+-- functions returned by op. If there are no occurrences of @p@, @x@ is
+-- returned.
+chainr :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
 chainr p op x = chainr1 p op `opt` x
 
-chainr1 :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b
-        -> Parser s a b
-chainr1 p op = r
-  where r = p <**> (flip <$> op <*> r `opt` id)
+-- |Like 'chainr', but parses one or more occurrences of p.
+chainr1 :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> Parser s a b
+chainr1 p op = r where r = p <**> (flip <$> op <*> r `opt` id)
 
-chainl :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a
-       -> Parser s a b
+-- |@chainr p op x@ parses zero or more occurrences of @p@, separated by @op@.
+-- Returns a value produced by a *left* associative application of all
+-- functions returned by op. If there are no occurrences of @p@, @x@ is
+-- returned.
+chainl :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
 chainl p op x = chainl1 p op `opt` x
 
-chainl1 :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b
-        -> Parser s a b
+-- |Like 'chainl', but parses one or more occurrences of p.
+chainl1 :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> Parser s a b
 chainl1 p op = foldF <$> p <*> many (flip <$> op <*> p)
   where foldF x [] = x
         foldF x (f:fs) = foldF (f x) fs
@@ -298,10 +317,11 @@ bracket :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
         -> Parser s b c
 bracket open p close = open <-*> p <*-> close
 
-ops :: Symbol s => [(s,a)] -> Parser s a b
-ops []           = error "internal error: Curry.Base.LLParseComb.ops: empty list"
-ops [(s,x)]      = x <$-> symbol s
-ops ((s,x):rest) = x <$-> symbol s <|> ops rest
+-- |Parse one of the given operators
+ops :: Symbol s => [(s, a)] -> Parser s a b
+ops []               = error "internal error: Curry.Base.LLParseComb.ops: empty list"
+ops [(s, x)]        = x <$-> symbol s
+ops ((s, x) : rest) = x <$-> symbol s <|> ops rest
 
 -- ---------------------------------------------------------------------------
 -- Layout combinators

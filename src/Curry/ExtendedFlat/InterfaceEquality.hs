@@ -1,7 +1,6 @@
-{- |InterfaceCheck - Check the equality of the interfaces of two FlatCurry
-                     programs
+{- |Check the equality of the interfaces of two FlatCurry programs.
 
-    January 2006, Martin Engelke (men@informatik.uni-kiel.de)
+    (c) January 2006, Martin Engelke (men@informatik.uni-kiel.de)
 -}
 module Curry.ExtendedFlat.InterfaceEquality (eqInterface) where
 

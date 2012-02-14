@@ -29,6 +29,7 @@ import Curry.Base.MessageMonad
 import Curry.Files.Filenames (lcurryExt)
 import Curry.Files.PathUtils (takeExtension)
 
+-- |Check whether a 'FilePath' represents a literate Curry module
 isLiterate :: FilePath -> Bool
 isLiterate = (== lcurryExt) . takeExtension
 
@@ -38,9 +39,8 @@ data Line
   | Blank               -- ^ blank line
   | Comment             -- ^ comment line
 
-{- |Process a curry program into error messages (if any) and the
-    corresponding non-literate program.
--}
+-- |Process a curry program into error messages (if any) and the
+-- corresponding non-literate program.
 unlit :: FilePath -> String -> MsgMonad String
 unlit fn cy
   | isLiterate fn = do
@@ -55,9 +55,8 @@ classify l ('>' : cs) = Program l cs
 classify _ cs | all isSpace cs = Blank
               | otherwise      = Comment
 
-{- |Check that each program line is not adjacent to a comment line and there
-    is at least one program line.
--}
+-- |Check that each program line is not adjacent to a comment line and there
+-- is at least one program line.
 progLines :: FilePath -> [Line] -> MsgMonad [String]
 progLines fn cs = zipWithM checkAdjacency (Blank : cs) cs where
   checkAdjacency :: Line -> Line -> MsgMonad String

@@ -19,6 +19,7 @@ import Curry.Base.Position
 
 import Curry.Syntax.Type
 
+-- |Show a Curry module like by an devired 'Show' instance
 showModule :: Module -> String
 showModule m = showsModule m "\n"
 

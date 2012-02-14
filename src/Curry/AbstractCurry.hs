@@ -199,8 +199,8 @@ data CFuncDecl = CFunc QName Int CVisibility CTypeExpr CRules
     an evaluation annotation, or it is externally defined.
 -}
 data CRules
-  = CRules CEvalAnnot [CRule]
-  | CExternal String
+  = CRules CEvalAnnot [CRule] -- ^ general program rule
+  | CExternal String          -- ^ externally defined
     deriving (Eq, Read, Show)
 
 
@@ -261,19 +261,19 @@ data CPattern
 
 -- | Curry expressions.
 data CExpr
- = CVar       CVarIName            -- ^ variable (unique index / name)
- | CLit       CLiteral             -- ^ literal (Integer/Float/Char constant)
- | CSymbol    QName                -- ^ a defined symbol with module and name
- | CApply     CExpr CExpr          -- ^ application (e1 e2)
- | CLambda    [CPattern] CExpr     -- ^ lambda abstraction
- | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
- | CDoExpr    [CStatement]         -- ^ do expression
- | CListComp  CExpr [CStatement]   -- ^ list comprehension
- | CCase      CExpr [CBranchExpr]  -- ^ case expression
- | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
- | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
- | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
-   deriving (Eq, Read, Show)
+  = CVar       CVarIName            -- ^ variable (unique index / name)
+  | CLit       CLiteral             -- ^ literal (Integer/Float/Char constant)
+  | CSymbol    QName                -- ^ a defined symbol with module and name
+  | CApply     CExpr CExpr          -- ^ application (e1 e2)
+  | CLambda    [CPattern] CExpr     -- ^ lambda abstraction
+  | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
+  | CDoExpr    [CStatement]         -- ^ do expression
+  | CListComp  CExpr [CStatement]   -- ^ list comprehension
+  | CCase      CExpr [CBranchExpr]  -- ^ case expression
+  | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
+  | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
+  | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
+    deriving (Eq, Read, Show)
 
 
 {- |Literals occurring in an expression, either an integer, a float,
@@ -300,7 +300,7 @@ data CStatement
     deriving (Eq, Read, Show)
 
 
--- Branches in case expressions.
+-- |Branches in case expressions.
 data CBranchExpr = CBranch CPattern CExpr
     deriving (Eq, Read, Show)
 

@@ -34,12 +34,16 @@ import System.Time (ClockTime)
 import Curry.Base.Ident
 import Curry.Files.Filenames
 
+-- |Create a 'FilePath' from a 'ModuleIdent' using the hierarchical module
+-- system
 moduleNameToFile :: ModuleIdent -> FilePath
 moduleNameToFile = foldr1 (</>) . moduleQualifiers
 
+-- |Extract the 'ModuleIdent' from a 'FilePath'
 fileNameToModule :: FilePath -> ModuleIdent
 fileNameToModule = mkMIdent . splitDirectories . dropExtension . dropDrive
 
+-- |Checks whether a 'String' represents a 'FilePath' to a Curry module
 isCurryFilePath :: String -> Bool
 isCurryFilePath str =  isValid str
                     && takeExtension str `elem` ("" : moduleExts)
@@ -48,7 +52,7 @@ isCurryFilePath str =  isValid str
 -- Searching for files
 -- ---------------------------------------------------------------------------
 
--- | Search in the given list of paths for the given 'FilePath' and eventually
+-- |Search in the given list of paths for the given 'FilePath' and eventually
 -- return the file name and the path the file was found in.
 --
 -- - If the file name already contains a directory, then the paths to search
@@ -63,7 +67,7 @@ lookupCurryFileIn paths fn = lookupFileIn ("." : paths') exts fn where
          | otherwise  = [fnExt]
   fnExt = takeExtension fn
 
--- | Same as 'lookupCurryFileIn', but returns the complete 'FilePath'.
+-- |Same as 'lookupCurryFileIn', but returns the complete 'FilePath'.
 lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
 lookupCurryFile paths fn = combineM $ lookupCurryFileIn paths fn
 
@@ -77,7 +81,7 @@ lookupCurryModuleIn :: [FilePath]          -- ^ list of paths to source files
 lookupCurryModuleIn paths libPaths m =
   lookupFileIn ("." : paths ++ libPaths) moduleExts (moduleNameToFile m)
 
--- | Same as 'lookupCurryModuleIn', but returns the complete 'FilePath'.
+-- |Same as 'lookupCurryModuleIn', but returns the complete 'FilePath'.
 lookupCurryModule :: [FilePath] -> [FilePath] -> ModuleIdent
                   -> IO (Maybe FilePath)
 lookupCurryModule paths libPaths m = combineM
@@ -100,6 +104,9 @@ lookupCurryInterface :: [FilePath]          -- ^ list of paths to search in
                      -> IO (Maybe FilePath) -- ^ the file path if found
 lookupCurryInterface paths m = combineM $ lookupCurryInterfaceIn paths m
 
+-- |Search in the given directories for the file with the specified file
+-- extensions and eventually return the containing directory as
+-- well as the local 'FilePath' of the file.
 lookupFileIn :: [FilePath] -- ^ Directories to search in
              -> [String]   -- ^ Accepted file extensions
              -> FilePath   -- ^ Initial file name
