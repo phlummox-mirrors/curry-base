@@ -14,7 +14,7 @@ module Curry.Syntax.Lexer
     Token (..), Category (..), Attributes (..)
 
     -- * lexing functions
-  , lexFile, lexer
+  , SuccessP, FailP, Lexer, lexFile, lexer
   ) where
 
 import Prelude hiding (fail)
@@ -399,8 +399,13 @@ isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 -- Lexing functions
 -- ---------------------------------------------------------------------------
 
+-- |success continuation
 type SuccessP a = Position -> Token  -> P a
+
+-- |failure continuation
 type FailP    a = Position -> String -> P a
+
+-- |A lexer function
 type Lexer    a = SuccessP a -> FailP a -> P a
 
 -- |Lex a given file

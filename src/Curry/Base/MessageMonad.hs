@@ -50,6 +50,7 @@ showWarning w = "Warning: " ++ show w
 showError :: Message -> String
 showError w = "Error: " ++ show w
 
+-- |Build a message from a 'Position' and a text
 toMessage :: Position -> String -> Message
 toMessage pos msg = Message (Just pos) msg
 

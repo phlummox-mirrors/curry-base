@@ -1,3 +1,18 @@
+{- |
+    Module      :  $Header$
+    Description :  Utility functions for Curry's abstract syntax
+    Copyright   :  (c) 1999-2004 Wolfgang Lux
+                       2005 Martin Engelke
+                       2011 Björn Peemöller
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
+
+    This module provides some utility functions for working with the
+    abstract syntax tree of Curry.
+-}
 module Curry.Syntax.Utils
   ( isEvalAnnot, isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
   , isRecordDecl, patchModuleId
@@ -18,32 +33,37 @@ import Curry.Files.PathUtils
 -- obtains its filename as module identifier (unlike the definition in
 -- Haskell and original MCC where a module obtains \texttt{main}).
 
+-- |Replace the generic module name 'main' with the module name derived
+-- from the 'FilePath' of the module.
 patchModuleId :: FilePath -> Module -> Module
 patchModuleId fn m@(Module mid es is ds)
-  | mid == mainMIdent
-    = Module (mkMIdent [takeBaseName fn]) es is ds
-  | otherwise
-    = m
+  | mid == mainMIdent = Module (mkMIdent [takeBaseName fn]) es is ds
+  | otherwise         = m
 
+-- |Is the declaration an infix declaration?
 isInfixDecl :: Decl -> Bool
 isInfixDecl (InfixDecl _ _ _ _) = True
 isInfixDecl _                   = False
 
+-- |Is the declaration a type declaration?
 isTypeDecl :: Decl -> Bool
 isTypeDecl (DataDecl    _ _ _ _) = True
 isTypeDecl (NewtypeDecl _ _ _ _) = True
 isTypeDecl (TypeDecl    _ _ _ _) = True
 isTypeDecl _                     = False
 
+-- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
 isTypeSig (TypeSig      _ _ _    ) = True
 isTypeSig (ExternalDecl _ _ _ _ _) = True
 isTypeSig _                        = False
 
+-- |Is the declaration an evaluation annotation?
 isEvalAnnot :: Decl -> Bool
 isEvalAnnot (EvalAnnot _ _ _) = True
 isEvalAnnot _                 = False
 
+-- |Is the declaration a value declaration?
 isValueDecl :: Decl -> Bool
 isValueDecl (FunctionDecl     _ _ _    ) = True
 isValueDecl (ExternalDecl     _ _ _ _ _) = True
@@ -52,6 +72,7 @@ isValueDecl (PatternDecl      _ _ _    ) = True
 isValueDecl (ExtraVariables    _ _     ) = True
 isValueDecl _ = False
 
+-- |Is the declaration a record declaration?
 isRecordDecl :: Decl -> Bool
 isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
 isRecordDecl _                                 = False
@@ -61,30 +82,38 @@ infixOp :: InfixOp -> Expression
 infixOp (InfixOp     op) = Variable op
 infixOp (InfixConstr op) = Constructor op
 
+-- |flatten the left-hand-side to the identifier and all constructor terms
 flatLhs :: Lhs -> (Ident,[ConstrTerm])
 flatLhs lhs = flat lhs []
-  where flat (FunLhs f ts)    ts' = (f, ts ++ ts')
+  where flat (FunLhs    f ts) ts' = (f, ts ++ ts')
         flat (OpLhs t1 op t2) ts' = (op, t1 : t2 : ts')
-        flat (ApLhs lhs' ts)  ts' = flat lhs' (ts ++ ts')
+        flat (ApLhs  lhs' ts) ts' = flat lhs' (ts ++ ts')
 
+-- |Provide no 'SrcRef's
 mk' :: ([SrcRef] -> a) -> a
 mk' = ($ [])
 
+-- |Provide an empty 'SrcRef'
 mk :: (SrcRef -> a) -> a
 mk = ($ noRef)
 
+-- |Construct an Integer literal
 mkInt :: Integer -> Literal
-mkInt i = mk (\r -> Int (addPositionIdent (AST  r) anonId) i)
+mkInt i = mk (\r -> Int (addPositionIdent (AST r) anonId) i)
 
+-- |Select the label of a field
 fieldLabel :: Field a -> Ident
 fieldLabel (Field _ l _) = l
 
+-- |Select the term of a field
 fieldTerm :: Field a -> a
 fieldTerm (Field _ _ t) = t
 
+-- |Select the label and term of a field
 field2Tuple :: Field a -> (Ident,a)
 field2Tuple (Field _ l t) = (l, t)
 
+-- |Get the operator name of an infix operator
 opName :: InfixOp -> QualIdent
 opName (InfixOp    op) = op
 opName (InfixConstr c) = c
@@ -93,8 +122,10 @@ opName (InfixConstr c) = c
 -- add source references
 ---------------------------
 
+-- |Monad for adding source references
 type M a = a -> State Int a
 
+-- |Add 'SrcRef's to a 'Module'
 addSrcRefs :: Module -> Module
 addSrcRefs x = evalState (addRef' x) 0
   where

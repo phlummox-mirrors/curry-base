@@ -23,7 +23,7 @@
 -}
 module Curry.Base.LLParseComb
   ( -- * Data types
-    Symbol (..), Parser
+    Symbol (..), Parser, Lexer, SuccessCont, FailureCont
 
     -- * Parser application
   , applyParser, prefixParser
@@ -60,9 +60,16 @@ class (Ord s, Show s) => Symbol s where
   -- |Does the 'Symbol' represent the end of the input?
   isEOF :: s -> Bool
 
+-- |Success continuation
 type SuccessCont s a = Position -> s -> P a
+
+-- |Failure continuation
 type FailureCont a   = Position -> String -> P a
+
+-- |CPS lexer
 type Lexer s a       = SuccessCont s a -> FailureCont a -> P a
+
+-- |Parsing function
 type ParseFun s a b  = (a -> SuccessCont s b) -> FailureCont b
                        -> SuccessCont s b
 

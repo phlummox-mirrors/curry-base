@@ -26,6 +26,7 @@ module Curry.FlatCurry.Goodies where
 
 import Curry.FlatCurry.Type
 
+-- |Update of a type's component
 type Update a b = (b -> b) -> a -> a
 
 -- Prog ----------------------------------------------------------------------
@@ -151,14 +152,15 @@ typeSyn = trType undefined (\_ _ _ syn -> syn)
 isTypeSyn :: TypeDecl -> Bool
 isTypeSyn = trType (\_ _ _ _ -> False) (\_ _ _ _ -> True)
 
--- is type declaration declaring a regular type?
+-- | is type declaration declaring a regular type?
 isDataTypeDecl :: TypeDecl -> Bool
 isDataTypeDecl = trType (\_ _ _ cs -> not (null cs)) (\_ _ _ _ -> False)
 
--- is type declaration declaring an external type?
+-- | is type declaration declaring an external type?
 isExternalType :: TypeDecl -> Bool
 isExternalType = trType (\_ _ _ cs -> null cs) (\_ _ _ _ -> False)
 
+-- |Is the 'TypeDecl' public?
 isPublicType :: TypeDecl -> Bool
 isPublicType = (== Public) . typeVisibility
 
@@ -222,6 +224,7 @@ consArity = trCons (\_ arity _ _ -> arity)
 consVisibility :: ConsDecl -> Visibility
 consVisibility = trCons (\_ _ vis _ -> vis)
 
+-- |Is the constructor declaration public?
 isPublicCons :: ConsDecl -> Bool
 isPublicCons = isPublic . consVisibility
 
@@ -343,6 +346,7 @@ argTypes (TVar _) = []
 argTypes (TCons _ _) = []
 argTypes (FuncType dom ran) = dom : argTypes ran
 
+-- |Compute the arity of a 'TypeExpr'
 typeArity :: TypeExpr -> Int
 typeArity = length . argTypes
 
@@ -356,7 +360,7 @@ resultType (FuncType _ ran) = resultType ran
 allVarsInTypeExpr :: TypeExpr -> [TVarIndex]
 allVarsInTypeExpr = trTypeExpr (:[]) (const concat) (++)
 
---- yield the list of all contained type constructors
+-- |yield the list of all contained type constructors
 allTypeCons :: TypeExpr -> [QName]
 allTypeCons (TVar _) = []
 allTypeCons (TCons name args) = name : concatMap allTypeCons args
@@ -397,8 +401,7 @@ updOp :: (QName -> QName) ->
          (Fixity -> Fixity) ->
          (Int -> Int)       -> OpDecl -> OpDecl
 updOp fn ff fp = trOp op
- where
-  op name fix prec = Op (fn name) (ff fix) (fp prec)
+ where op name fix prec = Op (fn name) (ff fix) (fp prec)
 
 -- |update name of operator declaration
 updOpName :: Update OpDecl QName
@@ -475,7 +478,7 @@ updFuncRule = updFunc id id id id
 
 -- Auxiliary Functions
 
---- is function public?
+-- |is function public?
 isPublicFunc :: FuncDecl -> Bool
 isPublicFunc = isPublic . funcVisibility
 
@@ -495,6 +498,7 @@ funcArgs = ruleArgs . funcRule
 funcBody :: FuncDecl -> Expr
 funcBody = ruleBody . funcRule
 
+-- |get the right-hand-sides of a 'FuncDecl'
 funcRHS :: FuncDecl -> [Expr]
 funcRHS f | not (isExternal f) = orCase (funcBody f)
           | otherwise = []
@@ -611,11 +615,6 @@ isCombTypeConsCall = trCombType False (\_ -> False) True (\_ -> False)
 isCombTypeConsPartCall :: CombType -> Bool
 isCombTypeConsPartCall = trCombType False (\_ -> False) False (\_ -> True)
 
--- Auxiliary Functions
-
-missingArgs :: CombType -> Int
-missingArgs = trCombType 0 id 0 id
-
 -- Expr ----------------------------------------------------------------------
 
 -- Selectors
@@ -651,6 +650,9 @@ combArgs _               = error $ "Curry.FlatCurry.Goodies.combArgs: " ++
 -- |get number of missing arguments if expression is combined
 missingCombArgs :: Expr -> Int
 missingCombArgs = missingArgs . combType
+  where
+  missingArgs :: CombType -> Int
+  missingArgs = trCombType 0 id 0 id
 
 -- |get indices of varoables in let declaration
 letBinds :: Expr -> [(VarIndex,Expr)]
@@ -950,5 +952,6 @@ updPatLiteral f = updPattern id id f
 patExpr :: Pattern -> Expr
 patExpr = trPattern (\ name -> Comb ConsCall name . map Var) Lit
 
+-- |Is this a public 'Visibility'?
 isPublic :: Visibility -> Bool
 isPublic = (== Public)
