@@ -1,22 +1,29 @@
-{- |The function adjustTypeInfos annotates every declaration, identifier, and
+{- |
+    Module      :  $Header$
+    Description :  Type inference for FlatCurry
+    Copyright   :  (c) 2009, Holger Siegel
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  non-portable (FlexibleContexts, PatternGuards)
+
+    The function adjustTypeInfos annotates every declaration, identifier, and
     application with exact type information.
 
     This information is derived from the more general information found in
     the AST.
-
-    (c) 2009, Holger Siegel.
 -}
 
 {-# LANGUAGE FlexibleContexts, PatternGuards #-}
 
 module Curry.ExtendedFlat.TypeInference
-  ( dispType, adjustTypeInfo, labelVarsWithTypes,uniqueTypeIndices
+  ( dispType, adjustTypeInfo, labelVarsWithTypes, uniqueTypeIndices
   , genEquations
   ) where
 
-
-import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.State
 import qualified Data.IntMap as IntMap
 import Data.Maybe
 import Text.PrettyPrint.HughesPJ
@@ -30,9 +37,9 @@ trace' :: String -> b -> b
 trace' _ x = x
 -- trace' = trace
 
-{- |For every identifier that occurs in the right hand side of a declaration,
-    the polymorphic type variables in its type label are replaced by concrete
-    types. -}
+-- |For every identifier that occurs in the right hand side of a declaration,
+-- the polymorphic type variables in its type label are replaced by concrete
+-- types.
 adjustTypeInfo :: Prog -> Prog
 adjustTypeInfo = genEquations .  uniqueTypeIndices . labelVarsWithTypes
 
@@ -67,9 +74,9 @@ postOrderExpr f = po
                              e'  <- po e
                              f (Let bs' e')
           po (Or l r) = liftM2 Or (po l) (po r) >>= f
-          po (Case p t e bs) = do e' <- po e
+          po (Case r t e bs) = do e' <- po e
                                   bs' <- mapM poBranch bs
-                                  f (Case p t e' bs')
+                                  f (Case r t e' bs')
           poBind  (v, rhs) = do rhs' <- po rhs
                                 return (v, rhs')
           poBranch (Branch p rhs) = do rhs' <- po rhs
@@ -139,10 +146,10 @@ labelVarsWithTypes = updProgFuncs updateFunc
                               return (Let (zip vs' es') e'))
       po (Or l r)
           = liftM2 Or (po l) (po r)
-      po (Case p t e bs)
+      po (Case r t e bs)
           = do e' <- po e
                bs' <- mapM poBranch bs
-               return (Case p t e' bs')
+               return (Case r t e' bs')
 
       poBranch :: BranchExpr -> TDictM BranchExpr
       poBranch (Branch (Pattern qn vs) rhs)
@@ -193,9 +200,9 @@ relabelTypes (Var v)
     | typeofVar v == Nothing
     = do t <- freshTVar
          return (Var v{typeofVar = Just t})
-relabelTypes (Case p t e bs)
+relabelTypes (Case r t e bs)
     = do bs' <- mapM relabelPatType bs
-         return (Case p t e bs')
+         return (Case r t e bs')
     where relabelPatType (Branch (Pattern qn vis) e')
               = do t' <- case typeofQName qn of
                            Just lt -> relabelType lt
@@ -261,15 +268,16 @@ equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn or
 
       casEqn :: SrcRef -> CaseType -> EqnMonad TypeExpr -> [EqnMonad (Pattern, TypeExpr)] -> EqnMonad TypeExpr
       casEqn _ _ scr [] = scr >> (lift$freshTVar)
-      casEqn _ _ scr ps = do scrt <- scr
-                             -- unify patterns with scrutinee
-                             branches <- sequence ps
-                             let pats = map fst branches
-                             let (p:ps') = map snd branches
-                             mapM_ (unifLhs scrt) pats
-                             -- foldM (\l r -> unifLhs scrt r >>= (=:= l)) scrt pats
-                             -- unify right hand sides
-                             foldM (=:=) p ps'
+      casEqn _ _ scr ps = do
+        scrt <- scr
+        -- unify patterns with scrutinee
+        branches <- sequence ps
+        let pats = map fst branches
+        let (p:ps') = map snd branches
+        mapM_ (unifLhs scrt) pats
+        -- foldM (\l r -> unifLhs scrt r >>= (=:= l)) scrt pats
+        -- unify right hand sides
+        foldM (=:=) p ps'
 
       unifLhs scrt (LPattern lit)
           = typeofLiteral lit =:= scrt

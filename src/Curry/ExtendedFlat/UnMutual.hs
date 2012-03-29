@@ -1,12 +1,21 @@
+{- |
+    Module      :  $Header$
+    Description :  Elimination of mutual recursion
+    Copyright   :  (c) 2009, Holger Siegel
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  non-portable (DoRec)
+
+    Turns mutually recursive declarations into a single recursive
+    declaration, of a tuple value, trying to minimize the number of the tuple.
+    This is an implementation of the algorithm described in
+    http://www.informatik.uni-kiel.de/~mh/lehre/diplomarbeiten/siegel.pdf
+-}
+
 {-# LANGUAGE DoRec #-}
 
-{- |Turns mutually recursive declarations into a single recursive
-  declaration, of a tuple value, trying to minimize the number of the tuple.
-  This is an implementation of the algorithm described in
-  http://www.informatik.uni-kiel.de/~mh/lehre/diplomarbeiten/siegel.pdf
-
-  (c) 2009, Holger Siegel.
--}
 module Curry.ExtendedFlat.UnMutual (unMutualProg) where
 
 import Data.Graph
@@ -14,7 +23,7 @@ import Data.Maybe
 import Data.List
 import Control.Monad.State
 
-import Curry.Base.Position(noRef)
+import Curry.Base.Position (noRef)
 import Curry.ExtendedFlat.Type
 import Curry.ExtendedFlat.Goodies
 import Curry.ExtendedFlat.MonadicGoodies
@@ -25,6 +34,8 @@ newtype UnMutualState = UnMutualState { localCounter :: Int }
 
 type UnMutualMonad = State UnMutualState
 
+-- |Convert mutually recursive declarations into a single recursive
+-- declaration using tuples.
 unMutualProg :: Prog -> Prog
 unMutualProg p = evalState f (UnMutualState 1000) where
   f = (updProgFuncsM
@@ -202,7 +213,7 @@ subst v x = po
               = Let (map poBind bs) (po e')
               | otherwise = e
           po (Or l r) = Or (po l) (po r)
-          po (Case p t e bs) = Case p t (po e) (map poBranch bs)
+          po (Case r t e bs) = Case r t (po e) (map poBranch bs)
           poBind  (w, rhs) = (w, po rhs)
           poBranch e@(Branch p rhs)
               | v `elem` trPattern (\_ args -> args) (const []) p

@@ -1,10 +1,18 @@
-{- |Turn recursive data declarations into recursive function calls.
+{- |
+    Module      :  $Header$
+    Description :  Elimination of recursive data declarations
+    Copyright   :  (c) 2009, Holger Siegel
+    License     :  OtherLicense
+
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
+
+    Turn recursive data declarations into recursive function calls.
 
     Only single recursive declarations are transformed, mutually recursive
     declarations are left unchanged.
     You should therefore use the transformation UnMutual first.
-
-    (c) 2009, Holger Siegel.
 -}
 
 module Curry.ExtendedFlat.LiftLetrec (liftLetrecProg) where
@@ -31,6 +39,7 @@ data LifterState = LifterState
 type Bind = (VarIndex, Expr)    -- (name, value)
 type LiftMonad = State LifterState
 
+-- |Convert recursive data declarations into recursive function calls
 liftLetrecProg :: Prog -> Prog
 liftLetrecProg prog = updProg id id id (++ fdecls) id prog' where
   state = LifterState
@@ -85,4 +94,4 @@ newGlobalName t = do
     else return qn'
 
 allGlobals :: Prog -> [QName]
-allGlobals prog = [n | Func n _ _ _ _ <- fs] where fs = progFuncs prog
+allGlobals prog = [n | Func n _ _ _ _ <- progFuncs prog]

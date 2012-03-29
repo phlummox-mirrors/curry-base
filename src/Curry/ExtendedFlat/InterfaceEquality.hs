@@ -1,7 +1,15 @@
-{- |Check the equality of the interfaces of two FlatCurry programs.
+{- |
+    Module      :  $Header$
+    Description :  Check the equality of two FlatCurry interfaces
+    Copyright   :  (c) 2006, Martin Engelke (men@informatik.uni-kiel.de)
+                       2011, Björn Peemöller
+    License     :  OtherLicense
 
-    (c) January 2006, Martin Engelke (men@informatik.uni-kiel.de)
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
 -}
+
 module Curry.ExtendedFlat.InterfaceEquality (eqInterface) where
 
 import Data.List (sort)

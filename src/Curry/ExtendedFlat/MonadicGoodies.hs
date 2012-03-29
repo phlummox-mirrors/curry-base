@@ -1,6 +1,12 @@
-{- |Monadic transformations of ExtendedFlat programs.
+{- |
+    Module      :  $Header$
+    Description :  Monadic transformations of ExtendedFlat programs
+    Copyright   :  (c) 2009, Holger Siegel
+    License     :  OtherLicense
 
-    (c) 2009, Holger Siegel.
+    Maintainer  :  bjp@informatik.uni-kiel.de
+    Stability   :  experimental
+    Portability :  portable
 -}
 
 module Curry.ExtendedFlat.MonadicGoodies
@@ -10,8 +16,10 @@ module Curry.ExtendedFlat.MonadicGoodies
 import Control.Monad
 import Curry.ExtendedFlat.Type
 
+-- |Monadic update of a type's component
 type UpdateM m a b = (b -> m b) -> a -> m a
 
+-- |Update an 'Expr' in post-order
 postOrderM :: Monad m => UpdateM m Expr Expr
 postOrderM f = po where
   po e@(Var _)       = f e
@@ -24,25 +32,28 @@ postOrderM f = po where
                           e'  <- po e
                           f (Let bs' e')
   po (Or l r)        = liftM2 Or (po l) (po r) >>= f
-  po (Case p t e bs) = do e' <- po e
+  po (Case r t e bs) = do e' <- po e
                           bs' <- mapM poBranch bs
-                          f (Case p t e' bs')
+                          f (Case r t e' bs')
   poBind  (v, rhs) = do rhs' <- po rhs
                         return (v, rhs')
   poBranch (Branch p rhs) = do rhs' <- po rhs
                                return (Branch p rhs')
 
+-- |Update all 'Expr's in a function declaration in post-order
 updFuncExpsM :: Monad m => UpdateM m FuncDecl Expr
 updFuncExpsM f (Func name arity visibility ftype (Rule vs e)) = do
   e' <- postOrderM f e
   return (Func name arity visibility ftype (Rule vs e'))
 updFuncExpsM _ func@(Func _ _ _ _ (External _)) = return func
 
+-- |Update all 'FuncDecl's in a program
 updProgFuncsM :: Monad m => UpdateM m Prog FuncDecl
 updProgFuncsM f (Prog name imps types funcs ops) = do
   funcs' <- mapM f funcs
   return (Prog name imps types funcs' ops)
 
+-- |Update all let-declarations in a function declaration
 updFuncLetsM  :: Monad m => ([(VarIndex, Expr)] -> Expr -> m Expr)
               -> FuncDecl -> m FuncDecl
 updFuncLetsM = updFuncExpsM . updExprLetsM where
