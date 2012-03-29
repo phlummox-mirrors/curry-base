@@ -25,7 +25,7 @@
 
 module Curry.Base.Ident
   ( -- * Module identifiers
-    ModuleIdent (..), mkMIdent, moduleName, fromModuleName, isModuleName
+    ModuleIdent (..), mkMIdent, moduleName, fromModuleName, isValidModuleName
   , addPositionModuleIdent
 
     -- * Local identifiers
@@ -62,8 +62,7 @@ module Curry.Base.Ident
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
   ) where
 
-import Control.Monad (liftM)
-import Data.Char (isAlpha, isAlphaNum)
+import Data.Char (isAlpha, isAlphaNum, isSpace)
 import Data.Function (on)
 import Data.Generics (Data(..), Typeable(..))
 import Data.List (intercalate, isInfixOf, isPrefixOf)
@@ -75,23 +74,27 @@ import Curry.Base.Position
 -- Module identifier
 -- ---------------------------------------------------------------------------
 
--- | Module identifiers
+-- | Module identifier
 data ModuleIdent = ModuleIdent
-  { positionOfModuleIdent :: Position -- ^ source code position
-  , moduleQualifiers      :: [String] -- ^ hierarchical idenfiers
-  } deriving (Read, Data, Typeable)
+  { midPosition   :: Position -- ^ source code position
+  , midQualifiers :: [String] -- ^ hierarchical idenfiers
+  } deriving (Data, Typeable)
 
 instance Eq ModuleIdent where
-  (==) = (==) `on` moduleQualifiers
+  (==) = (==) `on` midQualifiers
 
 instance Ord ModuleIdent where
-  compare = compare `on` moduleQualifiers
+  compare = compare `on` midQualifiers
+
+instance Read ModuleIdent where
+  readsPrec _ r = let (mid, s) = span (not . isSpace) r
+                  in  [(fromModuleName mid, s)]
 
 instance Show ModuleIdent where
   show = moduleName
 
 instance SrcRefOf ModuleIdent where
-  srcRefOf = srcRefOf . positionOfModuleIdent
+  srcRefOf = srcRefOf . midPosition
 
 -- | Construct a 'ModuleIdent' from a list of 'String's forming the
 --   the hierarchical module name.
@@ -100,12 +103,24 @@ mkMIdent = ModuleIdent NoPos
 
 -- | Retrieve the hierarchical name of a module
 moduleName :: ModuleIdent -> String
-moduleName = intercalate "." . moduleQualifiers
+moduleName = intercalate "." . midQualifiers
 
--- |Check whether a 'String' is a valid module name
-isModuleName :: String -> Bool
-isModuleName [] = False -- Module names may not be empty
-isModuleName qs = all isModuleIdentifier $ splitIdentifiers qs
+-- | Add a source code 'Position' to a 'ModuleIdent'
+addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
+addPositionModuleIdent pos mi = mi { midPosition = pos }
+
+-- |Check whether a 'String' is a valid module name.
+--
+-- Valid module names must satisfy the following conditions:
+--
+--  * The name must not be empty
+--  * The name must consist of one or more single identifiers,
+--    seperated by a dot
+--  * Each single identifier must be non-empty, start with a letter and
+--    consist of letter, digits, single quotes or underscores only
+isValidModuleName :: String -> Bool
+isValidModuleName [] = False -- Module names may not be empty
+isValidModuleName qs = all isModuleIdentifier $ splitIdentifiers qs
   where
   -- components of a module identifier may not be null
   isModuleIdentifier []     = False
@@ -114,19 +129,20 @@ isModuleName qs = all isModuleIdentifier $ splitIdentifiers qs
   isModuleIdentifier (c:cs) = isAlpha c && all isIdent cs
   isIdent c = isAlphaNum c || c `elem` "'_"
 
+-- |Resemble the hierarchical module name from a 'String' by splitting
+-- the 'String' at inner dots.
+--
+-- /Note:/ This function does not check the 'String' to be a valid module
+-- identifier, use isValidModuleName for this purpose.
+fromModuleName :: String -> ModuleIdent
+fromModuleName = mkMIdent . splitIdentifiers
+
+-- Auxiliary function to split a hierarchical identifier at the dots
 splitIdentifiers :: String -> [String]
 splitIdentifiers s = let (pref, rest) = break (== '.') s in
   pref : case rest of
     []     -> []
     (_:s') -> splitIdentifiers s'
-
--- | Resemble the hierarchical module name from a 'String'
-fromModuleName :: String -> ModuleIdent
-fromModuleName = mkMIdent . splitIdentifiers
-
--- | Add a 'Position' to a 'ModuleIdent'
-addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
-addPositionModuleIdent pos mi = mi { positionOfModuleIdent = pos }
 
 -- ---------------------------------------------------------------------------
 -- Simple identifier
@@ -134,10 +150,10 @@ addPositionModuleIdent pos mi = mi { positionOfModuleIdent = pos }
 
 -- | Simple identifiers
 data Ident = Ident
-  { positionOfIdent :: Position -- ^ Source code 'Position'
-  , name            :: String   -- ^ name
-  , uniqueId        :: Integer  -- ^ unique number of the identifier
-  } deriving (Read, Data, Typeable)
+  { idPosition :: Position -- ^ Source code 'Position'
+  , idName     :: String   -- ^ Name of the identifier
+  , idUnique   :: Integer  -- ^ Unique number of the identifier
+  } deriving (Data, Typeable)
 
 instance Eq Ident where
   Ident _ m i == Ident _ n j = (m, i) == (n, j)
@@ -145,11 +161,15 @@ instance Eq Ident where
 instance Ord Ident where
   Ident _ m i `compare` Ident _ n j = (m, i) `compare` (n, j)
 
+instance Read Ident where
+  readsPrec _ r = [ (mkIdent x, s) | (x, s) <- readIdent r]
+    where readIdent = return . span (not . isSpace)
+
 instance Show Ident where
   show = showIdent
 
 instance SrcRefOf Ident where
-  srcRefOf = srcRefOf . positionOfIdent
+  srcRefOf = srcRefOf . idPosition
 
 -- | Show function for an 'Ident'
 showIdent :: Ident -> String
@@ -168,7 +188,7 @@ identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
 
 -- | Rename an 'Ident' by changing its unique number
 renameIdent :: Ident -> Integer -> Ident
-renameIdent ident n = ident { uniqueId = n }
+renameIdent ident n = ident { idUnique = n }
 
 -- | Revert the renaming of an 'Ident' by resetting its unique number
 unRenameIdent :: Ident -> Ident
@@ -202,8 +222,8 @@ addRefId = addPositionIdent . AST
 
 -- | Qualified identifiers
 data QualIdent = QualIdent
-  { qualidMod :: Maybe ModuleIdent -- ^ optional module identifier
-  , qualidId  :: Ident             -- ^ identifier itself
+  { qidModule :: Maybe ModuleIdent -- ^ optional module identifier
+  , qidIdent  :: Ident             -- ^ identifier itself
   } deriving (Eq, Ord, Read, Data, Typeable)
 
 instance SrcRefOf QualIdent where
@@ -214,16 +234,16 @@ instance Show QualIdent where
 
 -- | show function for qualified identifiers
 qualName :: QualIdent -> String
-qualName (QualIdent Nothing  x) = name x
-qualName (QualIdent (Just m) x) = moduleName m ++ "." ++ name x
+qualName (QualIdent Nothing  x) = idName x
+qualName (QualIdent (Just m) x) = moduleName m ++ "." ++ idName x
 
 -- | Retrieve the 'Position' of a 'QualIdent'
 positionOfQualIdent :: QualIdent -> Position
-positionOfQualIdent = positionOfIdent . qualidId
+positionOfQualIdent = idPosition . qidIdent
 
 -- | Check whether an 'QualIdent' identifies an infix operation
 isQInfixOp :: QualIdent -> Bool
-isQInfixOp = isInfixOp . qualidId
+isQInfixOp = isInfixOp . qidIdent
 
 -- ---------------------------------------------------------------------------
 -- The functions \texttt{qualify} and \texttt{qualifyWith} convert an
@@ -248,18 +268,18 @@ qualQualify _ x = x
 
 -- | Check whether a 'QualIdent' contains a 'ModuleIdent'
 isQualified :: QualIdent -> Bool
-isQualified = isJust . qualidMod
+isQualified = isJust . qidModule
 
 -- | Remove the qualification of an 'QualIdent'
 unqualify :: QualIdent -> Ident
-unqualify = qualidId
+unqualify = qidIdent
 
 -- | Remove the qualification with a specific 'ModuleIdent'. If the
 --   original 'QualIdent' has no 'ModuleIdent' or a different one, it
 --   remains unchanged.
 qualUnqualify :: ModuleIdent -> QualIdent -> QualIdent
-qualUnqualify _ qid@(QualIdent Nothing _) = qid
-qualUnqualify m (QualIdent (Just m') x) = QualIdent m'' x
+qualUnqualify _ qid@(QualIdent Nothing   _) = qid
+qualUnqualify m     (QualIdent (Just m') x) = QualIdent m'' x
   where m'' | m == m'   = Nothing
             | otherwise = Just m'
 
@@ -267,16 +287,15 @@ qualUnqualify m (QualIdent (Just m') x) = QualIdent m'' x
 --   'ModuleIdent', i.e. if the 'Ident' is either unqualified or qualified
 --   with the given 'ModuleIdent'.
 localIdent :: ModuleIdent -> QualIdent -> Maybe Ident
-localIdent _ (QualIdent Nothing x) = Just x
+localIdent _ (QualIdent Nothing   x) = Just x
 localIdent m (QualIdent (Just m') x)
   | m == m'   = Just x
   | otherwise = Nothing
 
 -- | Update a 'QualIdent' by applying functions to its components
-updQualIdent :: (ModuleIdent -> ModuleIdent)
-             -> (Ident -> Ident)
+updQualIdent :: (ModuleIdent -> ModuleIdent) -> (Ident -> Ident)
              -> QualIdent -> QualIdent
-updQualIdent f g (QualIdent m x) = QualIdent (liftM f m) (g x)
+updQualIdent f g (QualIdent m x) = QualIdent (fmap f m) (g x)
 
 -- | Add a 'SrcRef' to a 'QualIdent'
 addRef :: SrcRef -> QualIdent -> QualIdent
@@ -294,7 +313,7 @@ emptyMIdent = ModuleIdent NoPos []
 mainMIdent :: ModuleIdent
 mainMIdent = ModuleIdent NoPos ["main"]
 
--- | 'ModuleIdent' for the prelude
+-- | 'ModuleIdent' for the Prelude
 preludeMIdent :: ModuleIdent
 preludeMIdent = ModuleIdent NoPos ["Prelude"]
 
@@ -334,13 +353,33 @@ ioId = mkIdent "IO"
 successId :: Ident
 successId = mkIdent "Success"
 
+-- | Construct an 'Ident' for an n-ary tuple where n >= 2
+tupleId :: Int -> Ident
+tupleId n
+  | n >= 2    = mkIdent $ '(' : replicate (n - 1) ',' ++ ")"
+  | otherwise = error $ "Curry.Base.Ident.tupleId: wrong arity " ++ show n
+
+-- | Check whether an 'Ident' is an identifier for an tuple type
+isTupleId :: Ident -> Bool
+isTupleId x = n > 1 && unRenameIdent x == tupleId n
+  where n = length (idName x) - 1
+
+-- | Compute the arity of a tuple identifier
+tupleArity :: Ident -> Int
+tupleArity x
+  | n > 1 && unRenameIdent x == tupleId n
+  = n
+  | otherwise
+  = error $ "Curry.Base.Ident.tupleArity: no tuple identifier: " ++ show x
+  where n = length (idName x) - 1
+
 -- ---------------------------------------------------------------------------
 -- Identifiers for constructors
 -- ---------------------------------------------------------------------------
 
 -- | 'Ident' for the value 'True'
 trueId :: Ident
-trueId  = mkIdent "True"
+trueId = mkIdent "True"
 
 -- | 'Ident' for the value 'False'
 falseId :: Ident
@@ -348,29 +387,11 @@ falseId = mkIdent "False"
 
 -- | 'Ident' for the value '[]'
 nilId :: Ident
-nilId   = mkIdent "[]"
+nilId = mkIdent "[]"
 
 -- | 'Ident' for the function ':'
 consId :: Ident
-consId  = mkIdent ":"
-
--- | Construct an 'Ident' for an n-ary tuple where n >= 2
-tupleId :: Int -> Ident
-tupleId n
-  | n >= 2    = mkIdent $ "(" ++ replicate (n - 1) ',' ++ ")"
-  | otherwise = error $ "Curry.Base.Ident.tupleId: " ++ show n
-
--- | Check whether an 'Ident' is an identifier for an tuple type
-isTupleId :: Ident -> Bool
-isTupleId x = n > 1 && x == tupleId n
-  where n = length (name x) - 1
-
--- | Compute the arity of a tuple identifier
-tupleArity :: Ident -> Int
-tupleArity x
-  | n > 1 && x == tupleId n = n
-  | otherwise = error $ "Curry.Base.Ident.tupleArity: " ++ show x
-  where n = length (name x) - 1
+consId = mkIdent ":"
 
 -- ---------------------------------------------------------------------------
 -- Identifiers for values
@@ -384,11 +405,11 @@ mainId   = mkIdent "main"
 minusId :: Ident
 minusId  = mkIdent "-"
 
--- | 'Ident' for the -. function
+-- | 'Ident' for the minus function for Floats
 fminusId :: Ident
 fminusId = mkIdent "-."
 
--- | 'Ident' for anonymous variable
+-- | 'Ident' for anonymous variables
 anonId :: Ident
 anonId = mkIdent "_"
 
@@ -468,14 +489,13 @@ qTupleArity = tupleArity . unqualify
 -- Micellaneous functions for generating and testing extended identifiers
 -- ---------------------------------------------------------------------------
 
--- | Construct an 'Ident' for a function pattern
+-- | Construct an 'Ident' for a functional pattern
 fpSelectorId :: Int -> Ident
 fpSelectorId n = mkIdent $ fpSelExt ++ show n
 
--- | Check whether an 'Ident' is an identifier for a function pattern
+-- | Check whether an 'Ident' is an identifier for a functional pattern
 isFpSelectorId :: Ident -> Bool
-isFpSelectorId = (fpSelExt `isInfixOf`) . name
--- isFpSelectorId = any (fpSelExt `isPrefixOf`) . tails . name
+isFpSelectorId = (fpSelExt `isInfixOf`) . idName
 
 -- | Check whether an 'QualIdent' is an identifier for a function pattern
 isQualFpSelectorId :: QualIdent -> Bool
@@ -485,59 +505,66 @@ isQualFpSelectorId = isFpSelectorId . unqualify
 recSelectorId :: QualIdent -- ^ identifier of the record
               -> Ident     -- ^ identifier of the label
               -> Ident
-recSelectorId r l = mkIdent $ recSelExt ++ name (unqualify r) ++ "." ++ name l
+recSelectorId = mkRecordId recSelExt
 
 -- | Construct a 'QualIdent' for a record selection pattern
 qualRecSelectorId :: ModuleIdent -- ^ default module
                   -> QualIdent   -- ^ record identifier
                   -> Ident       -- ^ label identifier
                   -> QualIdent
-qualRecSelectorId m r l = qualifyWith m' (recSelectorId r l)
-  where m' = fromMaybe m (qualidMod r)
+qualRecSelectorId m r l = qualRecordId m r $ recSelectorId r l
 
 -- | Construct an 'Ident' for a record update pattern
 recUpdateId :: QualIdent -- ^ record identifier
             -> Ident     -- ^ label identifier
             -> Ident
-recUpdateId r l = mkIdent $ recUpdExt ++ name (unqualify r) ++ "." ++ name l
+recUpdateId = mkRecordId recUpdExt
 
 -- | Construct a 'QualIdent' for a record update pattern
 qualRecUpdateId :: ModuleIdent -- ^ default module
                 -> QualIdent   -- ^ record identifier
                 -> Ident       -- ^ label identifier
                 -> QualIdent
-qualRecUpdateId m r l = qualifyWith m' (recUpdateId r l)
-  where m' = fromMaybe m (qualidMod r)
+qualRecUpdateId m r l = qualRecordId m r $ recUpdateId r l
+
+-- Auxiliary function to construct a selector/update identifier
+mkRecordId :: String -> QualIdent -> Ident -> Ident
+mkRecordId ann r l = mkIdent $ concat
+  [ann, idName (unqualify r), ".", idName l]
+
+-- Auxiliary function to qualify a selector/update identifier
+qualRecordId :: ModuleIdent -> QualIdent -> Ident -> QualIdent
+qualRecordId m r = qualifyWith (fromMaybe m $ qidModule r)
 
 -- | Construct an 'Ident' for a record
 recordExtId :: Ident -> Ident
-recordExtId r = mkIdent $ recordExt ++ name r
+recordExtId r = mkIdent $ recordExt ++ idName r
 
 -- | Construct an 'Ident' for a record label
 labelExtId :: Ident -> Ident
-labelExtId l = mkIdent $ labelExt ++ name l
+labelExtId l = mkIdent $ labelExt ++ idName l
 
 -- | Retrieve the 'Ident' from a record identifier
 fromRecordExtId :: Ident -> Ident
 fromRecordExtId r
   | p == recordExt = mkIdent r'
   | otherwise      = r
- where (p, r') = splitAt (length recordExt) (name r)
+ where (p, r') = splitAt (length recordExt) (idName r)
 
 -- | Retrieve the 'Ident' from a record label identifier
 fromLabelExtId :: Ident -> Ident
 fromLabelExtId l
   | p == labelExt = mkIdent l'
   | otherwise     = l
- where (p, l') = splitAt (length labelExt) (name l)
+ where (p, l') = splitAt (length labelExt) (idName l)
 
 -- | Check whether an 'Ident' is an identifier for a record
 isRecordExtId :: Ident -> Bool
-isRecordExtId r = recordExt `isPrefixOf` name r
+isRecordExtId = (recordExt `isPrefixOf`) . idName
 
 -- | Check whether an 'Ident' is an identifier for a record label
 isLabelExtId :: Ident -> Bool
-isLabelExtId l = labelExt `isPrefixOf` name l
+isLabelExtId = (labelExt `isPrefixOf`) . idName
 
 -- | Construct an 'Ident' for a record label
 mkLabelIdent :: String -> Ident

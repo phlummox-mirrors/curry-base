@@ -331,13 +331,13 @@ ppOp (InfixConstr op) = ppQInfixOp op
 
 -- |Pretty print an identifier
 ppIdent :: Ident -> Doc
-ppIdent x = parenExp (isInfixOp x) (text (name x))
+ppIdent x = parenExp (isInfixOp x) (text (idName x))
 
 ppQIdent :: QualIdent -> Doc
 ppQIdent x = parenExp (isQInfixOp x) (text (qualName x))
 
 ppInfixOp :: Ident -> Doc
-ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (name x))
+ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (idName x))
 
 ppQInfixOp :: QualIdent -> Doc
 ppQInfixOp x = backQuoteExp (not (isQInfixOp x)) (text (qualName x))

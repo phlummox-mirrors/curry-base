@@ -37,7 +37,7 @@ import Curry.Files.Filenames
 -- |Create a 'FilePath' from a 'ModuleIdent' using the hierarchical module
 -- system
 moduleNameToFile :: ModuleIdent -> FilePath
-moduleNameToFile = foldr1 (</>) . moduleQualifiers
+moduleNameToFile = foldr1 (</>) . midQualifiers
 
 -- |Extract the 'ModuleIdent' from a 'FilePath'
 fileNameToModule :: FilePath -> ModuleIdent

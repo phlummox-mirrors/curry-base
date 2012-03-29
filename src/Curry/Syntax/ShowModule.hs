@@ -548,8 +548,8 @@ showsPair sa sb (a,b)
   = showsString "(" . sa a . showsString "," . sb b . showsString ")"
 
 showsIdent :: Ident -> ShowS
-showsIdent (Ident _ idName n)
-  = showsString "(Ident " . shows idName . space . shows n . showsString ")"
+showsIdent (Ident _ x n)
+  = showsString "(Ident " . shows x . space . shows n . showsString ")"
 
 showsQualIdent :: QualIdent -> ShowS
 showsQualIdent (QualIdent mident ident)
