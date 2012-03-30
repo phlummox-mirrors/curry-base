@@ -51,6 +51,7 @@ Library
     Curry.ExtendedFlat.TypeInference
     Curry.ExtendedFlat.UnMutual
     Curry.FlatCurry.Goodies
+    Curry.FlatCurry.Pretty
     Curry.FlatCurry.Type
     Curry.Files.Filenames
     Curry.Files.PathUtils
