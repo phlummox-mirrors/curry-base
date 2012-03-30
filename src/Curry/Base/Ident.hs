@@ -33,7 +33,7 @@ module Curry.Base.Ident
   , updIdentName, addPositionIdent, isInfixOp, addRefId
 
     -- * Qualified identifiers
-  , QualIdent (..), qualName, positionOfQualIdent, isQInfixOp, qualify
+  , QualIdent (..), qualName, qidPosition, isQInfixOp, qualify
   , qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
   , localIdent, updQualIdent, addRef
 
@@ -238,8 +238,8 @@ qualName (QualIdent Nothing  x) = idName x
 qualName (QualIdent (Just m) x) = moduleName m ++ "." ++ idName x
 
 -- | Retrieve the 'Position' of a 'QualIdent'
-positionOfQualIdent :: QualIdent -> Position
-positionOfQualIdent = idPosition . qidIdent
+qidPosition :: QualIdent -> Position
+qidPosition = idPosition . qidIdent
 
 -- | Check whether an 'QualIdent' identifies an infix operation
 isQInfixOp :: QualIdent -> Bool
