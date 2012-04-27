@@ -22,12 +22,10 @@ Flag split-syb
 
 Library
   hs-source-dirs: src
-  if flag(split-syb)
-    Build-Depends: base == 4.*, syb
-  else
-    Build-Depends: base == 3.*
   Build-Depends:
-      mtl
+      base == 4.*
+    , syb  >= 0.3
+    , mtl
     , containers
     , filepath
     , pretty
