@@ -444,7 +444,6 @@ gshowsPrec :: Data a => Bool -> Bool -> a -> ShowS
 gshowsPrec showType d = genericShowsPrec d
   `ext1Q` showsList
   `ext2Q` showsTuple
-  `extQ`  showsExpr
   `extQ`  (const id :: SrcRef   -> ShowS)
   `extQ`  (const id :: [SrcRef] -> ShowS)
   `extQ`  (shows    :: String   -> ShowS)
@@ -453,9 +452,6 @@ gshowsPrec showType d = genericShowsPrec d
   `extQ`  showsVarIndex d
 
   where
-  showsExpr :: Expr -> ShowS
-  showsExpr e = shows e
-
   showsQName :: Bool -> QName -> ShowS
   showsQName d' qn
     | showType  = showParen d' (shows qn { srcRef = Nothing })
