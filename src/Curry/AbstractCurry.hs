@@ -301,7 +301,9 @@ data CStatement
 
 
 -- |Branches in case expressions.
-data CBranchExpr = CBranch CPattern CExpr
+data CBranchExpr
+  = CBranch        CPattern CExpr
+  | CGuardedBranch CPattern [(CExpr, CExpr)]
     deriving (Eq, Read, Show)
 
 
