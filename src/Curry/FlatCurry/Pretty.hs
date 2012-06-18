@@ -29,7 +29,8 @@ ppProg (Prog m is ts fs os) = ppHeader m ts fs
 
 -- |pretty-print the module header
 ppHeader :: String -> [TypeDecl] -> [FuncDecl] -> Doc
-ppHeader m ts fs = sep [text "module" <+> text m, ppExports ts fs, text "where"]
+ppHeader m ts fs = sep
+  [text "module" <+> text m, ppExports ts fs, text "where"]
 
 -- |pretty-print the export list
 ppExports :: [TypeDecl] -> [FuncDecl] -> Doc
