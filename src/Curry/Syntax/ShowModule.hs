@@ -515,7 +515,7 @@ showsField sa (Field pos ident a)
 
 showsPosition :: Position -> ShowS
 showsPosition Position { line = l, column = c } = showsPair shows shows (l, c)
-showsPosition _ = id
+showsPosition _ = showsString "NoPos"
 -- showsPosition (Position file row col)
 --   = showsString "(Position "
 --   . shows file . space
@@ -548,8 +548,9 @@ showsPair sa sb (a,b)
   = showsString "(" . sa a . showsString "," . sb b . showsString ")"
 
 showsIdent :: Ident -> ShowS
-showsIdent (Ident _ x n)
-  = showsString "(Ident " . shows x . space . shows n . showsString ")"
+showsIdent (Ident p x n)
+  = showsString "(Ident " . showsPosition p . space
+  . shows x . space . shows n . showsString ")"
 
 showsQualIdent :: QualIdent -> ShowS
 showsQualIdent (QualIdent mident ident)
