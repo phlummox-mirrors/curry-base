@@ -45,7 +45,7 @@ module Curry.Base.Ident
     -- ** Identifiers for constructors
   , trueId, falseId, nilId, consId, tupleId, isTupleId, tupleArity
     -- ** Identifiers for values
-  , mainId, minusId, fminusId, anonId
+  , mainId, minusId, fminusId, anonId, isAnonId
 
     -- * Predefined qualified identifiers
     -- ** Identifiers for types
@@ -399,11 +399,11 @@ consId = mkIdent ":"
 
 -- | 'Ident' for the main function
 mainId :: Ident
-mainId   = mkIdent "main"
+mainId = mkIdent "main"
 
 -- | 'Ident' for the minus function
 minusId :: Ident
-minusId  = mkIdent "-"
+minusId = mkIdent "-"
 
 -- | 'Ident' for the minus function for Floats
 fminusId :: Ident
@@ -412,6 +412,9 @@ fminusId = mkIdent "-."
 -- | 'Ident' for anonymous variables
 anonId :: Ident
 anonId = mkIdent "_"
+
+isAnonId :: Ident -> Bool
+isAnonId = (== anonId) . unRenameIdent
 
 -- ---------------------------------------------------------------------------
 -- Qualified Identifiers for types
