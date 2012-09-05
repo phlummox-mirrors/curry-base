@@ -24,6 +24,7 @@ Module overview of package `curry-base`
       * `.Unlit`    : unliteration of literate Curry
   * `Curry.FlatCurry`
       * `.Goodies`: Auxiliary functions for working with FlatCurry
+      * `.Pretty` : Pretty printer for FlatCurry
       * `.Type`   : Definition of FlatCurry
   * `Curry.Syntax`: Curry AST and related functions
       * `.Lexer`     : Lexer for Curry
