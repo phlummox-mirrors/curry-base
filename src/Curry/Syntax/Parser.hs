@@ -671,30 +671,46 @@ integer = intval <$> token IntegerTok
 string :: Parser Token String a
 string = sval <$> token StringTok
 
-tycon, tyvar :: Parser Token Ident a
+tycon :: Parser Token Ident a
 tycon = conId
+
+tyvar :: Parser Token Ident a
 tyvar = varId
 
 qtycon :: Parser Token QualIdent a
 qtycon = qConId
 
-varId, funId, conId, labId :: Parser Token Ident a
+varId :: Parser Token Ident a
 varId = ident
+
+funId :: Parser Token Ident a
 funId = ident
+
+conId :: Parser Token Ident a
 conId = ident
+
+labId :: Parser Token Ident a
 labId = renameLabel <$> ident
 
-funSym, conSym :: Parser Token Ident a
+funSym :: Parser Token Ident a
 funSym = sym
+
+conSym :: Parser Token Ident a
 conSym = sym
 
-var, fun, con :: Parser Token Ident a
+var :: Parser Token Ident a
 var = varId <|> parens (funSym <?> "operator symbol expected")
+
+fun :: Parser Token Ident a
 fun = funId <|> parens (funSym <?> "operator symbol expected")
+
+con :: Parser Token Ident a
 con = conId <|> parens (conSym <?> "operator symbol expected")
 
-funop, conop :: Parser Token Ident a
+funop :: Parser Token Ident a
 funop = funSym <|> backquotes (funId <?> "operator name expected")
+
+conop :: Parser Token Ident a
 conop = conSym <|> backquotes (conId <?> "operator name expected")
 
 qFunId :: Parser Token QualIdent a
@@ -721,15 +737,17 @@ qfun = qFunId <|> parens (qFunSym <?> "operator symbol expected")
 -- qcon :: Parser Token QualIdent a
 -- qcon = qConId <|> parens (qConSym <?> "operator symbol expected")
 
-qfunop, gconop :: Parser Token QualIdent a
+qfunop :: Parser Token QualIdent a
 qfunop = qFunSym <|> backquotes (qFunId <?> "operator name expected")
+
+gconop :: Parser Token QualIdent a
 gconop = gConSym <|> backquotes (qConId <?> "operator name expected")
 
 -- qconop :: Parser Token QualIdent a
 -- qconop = qConSym <|> backquotes (qConId <?> "operator name expected")
 
 anonIdent :: Parser Token Ident a
-anonIdent = anonId <$-> token Underscore
+anonIdent = (\ p -> addPositionIdent p anonId) <$> tokenPos Underscore
 
 mIdent :: Parser Token ModuleIdent a
 mIdent = mIdent' <$> position <*>
@@ -759,16 +777,13 @@ qSym = qualify <$> sym <|> mkQIdent <$> position <*> token QSym
                                    (mkIdentPosition p (sval a))
 
 colon :: Parser Token QualIdent a
-colon = (\ p _ -> qualify $ addPositionIdent p consId) <$>
-        position <*> token Colon
+colon = (\ p -> qualify $ addPositionIdent p consId) <$> tokenPos Colon
 
 minus :: Parser Token Ident a
-minus = (\ p _ -> addPositionIdent p minusId) <$>
-        position <*> token SymMinus
+minus = (\ p -> addPositionIdent p minusId) <$> tokenPos SymMinus
 
 fminus :: Parser Token Ident a
-fminus = (\ p _ -> addPositionIdent p fminusId) <$>
-        position <*> token SymMinusDot
+fminus = (\ p -> addPositionIdent p fminusId) <$> tokenPos SymMinusDot
 
 tupleCommas :: Parser Token QualIdent a
 tupleCommas = (\ p -> qualify . addPositionIdent p . tupleId . succ . length )
@@ -809,39 +824,61 @@ token c = attr <$> symbol (Token c NoAttributes)
 tokens :: [Category] -> Parser Token Attributes a
 tokens = foldr1 (<|>) . map token
 
+tokenPos :: Category -> Parser Token Position a
+tokenPos c = position <*-> token c
+
 tokenOps :: [(Category,a)] -> Parser Token a b
 tokenOps cs = ops [(Token c NoAttributes, x) | (c,x) <- cs]
 
-comma, semicolon, bar, equals, binds :: Parser Token Attributes a
+comma :: Parser Token Attributes a
 comma = token Comma
+
+semicolon :: Parser Token Attributes a
 semicolon = token Semicolon <|> token VSemicolon
+
+bar :: Parser Token Attributes a
 bar = token Bar
+
+equals :: Parser Token Attributes a
 equals = token Equals
+
+binds :: Parser Token Attributes a
 binds = token Binds
 
--- dot :: Parser Token Attributes a
--- dot = token Sym_Dot
-
-checkBar, checkEquals, checkBinds :: Parser Token Attributes a
+checkBar :: Parser Token Attributes a
 checkBar = bar <?> "| expected"
+
+checkEquals :: Parser Token Attributes a
 checkEquals = equals <?> "= expected"
+
+checkBinds :: Parser Token Attributes a
 checkBinds = binds <?> ":= expected"
 
-backquote, checkBackquote :: Parser Token Attributes a
+backquote :: Parser Token Attributes a
 backquote = token Backquote
+
+checkBackquote :: Parser Token Attributes a
 checkBackquote = backquote <?> "backquote (`) expected"
 
-leftParen, rightParen :: Parser Token Attributes a
+leftParen :: Parser Token Attributes a
 leftParen = token LeftParen
+
+rightParen :: Parser Token Attributes a
 rightParen = token RightParen
 
-leftBracket, rightBracket :: Parser Token Attributes a
+leftBracket :: Parser Token Attributes a
 leftBracket = token LeftBracket
+
+rightBracket :: Parser Token Attributes a
 rightBracket = token RightBracket
 
-leftBrace, leftBraceSemicolon, rightBrace :: Parser Token Attributes a
+leftBrace :: Parser Token Attributes a
 leftBrace = token LeftBrace
+
+leftBraceSemicolon :: Parser Token Attributes a
 leftBraceSemicolon = token LeftBraceSemicolon
+
+rightBrace :: Parser Token Attributes a
 rightBrace = token RightBrace
 
 leftArrow :: Parser Token Attributes a
