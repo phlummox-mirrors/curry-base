@@ -23,7 +23,7 @@
 -}
 module Curry.Base.LLParseComb
   ( -- * Data types
-    Symbol (..), Parser, Lexer, SuccessCont, FailureCont
+    Parser
 
     -- * Parser application
   , applyParser, prefixParser
@@ -43,7 +43,6 @@ import Data.Maybe
 import qualified Data.Set as Set
 
 import Curry.Base.LexComb
-import Curry.Base.MessageMonad
 import Curry.Base.Position
 
 infixl 5 <\>, <\\>
@@ -55,23 +54,8 @@ infixl 2 <?>, `opt`
 -- Parser types
 -- ---------------------------------------------------------------------------
 
--- |Type class for symbols
-class (Ord s, Show s) => Symbol s where
-  -- |Does the 'Symbol' represent the end of the input?
-  isEOF :: s -> Bool
-
--- |Success continuation
-type SuccessCont s a = Position -> s -> P a
-
--- |Failure continuation
-type FailureCont a   = Position -> String -> P a
-
--- |CPS lexer
-type Lexer s a       = SuccessCont s a -> FailureCont a -> P a
-
 -- |Parsing function
-type ParseFun s a b  = (a -> SuccessCont s b) -> FailureCont b
-                       -> SuccessCont s b
+type ParseFun s a b  = (a -> SuccessP s b) -> FailP b -> SuccessP s b
 
 -- |CPS-Parser type
 data Parser s a b = Parser
@@ -80,7 +64,7 @@ data Parser s a b = Parser
   -- Lookup table (continuations for 'Symbol's recognized by the parser)
   (Map.Map s (Lexer s b -> ParseFun s a b))
 
-instance Symbol s => Show (Parser s a b) where
+instance Show s => Show (Parser s a b) where
   showsPrec p (Parser e ps) = showParen (p >= 10) $
     showString "Parser " . shows (isJust e) .
     showChar ' ' . shows (Map.keysSet ps)
@@ -93,8 +77,8 @@ instance Symbol s => Show (Parser s a b) where
 -- to identify the origin of the 'String' in case of parsing errors.
 applyParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
             -> MsgMonad a
-applyParser p lexer = parse (lexer (choose p lexer done failP) failP)
-  where done x pos s
+applyParser p lexer = parse (lexer (choose p lexer successP failP) failP)
+  where successP x pos s
           | isEOF s   = returnP x
           | otherwise = failP pos (unexpected s)
 
@@ -103,8 +87,8 @@ applyParser p lexer = parse (lexer (choose p lexer done failP) failP)
 -- parsing errors.
 prefixParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
              -> MsgMonad a
-prefixParser p lexer = parse (lexer (choose p lexer discard failP) failP)
-  where discard x _ _ = returnP x
+prefixParser p lexer = parse (lexer (choose p lexer discardP failP) failP)
+  where discardP x _ _ = returnP x
 
 -- |Choose the appropriate parsing function w.r.t. to the next 'Symbol'.
 choose :: Symbol s => Parser s a b -> Lexer s b -> ParseFun s a b

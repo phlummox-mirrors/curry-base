@@ -2,6 +2,7 @@
     Module      :  $Header$
     Description :  Lexer combinators
     Copyright   :  (c) 1999-2004, Wolfgang Lux
+                       2012     , Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -20,12 +21,12 @@
 
 module Curry.Base.LexComb
   ( -- * Types
-    Indent, Context, P
+    Symbol (..), Indent, Context, P, MsgMonad, SuccessP, FailP, Lexer
 
     -- * Monadic functions
-  , parse, returnP, thenP, thenP_, failP, closeP0, closeP1
+  , parse, applyLexer, returnP, thenP, thenP_, failP, liftP, closeP0, closeP1
 
-    -- * Combinators for handling layout
+    -- * Combinators for layout handling
   , pushContext, popContext
 
     -- * Conversion of numbers
@@ -33,12 +34,17 @@ module Curry.Base.LexComb
   , convertIntegral, convertFloating
   ) where
 
-import Data.Char
+import Data.Char (isDigit, isUpper, ord)
 
 import Curry.Base.MessageMonad
 import Curry.Base.Position
 
 infixl 1 `thenP`, `thenP_`
+
+-- |Type class for symbols
+class (Ord s, Show s) => Symbol s where
+  -- |Does the 'Symbol' represent the end of the input?
+  isEOF :: s -> Bool
 
 -- |Type for indentations, necessary for the layout rule
 type Indent = Int
@@ -55,9 +61,28 @@ type P a = Position     -- ^ Current source code position
          -> MsgMonad a
 
 -- |Apply a lexer on a 'String' to lex the content. The second parameter
---  requires a 'FilePath' to use in the 'Position'
+-- requires a 'FilePath' to use in the 'Position'
 parse :: P a -> FilePath -> String -> MsgMonad a
 parse p fn s = p (first fn) s False []
+
+-- ---------------------------------------------------------------------------
+-- CPS lexer
+-- ---------------------------------------------------------------------------
+
+-- |success continuation
+type SuccessP s a = Position -> s -> P a
+
+-- |failure continuation
+type FailP a      = Position -> String -> P a
+
+-- |A CPS lexer
+type Lexer s a    = SuccessP s a -> FailP a -> P a
+
+-- |Apply a lexer
+applyLexer :: Symbol s => Lexer s [(Position, s)] -> P [(Position, s)]
+applyLexer lexer = lexer successP failP
+  where successP p t | isEOF t   = returnP [(p, t)]
+                     | otherwise = ((p, t) :) `liftP` lexer successP failP
 
 -- ---------------------------------------------------------------------------
 -- Monadic functions for the lexer.
@@ -68,19 +93,23 @@ returnP :: a -> P a
 returnP x _ _ _ _ = return x
 
 -- |Apply the first lexer and then apply the second one, based on the result
---  of the first lexer.
+-- of the first lexer.
 thenP :: P a -> (a -> P b) -> P b
 thenP lexer k pos s bol ctxt
   = lexer pos s bol ctxt >>= \x -> k x pos s bol ctxt
 
 -- |Apply the first lexer and then apply the second one, ignoring the first
---  result.
+-- result.
 thenP_ :: P a -> P b -> P b
 p1 `thenP_` p2 = p1 `thenP` \_ -> p2
 
 -- |Fail to lex on a 'Position', given an error message
 failP :: Position -> String -> P a
 failP pos msg _ _ _ _ = failWithAt pos msg
+
+-- |Apply a pure function to the lexers result
+liftP :: (a -> b) -> P a -> P b
+liftP f p = p `thenP` returnP . f
 
 -- |Lift a lexer into the 'P' monad, returning the lexer when evaluated.
 closeP0 :: P a -> P (P a)
@@ -127,14 +156,14 @@ convertIntegral b = foldl op 0
         orda = ord 'a' - 10
 
 -- |Convert a mantissa, a fraction part and an exponent into a signed
---  floating value
+-- floating value
 convertSignedFloating :: Fractional a => String -> String -> Int -> a
 convertSignedFloating ('+':m) f e =   convertFloating m f e
 convertSignedFloating ('-':m) f e = - convertFloating m f e
 convertSignedFloating m       f e =   convertFloating m f e
 
 -- |Convert a mantissa, a fraction part and an exponent into an unsigned
---  floating value
+-- floating value
 convertFloating :: Fractional a => String -> String -> Int -> a
 convertFloating m f e
   | e' == 0   = m'
