@@ -195,9 +195,9 @@ ppTypeExpr _ (RecordType fs rty) = braces (list (map ppTypedField fs)
 -- ---------------------------------------------------------------------------
 
 ppLiteral :: Literal -> Doc
-ppLiteral (Char _ c)   = text (show c)
-ppLiteral (Int _ i)    = integer i
-ppLiteral (Float _ f)  = double f
+ppLiteral (Char   _ c) = text (show c)
+ppLiteral (Int    _ i) = integer i
+ppLiteral (Float  _ f) = double f
 ppLiteral (String _ s) = text (show s)
 
 -- ---------------------------------------------------------------------------

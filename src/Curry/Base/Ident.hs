@@ -62,11 +62,11 @@ module Curry.Base.Ident
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
   ) where
 
-import Data.Char (isAlpha, isAlphaNum, isSpace)
+import Data.Char     (isAlpha, isAlphaNum, isSpace)
 import Data.Function (on)
 import Data.Generics (Data(..), Typeable(..))
-import Data.List (intercalate, isInfixOf, isPrefixOf)
-import Data.Maybe (isJust, fromMaybe)
+import Data.List     (intercalate, isInfixOf, isPrefixOf)
+import Data.Maybe    (isJust, fromMaybe)
 
 import Curry.Base.Position
 
@@ -87,8 +87,14 @@ instance Ord ModuleIdent where
   compare = compare `on` midQualifiers
 
 instance Read ModuleIdent where
-  readsPrec _ r = let (mid, s) = span (not . isSpace) r
-                  in  [(fromModuleName mid, s)]
+  readsPrec _ r = [ (mkMIdent is, s) | (is, s) <- readsIdents r]
+    where
+    readsIdents s =    [ ([i] , t) | (i, t    ) <- readsIdent  s ]
+                    ++ [ (i:is, u) | (i, '.':t) <- readsIdent  s
+                                   , (is, u   ) <- readsIdents t ]
+    readsIdent s | null i    = []
+                 | otherwise = [(i, t)]
+      where (i, t) = span (\c -> not (isSpace c || c == '.')) s
 
 instance Show ModuleIdent where
   show = moduleName
@@ -162,8 +168,14 @@ instance Ord Ident where
   Ident _ m i `compare` Ident _ n j = (m, i) `compare` (n, j)
 
 instance Read Ident where
-  readsPrec _ r = [ (mkIdent x, s) | (x, s) <- readIdent r]
-    where readIdent = return . span (not . isSpace)
+  readsPrec _ r =   [ (mkIdent i, s) | (i, s    ) <- readsIdent r ]
+                 ++ [ (renameIdent (mkIdent i) n, t)
+                    | (i, '.':s) <- readsIdent  r
+                    , (n, t    ) <- reads s
+                    ]
+    where readsIdent s | null i    = []
+                       | otherwise = [(i, t)]
+            where (i, t) = span (\c -> not (isSpace c || c == '.')) s
 
 instance Show Ident where
   show = showIdent
@@ -202,8 +214,8 @@ updIdentName f (Ident p n i) =
 -- | Add a 'Position' to an 'Ident'
 addPositionIdent :: Position -> Ident -> Ident
 addPositionIdent pos      (Ident NoPos x n) = Ident pos x n
-addPositionIdent (AST sr) (Ident pos x n)   = Ident pos { astRef = sr } x n
-addPositionIdent pos      (Ident _ x n)     = Ident pos x n
+addPositionIdent (AST sr) (Ident pos   x n) = Ident pos { astRef = sr } x n
+addPositionIdent pos      (Ident _     x n) = Ident pos x n
 
 -- | Check whether an 'Ident' identifies an infix operation
 isInfixOp :: Ident -> Bool
@@ -224,13 +236,18 @@ addRefId = addPositionIdent . AST
 data QualIdent = QualIdent
   { qidModule :: Maybe ModuleIdent -- ^ optional module identifier
   , qidIdent  :: Ident             -- ^ identifier itself
-  } deriving (Eq, Ord, Read, Data, Typeable)
+  } deriving (Eq, Ord, Data, Typeable)
 
-instance SrcRefOf QualIdent where
-  srcRefOf = srcRefOf . unqualify
+instance Read QualIdent where
+  readsPrec _ r =    [ (QualIdent Nothing  i, s) | (i, s    ) <- reads r ]
+                  ++ [ (QualIdent (Just m) i, t) | (m, '.':s) <- reads r
+                                                 , (i, t    ) <- reads s ]
 
 instance Show QualIdent where
   show = qualName
+
+instance SrcRefOf QualIdent where
+  srcRefOf = srcRefOf . unqualify
 
 -- | show function for qualified identifiers
 qualName :: QualIdent -> String
@@ -370,7 +387,8 @@ tupleArity x
   | n > 1 && unRenameIdent x == tupleId n
   = n
   | otherwise
-  = error $ "Curry.Base.Ident.tupleArity: no tuple identifier: " ++ show x
+  = error $ "Curry.Base.Ident.tupleArity: no tuple identifier: "
+            ++ showIdent x
   where n = length (idName x) - 1
 
 -- ---------------------------------------------------------------------------
