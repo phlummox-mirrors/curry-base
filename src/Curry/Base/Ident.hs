@@ -29,8 +29,9 @@ module Curry.Base.Ident
   , addPositionModuleIdent
 
     -- * Local identifiers
-  , Ident (..), showIdent, mkIdent, identSupply, renameIdent, unRenameIdent
-  , updIdentName, addPositionIdent, isInfixOp, addRefId
+  , Ident (..), mkIdent, showIdent, identSupply
+  , globalScope, hasGlobalScope, renameIdent, unRenameIdent
+  , updIdentName, addPositionIdent, addRefId, isInfixOp
 
     -- * Qualified identifiers
   , QualIdent (..), qualName, qidPosition, isQInfixOp, qualify
@@ -76,7 +77,7 @@ import Curry.Base.Position
 
 -- | Module identifier
 data ModuleIdent = ModuleIdent
-  { midPosition   :: Position -- ^ source code position
+  { midPosition   :: Position -- ^ source code 'Position'
   , midQualifiers :: [String] -- ^ hierarchical idenfiers
   } deriving (Data, Typeable)
 
@@ -125,7 +126,7 @@ addPositionModuleIdent pos mi = mi { midPosition = pos }
 --
 --  * The name must not be empty
 --  * The name must consist of one or more single identifiers,
---    seperated by a dot
+--    seperated by dots
 --  * Each single identifier must be non-empty, start with a letter and
 --    consist of letter, digits, single quotes or underscores only
 isValidModuleName :: String -> Bool
@@ -137,7 +138,7 @@ isValidModuleName qs = all isModuleIdentifier $ splitIdentifiers qs
   -- components of a module identifier must start with a letter and consist
   -- of letter, digits, underscores or single quotes
   isModuleIdentifier (c:cs) = isAlpha c && all isIdent cs
-  isIdent c = isAlphaNum c || c `elem` "'_"
+  isIdent c                 = isAlphaNum c || c `elem` "'_"
 
 -- |Resemble the hierarchical module name from a 'String' by splitting
 -- the 'String' at inner dots.
@@ -147,7 +148,7 @@ isValidModuleName qs = all isModuleIdentifier $ splitIdentifiers qs
 fromModuleName :: String -> ModuleIdent
 fromModuleName = mkMIdent . splitIdentifiers
 
--- Auxiliary function to split a hierarchical identifier at the dots
+-- Auxiliary function to split a hierarchical module identifier at the dots
 splitIdentifiers :: String -> [String]
 splitIdentifiers s = let (pref, rest) = break (== '.') s in
   pref : case rest of
@@ -191,14 +192,13 @@ instance HasPosition Ident where
 instance SrcRefOf Ident where
   srcRefOf = srcRefOf . getPosition
 
--- | Show function for an 'Ident'
-showIdent :: Ident -> String
-showIdent (Ident _ x 0) = x
-showIdent (Ident _ x n) = x ++ '.' : show n
+-- |Global scope for renaming
+globalScope :: Integer
+globalScope = 0
 
 -- | Construct an 'Ident' from a 'String'
 mkIdent :: String -> Ident
-mkIdent x = Ident NoPos x 0
+mkIdent x = Ident NoPos x globalScope
 
 -- |Infinite list of different 'Ident's
 identSupply :: [Ident]
@@ -206,18 +206,26 @@ identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
   where mkNewIdent c 0 = mkIdent [c]
         mkNewIdent c n = mkIdent $ c : show n
 
+-- | Show function for an 'Ident'
+showIdent :: Ident -> String
+showIdent (Ident _ x n) | n == globalScope = x
+                        | otherwise        = x ++ '.' : show n
+
+-- |Has the identifier global scope?
+hasGlobalScope :: Ident -> Bool
+hasGlobalScope = (== globalScope) . idUnique
+
 -- | Rename an 'Ident' by changing its unique number
 renameIdent :: Ident -> Integer -> Ident
 renameIdent ident n = ident { idUnique = n }
 
 -- | Revert the renaming of an 'Ident' by resetting its unique number
 unRenameIdent :: Ident -> Ident
-unRenameIdent ident = renameIdent ident 0
+unRenameIdent ident = renameIdent ident globalScope
 
 -- | Change the name of an 'Ident' using a renaming function
 updIdentName :: (String -> String) -> Ident -> Ident
-updIdentName f (Ident p n i) =
-  addPositionIdent p $ renameIdent (mkIdent $ f n) i
+updIdentName f (Ident p n i) = Ident p (f n) i
 
 -- | Add a 'Position' to an 'Ident'
 addPositionIdent :: Position -> Ident -> Ident
@@ -225,16 +233,16 @@ addPositionIdent pos      (Ident NoPos x n) = Ident pos x n
 addPositionIdent (AST sr) (Ident pos   x n) = Ident pos { astRef = sr } x n
 addPositionIdent pos      (Ident _     x n) = Ident pos x n
 
+-- | Add a 'SrcRef' to an 'Ident'
+addRefId :: SrcRef -> Ident -> Ident
+addRefId = addPositionIdent . AST
+
 -- | Check whether an 'Ident' identifies an infix operation
 isInfixOp :: Ident -> Bool
 isInfixOp (Ident _ ('<' : c : cs) _) =
   last (c : cs) /= '>' || not (isAlphaNum c) && c `notElem` "_(["
 isInfixOp (Ident _ (c : _) _)    = not (isAlphaNum c) && c `notElem` "_(["
 isInfixOp (Ident _ _ _)          = False -- error "Zero-length identifier"
-
--- | Add a 'SrcRef' to an 'Ident'
-addRefId :: SrcRef -> Ident -> Ident
-addRefId = addPositionIdent . AST
 
 -- ---------------------------------------------------------------------------
 -- Qualified identifier
@@ -382,26 +390,24 @@ ioId = mkIdent "IO"
 successId :: Ident
 successId = mkIdent "Success"
 
--- | Construct an 'Ident' for an n-ary tuple where n >= 2
+-- | Construct an 'Ident' for an n-ary tuple where n > 1
 tupleId :: Int -> Ident
 tupleId n
-  | n >= 2    = mkIdent $ '(' : replicate (n - 1) ',' ++ ")"
+  | n > 1     = mkIdent $ '(' : replicate (n - 1) ',' ++ ")"
   | otherwise = error $ "Curry.Base.Ident.tupleId: wrong arity " ++ show n
 
 -- | Check whether an 'Ident' is an identifier for an tuple type
 isTupleId :: Ident -> Bool
-isTupleId x = n > 1 && unRenameIdent x == tupleId n
-  where n = length (idName x) - 1
+isTupleId (Ident _ x _) = n > 1 && x == idName (tupleId n)
+  where n = length x - 1
 
 -- | Compute the arity of a tuple identifier
 tupleArity :: Ident -> Int
-tupleArity x
-  | n > 1 && unRenameIdent x == tupleId n
-  = n
-  | otherwise
-  = error $ "Curry.Base.Ident.tupleArity: no tuple identifier: "
-            ++ showIdent x
-  where n = length (idName x) - 1
+tupleArity i@(Ident _ x _)
+  | n > 1 && x == idName (tupleId n) = n
+  | otherwise                        = error $
+      "Curry.Base.Ident.tupleArity: no tuple identifier: " ++ show i
+  where n = length x - 1
 
 -- ---------------------------------------------------------------------------
 -- Identifiers for constructors
@@ -439,7 +445,7 @@ minusId = mkIdent "-"
 fminusId :: Ident
 fminusId = mkIdent "-."
 
--- | 'Ident' for anonymous variables
+-- | 'Ident' for anonymous variable
 anonId :: Ident
 anonId = mkIdent "_"
 
