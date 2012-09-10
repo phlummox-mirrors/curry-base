@@ -8,18 +8,17 @@
     Stability   :  experimental
     Portability :  portable
 
-    The parsing combinators implemented in this module
-    are based on the LL(1) parsing combinators developed by Swierstra and
-    Duponcheel. They have been
-    adapted to using continuation passing style in order to work with the
-    lexing combinators described in the previous section. In addition, the
-    facilities for error correction are omitted in this implementation.
+    The parsing combinators implemented in this module are based on the
+    LL(1) parsing combinators developed by Swierstra and Duponcheel.
+    They have been adapted to using continuation passing style in order to
+    work with the lexing combinators described in the previous section.
+    In addition, the facilities for error correction are omitted
+    in this implementation.
 
-    The two functions 'applyParser' and 'prefixParser' use
-    the specified parser for parsing a string. When 'applyParser'
-    is used, an error is reported if the parser does not consume the whole
-    string, whereas 'prefixParser' discards the rest of the input
-    string in this case.
+    The two functions 'applyParser' and 'prefixParser' use the specified
+    parser for parsing a string. When 'applyParser' is used, an error is
+    reported if the parser does not consume the whole string,
+    whereas 'prefixParser' discards the rest of the input string in this case.
 -}
 module Curry.Base.LLParseComb
   ( -- * Data types
@@ -28,8 +27,11 @@ module Curry.Base.LLParseComb
     -- * Parser application
   , fullParser, prefixParser
 
-    -- * parser combinators
-  , position, succeed, symbol, (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
+    -- * Basic parsers
+  , position, succeed, failure, symbol
+
+    -- *  parser combinators
+  , (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
   , opt, (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>), many, many1
   , sepBy, sepBy1, chainr, chainr1, chainl, chainl1, bracket, ops
 
@@ -105,7 +107,7 @@ unexpected s
   | otherwise = "Unexpected token " ++ show s
 
 -- ---------------------------------------------------------------------------
--- Basic combinators
+-- Basic parsers
 -- ---------------------------------------------------------------------------
 
 -- |Return the current position without consuming the input
@@ -118,45 +120,51 @@ succeed :: Symbol s => a -> Parser s a b
 succeed x = Parser (Just p) Map.empty
   where p success _ = success x
 
+-- |Always failing parser
+failure :: String -> Parser s a b
+failure msg = Parser (Just p) Map.empty
+  where p _ failp pos _ = failp pos msg
+
 -- |Create a parser accepting the given 'Symbol'
 symbol :: Symbol s => s -> Parser s s a
 symbol s = Parser Nothing (Map.singleton s p)
   where p lexer success failp _pos s' = lexer (success s') failp
 
+-- ---------------------------------------------------------------------------
+-- Parser combinators
+-- ---------------------------------------------------------------------------
+
 -- |Behave like the given parser, but use the given 'String' as the error
 -- message if the parser fails
 (<?>) :: Symbol s => Parser s a b -> String -> Parser s a b
-p <?> msg = p <|> Parser (Just pfail) Map.empty
-  where pfail _ failp pos _ = failp pos msg
+p <?> msg = p <|> failure msg
 
 -- |Deterministic choice between two parsers.
 -- The appropriate parser is chosen based on the next 'Symbol'
 (<|>) :: Symbol s => Parser s a b -> Parser s a b -> Parser s a b
 Parser e1 ps1 <|> Parser e2 ps2
-  | isJust e1 && isJust e2 = error $ "Ambiguous parser for empty word"
-  | not (Set.null common)  = error $ "Ambiguous parser for " ++ show common
-  | otherwise = Parser (e1 `mplus` e2) (Map.union ps1 ps2)
+  | isJust e1 && isJust e2 = failure "Ambiguous parser for empty word"
+  | not (Set.null common)  = failure $ "Ambiguous parser for " ++ show common
+  | otherwise              = Parser (e1 `mplus` e2) (Map.union ps1 ps2)
   where common = Map.keysSet ps1 `Set.intersection` Map.keysSet ps2
 
--- ---------------------------------------------------------------------------
--- The parsing combinators presented so far require that the grammar
--- being parsed is LL(1). In some cases it may be difficult or even
+-- |Non-deterministic choice between two parsers.
+-- 
+-- The other parsing combinators require that the grammar being parsed
+-- is LL(1). In some cases it may be difficult or even
 -- impossible to transform a grammar into LL(1) form. As a remedy, we
 -- include a non-deterministic version of the choice combinator in
 -- addition to the deterministic combinator adapted from the paper. For
 -- every symbol from the intersection of the parser's first sets, the
--- combinator \texttt{(<|?>)} applies both parsing functions to the input
+-- combinator '(<|?>)' applies both parsing functions to the input
 -- stream and uses that one which processes the longer prefix of the
 -- input stream irrespective of whether it succeeds or fails. If both
 -- functions recognize the same prefix, we choose the one that succeeds
 -- and report an ambiguous parse error if both succeed.
--- ---------------------------------------------------------------------------
-
--- |Non-deterministic choice between two parsers
 (<|?>) :: Symbol s => Parser s a b -> Parser s a b -> Parser s a b
 Parser e1 ps1 <|?> Parser e2 ps2
-  | isJust e1 && isJust e2 = error "Ambiguous parser for empty word"
-  | otherwise = Parser (e1 `mplus` e2) (Map.union ps1' ps2)
+  | isJust e1 && isJust e2 = failure "Ambiguous parser for empty word"
+  | otherwise              = Parser (e1 `mplus` e2) (Map.union ps1' ps2)
   where
   ps1' = Map.fromList [ (s, maybe p (try p) (Map.lookup s ps2))
                       | (s, p) <- Map.toList ps1
@@ -165,7 +173,7 @@ Parser e1 ps1 <|?> Parser e2 ps2
     closeP1 p2s `thenP` \p2s' ->
     closeP1 p2f `thenP` \p2f' ->
     parse' p1 (retry p2s') (retry p2f')
-    where p2s r1 = parse' p2 (select True r1) (select False r1)
+    where p2s r1 = parse' p2       (select True   r1) (select False r1)
           p2f r1 = parse' p2 (flip (select False) r1) (select False r1)
           parse' p psucc pfail =
             p lexer (successK psucc) (failK pfail) pos s
@@ -174,7 +182,7 @@ Parser e1 ps1 <|?> Parser e2 ps2
           retry k (pos',p) = closeP0 p `thenP` curry k pos'
   select suc (pos1, p1) (pos2, p2) = case pos1 `compare` pos2 of
     GT -> p1
-    EQ | suc       -> error $ "Ambiguous parse before " ++ show pos1
+    EQ | suc       -> failP pos1 $ "Ambiguous parse before " ++ show pos1
        | otherwise -> p1
     LT -> p2
 
@@ -310,7 +318,7 @@ bracket open p close = open <-*> p <*-> close
 
 -- |Parse one of the given operators
 ops :: Symbol s => [(s, a)] -> Parser s a b
-ops []               = error "internal error: Curry.Base.LLParseComb.ops: empty list"
+ops []               = failure "Curry.Base.LLParseComb.ops: empty list"
 ops [(s, x)]        = x <$-> symbol s
 ops ((s, x) : rest) = x <$-> symbol s <|> ops rest
 
