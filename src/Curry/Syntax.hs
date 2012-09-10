@@ -35,7 +35,7 @@ import           Curry.Syntax.Utils
 --
 --  The result is a list of tuples consisting of a 'Position' and a 'Token'.
 lexFile :: FilePath -> String -> MsgMonad [(Position, Lexer.Token)]
-lexFile fn src = unlit fn src >>= Lexer.lexFile fn
+lexFile fn src = unlit fn src >>= Lexer.lexSource fn
 
 -- |Parse a Curry header
 parseHeader :: FilePath -> String -> MsgMonad Module

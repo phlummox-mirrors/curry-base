@@ -14,7 +14,7 @@ module Curry.Syntax.Lexer
     Token (..), Category (..), Attributes (..)
 
     -- * lexing functions
-  , lexFile, lexer, fullLexer
+  , lexSource, lexer, fullLexer
   ) where
 
 import Prelude hiding (fail)
@@ -396,9 +396,9 @@ isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 -- Lexing functions
 -- ---------------------------------------------------------------------------
 
--- |Lex a given file
-lexFile :: FilePath -> String -> MsgMonad [(Position, Token)]
-lexFile = parse (applyLexer lexer)
+-- |Lex source code
+lexSource :: FilePath -> String -> MsgMonad [(Position, Token)]
+lexSource = parse (applyLexer lexer)
 
 -- |CPS-Lexer for Curry
 lexer :: Lexer Token a

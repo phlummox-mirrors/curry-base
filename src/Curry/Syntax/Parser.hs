@@ -23,12 +23,12 @@ import Curry.Base.LLParseComb
 
 import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
-import Curry.Syntax.Utils (mk, mk', mkInt, addSrcRefs)
+import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
 -- |Parse a module
 parseSource :: Bool -> FilePath -> String -> MsgMonad Module
 parseSource flat path = fmap addSrcRefs
-                      . applyParser (moduleHeader <*> decls flat) lexer path
+                      . fullParser (moduleHeader <*> decls flat) lexer path
 
 -- |Parse a module header
 parseHeader :: FilePath -> String -> MsgMonad Module
@@ -36,7 +36,7 @@ parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
 
 -- |Parse an interface
 parseInterface :: FilePath -> String -> MsgMonad Interface
-parseInterface = applyParser interface lexer
+parseInterface = fullParser interface lexer
 
 -- ---------------------------------------------------------------------------
 -- Module header

@@ -26,7 +26,7 @@ module Curry.Base.LLParseComb
     Parser
 
     -- * Parser application
-  , applyParser, prefixParser
+  , fullParser, prefixParser
 
     -- * parser combinators
   , position, succeed, symbol, (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
@@ -75,9 +75,9 @@ instance Show s => Show (Parser s a b) where
 
 -- |Apply a parser and lexer to a 'String', whereas the 'FilePath' is used
 -- to identify the origin of the 'String' in case of parsing errors.
-applyParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
-            -> MsgMonad a
-applyParser p lexer = parse (lexer (choose p lexer successP failP) failP)
+fullParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
+           -> MsgMonad a
+fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
   where successP x pos s
           | isEOF s   = returnP x
           | otherwise = failP pos (unexpected s)

@@ -99,8 +99,12 @@ instance Read ModuleIdent where
 instance Show ModuleIdent where
   show = moduleName
 
+instance HasPosition ModuleIdent where
+  getPosition = midPosition
+  setPosition = addPositionModuleIdent
+
 instance SrcRefOf ModuleIdent where
-  srcRefOf = srcRefOf . midPosition
+  srcRefOf = srcRefOf . getPosition
 
 -- | Construct a 'ModuleIdent' from a list of 'String's forming the
 --   the hierarchical module name.
@@ -180,8 +184,12 @@ instance Read Ident where
 instance Show Ident where
   show = showIdent
 
+instance HasPosition Ident where
+  getPosition = idPosition
+  setPosition = addPositionIdent
+
 instance SrcRefOf Ident where
-  srcRefOf = srcRefOf . idPosition
+  srcRefOf = srcRefOf . getPosition
 
 -- | Show function for an 'Ident'
 showIdent :: Ident -> String
@@ -245,6 +253,10 @@ instance Read QualIdent where
 
 instance Show QualIdent where
   show = qualName
+
+instance HasPosition QualIdent where
+  getPosition     = getPosition . qidIdent
+  setPosition p q = q { qidIdent = setPosition p $ qidIdent q }
 
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify

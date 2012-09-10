@@ -15,11 +15,17 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 
-module Curry.Base.MessageMonad where
+module Curry.Base.MessageMonad
+  ( Message (..), showWarning, showError, toMessage, posMessage
+  , MsgMonadT, MsgMonad, MsgMonadIO
+  , failWith, failWithAt, warnMessage, warnMessageAt
+  , runMsg, ok, runMsgIO, dropIO
+  ) where
 
 import Control.Monad.Error
 import Control.Monad.Identity
 import Control.Monad.Writer
+import Data.Maybe (fromMaybe)
 
 import Curry.Base.Position
 
@@ -32,6 +38,10 @@ data Message = Message
   { msgPos :: Maybe Position -- ^ optional source code position
   , msgTxt :: String         -- ^ the message itself
   }
+
+instance HasPosition Message where
+  getPosition     = fromMaybe NoPos . msgPos
+  setPosition p m = m { msgPos = Just p }
 
 instance Show Message where
   showsPrec _ (Message Nothing  txt) = showString txt
@@ -53,6 +63,9 @@ showError w = "Error: " ++ show w
 -- |Build a message from a 'Position' and a text
 toMessage :: Position -> String -> Message
 toMessage pos msg = Message (Just pos) msg
+
+posMessage :: HasPosition p => p -> String -> Message
+posMessage p msg = toMessage (getPosition p) msg
 
 -- ---------------------------------------------------------------------------
 -- Message Monad

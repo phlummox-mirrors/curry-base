@@ -16,7 +16,7 @@
 module Curry.Syntax.Utils
   ( isEvalAnnot, isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
   , isRecordDecl, patchModuleId
-  , flatLhs, mk', mk, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
+  , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
 
@@ -29,11 +29,7 @@ import Curry.Syntax.Type
 
 import Curry.Files.PathUtils
 
--- A module which doesn't contain a \texttt{module ... where} declaration
--- obtains its filename as module identifier (unlike the definition in
--- Haskell and original MCC where a module obtains \texttt{main}).
-
--- |Replace the generic module name 'main' with the module name derived
+-- |Replace the generic module name @main@ with the module name derived
 -- from the 'FilePath' of the module.
 patchModuleId :: FilePath -> Module -> Module
 patchModuleId fn m@(Module mid es is ds)
@@ -83,19 +79,11 @@ infixOp (InfixOp     op) = Variable op
 infixOp (InfixConstr op) = Constructor op
 
 -- |flatten the left-hand-side to the identifier and all constructor terms
-flatLhs :: Lhs -> (Ident,[ConstrTerm])
+flatLhs :: Lhs -> (Ident, [ConstrTerm])
 flatLhs lhs = flat lhs []
   where flat (FunLhs    f ts) ts' = (f, ts ++ ts')
         flat (OpLhs t1 op t2) ts' = (op, t1 : t2 : ts')
         flat (ApLhs  lhs' ts) ts' = flat lhs' (ts ++ ts')
-
--- |Provide no 'SrcRef's
-mk' :: ([SrcRef] -> a) -> a
-mk' = ($ [])
-
--- |Provide an empty 'SrcRef'
-mk :: (SrcRef -> a) -> a
-mk = ($ noRef)
 
 -- |Construct an Integer literal
 mkInt :: Integer -> Literal
@@ -127,47 +115,46 @@ type M a = a -> State Int a
 
 -- |Add 'SrcRef's to a 'Module'
 addSrcRefs :: Module -> Module
-addSrcRefs x = evalState (addRef' x) 0
+addSrcRefs x = evalState (addRefs x) 0
   where
-  addRef' :: Data a' => M a'
-  addRef' = down `extM` addRefPos
+  addRefs :: Data a' => M a'
+  addRefs = down  `extM` addRefPos
                   `extM` addRefSrc
                   `extM` addRefIdent
                   `extM` addRefListPat
                   `extM` addRefListExp
     where
     down :: Data a' => M a'
-    down = gmapM addRef'
-
-    addRefPos :: M [SrcRef]
-    addRefPos _ = liftM (:[]) nextRef
-
-    addRefSrc :: M SrcRef
-    addRefSrc _ = nextRef
-
-    addRefIdent :: M Ident
-    addRefIdent ident = liftM (flip addRefId ident) nextRef
-
-    addRefListPat :: M ConstrTerm
-    addRefListPat (ListPattern _ ts) = do
-      liftM (uncurry ListPattern) (addRefList ts)
-    addRefListPat ct = gmapM addRef' ct
-
-    addRefListExp :: M Expression
-    addRefListExp (List _ ts) = do
-      liftM (uncurry List) (addRefList ts)
-    addRefListExp ct = gmapM addRef' ct
-
-    addRefList :: Data a' => [a'] -> State Int ([SrcRef],[a'])
-    addRefList ts = do
-      i <- nextRef
-      let add t = do t' <- addRef' t;j <- nextRef; return (j,t')
-      ists <- sequence (map add ts)
-      let (is,ts') = unzip ists
-      return (i:is,ts')
+    down = gmapM addRefs
 
     nextRef :: State Int SrcRef
     nextRef = do
       i <- get
       put $! i+1
-      return (SrcRef [i])
+      return $ srcRef i
+
+    addRefSrc :: M SrcRef
+    addRefSrc _ = nextRef
+
+    addRefPos :: M [SrcRef]
+    addRefPos _ = (:[]) `liftM` nextRef
+
+    addRefIdent :: M Ident
+    addRefIdent ident = flip addRefId ident `liftM` nextRef
+
+    addRefListPat :: M ConstrTerm
+    addRefListPat (ListPattern _ ts) = uncurry ListPattern `liftM` addRefList ts
+    addRefListPat ct                 = down ct
+
+    addRefListExp :: M Expression
+    addRefListExp (List _ ts) = uncurry List `liftM` addRefList ts
+    addRefListExp ct          = down ct
+
+    addRefList :: Data a' => [a'] -> State Int ([SrcRef],[a'])
+    addRefList ts = do
+      i <- nextRef
+      let add t = do t' <- addRefs t; j <- nextRef; return (j, t')
+      ists <- sequence (map add ts)
+      let (is,ts') = unzip ists
+      return (i:is,ts')
+

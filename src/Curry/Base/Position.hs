@@ -22,14 +22,22 @@
 
 module Curry.Base.Position
   ( -- * Source code position
-    Position (..), tabWidth, first, incr, next, tab, nl, showLine, incPosition
+    HasPosition (..), Position (..)
+  , first, next, incr, tab, tabWidth, nl, showLine, incPosition
 
     -- * source reference
-  , SrcRef (..), SrcRefOf (..), noRef, incSrcRef
+  , SrcRef (..), SrcRefOf (..), srcRef, noRef, mk, mk', incSrcRef
   ) where
 
 import Data.Generics (Data(..), Typeable (..))
 import System.FilePath
+
+class HasPosition a where
+  getPosition :: a -> Position
+  setPosition :: Position -> a -> a
+
+  getPosition _ = NoPos
+  setPosition _ = id
 
 -- |Source code positions
 data Position
@@ -60,26 +68,37 @@ instance Show Position where
   showsPrec _ (AST _) = id
   showsPrec _ NoPos   = id
 
+instance HasPosition Position where
+  getPosition = id
+  setPosition = const
+
 instance SrcRefOf Position where
   srcRefOf NoPos = noRef
   srcRefOf x     = astRef x
 
--- |Number of spaces for a tabulator
-tabWidth :: Int
-tabWidth = 8
+-- |Show the line and column of the 'Position'
+showLine :: Position -> String
+showLine NoPos  = ""
+showLine AST {} = ""
+showLine Position { line = l, column = c }
+  = "(line " ++ show l ++ "." ++ show c ++ ")"
 
 -- | Absolute first position of a file
 first :: FilePath -> Position
 first fn = Position fn 1 1 noRef
+
+-- |Next position to the right
+next :: Position -> Position
+next = flip incr 1
 
 -- |Increment a position by a number of columns
 incr :: Position -> Int -> Position
 incr p@Position { column = c } n = p { column = c + n }
 incr p _ = p
 
--- |Next position to the right
-next :: Position -> Position
-next = flip incr 1
+-- |Number of spaces for a tabulator
+tabWidth :: Int
+tabWidth = 8
 
 -- |First position after the next tabulator
 tab :: Position -> Position
@@ -97,13 +116,6 @@ incPosition :: Position -> Int -> Position
 incPosition NoPos _ = NoPos
 incPosition p     j = p { astRef = incSrcRef (astRef p) j }
 
--- |Show the line and column of the 'Position'
-showLine :: Position -> String
-showLine NoPos  = ""
-showLine AST {} = ""
-showLine Position { line = l, column = c }
-  = "(line " ++ show l ++ "." ++ show c ++ ")"
-
 -- ---------------------------------------------------------------------------
 -- A source reference is a reference to a position in the abstract syntax tree
 -- used for debugging purposes.
@@ -112,10 +124,7 @@ showLine Position { line = l, column = c }
 -- |A pointer to the origin
 newtype SrcRef = SrcRef [Int] deriving (Data, Typeable)
 
--- ---------------------------------------------------------------------------
--- The instances for standard classes or such that SrcRefs are invisible
--- ---------------------------------------------------------------------------
-
+-- The instances for standard classes such that SrcRefs are invisible
 instance Eq SrcRef
   where _ == _ = True
 
@@ -138,11 +147,25 @@ class SrcRefOf a where
   srcRefOf :: a -> SrcRef
   srcRefOf = head . srcRefsOf
 
+-- |Create a source code reference
+srcRef :: Int -> SrcRef
+srcRef i = SrcRef [i]
+
 -- |The empty source code reference
 noRef :: SrcRef
 noRef = SrcRef []
 
+-- |Provide an empty 'SrcRef'
+mk :: (SrcRef -> a) -> a
+mk = ($ noRef)
+
+-- |Provide no 'SrcRef's
+mk' :: ([SrcRef] -> a) -> a
+mk' = ($ [])
+
 -- |Increment a source code reference by a given number
 incSrcRef :: SrcRef -> Int -> SrcRef
 incSrcRef (SrcRef [i]) j = SrcRef [i + j]
-incSrcRef is  _ = error $ "Curry.Base.Position.incSrcRef: " ++ show is
+incSrcRef (SrcRef is ) _ = error $ "Curry.Base.Position.incSrcRef: SrcRef "
+                                   ++ show is
+
