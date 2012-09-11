@@ -14,7 +14,13 @@
     http://www.informatik.uni-kiel.de/~mh/lehre/diplomarbeiten/siegel.pdf
 -}
 
+{-# LANGUAGE CPP #-}
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 706
+{-# LANGUAGE RecursiveDo #-}
+#else
 {-# LANGUAGE DoRec #-}
+#endif
 
 module Curry.ExtendedFlat.UnMutual (unMutualProg) where
 

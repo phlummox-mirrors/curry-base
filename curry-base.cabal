@@ -20,17 +20,25 @@ Flag split-syb
   Description: Has the syb functionality been split into the package syb?
   Default:     True
 
+Flag new-time
+  Description: Does the directory package use the new time implementation?
+  Default:     True
+
 Library
   hs-source-dirs: src
+  if flag(split-syb)
+    Build-Depends: base == 4.*, syb
+  else
+    Build-Depends: base == 3.*
+  if flag(new-time)
+    Build-Depends: time, directory >= 1.2
+  else
+    Build-Depends: old-time, directory < 1.2
   Build-Depends:
-      base == 4.*
-    , syb  >= 0.3
     , mtl
     , containers
     , filepath
     , pretty
-    , old-time
-    , directory
   ghc-options: -Wall
   Exposed-Modules:
     Curry.AbstractCurry
