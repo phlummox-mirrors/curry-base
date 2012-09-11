@@ -404,6 +404,8 @@ lexSource = parse (applyLexer lexer)
 lexer :: Lexer Token a
 lexer = skipWhiteSpace True -- skip whitespace and comments
 
+-- |CPS-Lexer for Curry which also lexes comments.
+-- This lexer can be useful for documentation tools.
 fullLexer :: Lexer Token a
 fullLexer = skipWhiteSpace False -- skip whitespace
 

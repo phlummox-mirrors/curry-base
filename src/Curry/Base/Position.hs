@@ -32,11 +32,14 @@ module Curry.Base.Position
 import Data.Generics (Data(..), Typeable (..))
 import System.FilePath
 
+-- |Type class for entities which have a source code 'Position'
 class HasPosition a where
+  -- |Get the 'Position'
   getPosition :: a -> Position
-  setPosition :: Position -> a -> a
-
   getPosition _ = NoPos
+
+  -- |Set the 'Position'
+  setPosition :: Position -> a -> a
   setPosition _ = id
 
 -- |Source code positions

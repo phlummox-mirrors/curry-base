@@ -52,10 +52,11 @@ instance Error Message where
   noMsg  = message (text "Failure!")
   strMsg = message . text
 
+-- |Construct a 'Message' without a 'Position'
 message :: Doc -> Message
 message = Message Nothing
 
--- |Build a message from an entity with a 'Position' and a text
+-- |Construct a message from an entity with a 'Position' and a text
 posMessage :: HasPosition p => p -> Doc -> Message
 posMessage p msg = Message (Just $ getPosition p) msg
 
@@ -67,10 +68,12 @@ showWarning (Message p m) = show $ Message p (text "Warning:" <+> m)
 showError :: Message -> String
 showError (Message p m) = show $ Message p (text "Error:" <+> m)
 
+-- |Pretty print a 'Message'
 ppMessage :: Message -> Doc
 ppMessage (Message Nothing  txt) = txt
 ppMessage (Message (Just p) txt) = text (show p) <> char ':' $$ nest 4 txt
 
+-- |Pretty print a list of 'Message's by vertical concatenation
 ppMessages :: [Message] -> Doc
 ppMessages = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppMessage
 

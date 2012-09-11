@@ -107,16 +107,16 @@ instance HasPosition ModuleIdent where
 instance SrcRefOf ModuleIdent where
   srcRefOf = srcRefOf . getPosition
 
--- | Construct a 'ModuleIdent' from a list of 'String's forming the
---   the hierarchical module name.
+-- |Construct a 'ModuleIdent' from a list of 'String's forming the
+--  the hierarchical module name.
 mkMIdent :: [String] -> ModuleIdent
 mkMIdent = ModuleIdent NoPos
 
--- | Retrieve the hierarchical name of a module
+-- |Retrieve the hierarchical name of a module
 moduleName :: ModuleIdent -> String
 moduleName = intercalate "." . midQualifiers
 
--- | Add a source code 'Position' to a 'ModuleIdent'
+-- |Add a source code 'Position' to a 'ModuleIdent'
 addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
 addPositionModuleIdent pos mi = mi { midPosition = pos }
 
@@ -159,7 +159,7 @@ splitIdentifiers s = let (pref, rest) = break (== '.') s in
 -- Simple identifier
 -- ---------------------------------------------------------------------------
 
--- | Simple identifiers
+-- |Simple identifier
 data Ident = Ident
   { idPosition :: Position -- ^ Source code 'Position'
   , idName     :: String   -- ^ Name of the identifier
@@ -196,7 +196,7 @@ instance SrcRefOf Ident where
 globalScope :: Integer
 globalScope = 0
 
--- | Construct an 'Ident' from a 'String'
+-- |Construct an 'Ident' from a 'String'
 mkIdent :: String -> Ident
 mkIdent x = Ident NoPos x globalScope
 
@@ -206,7 +206,7 @@ identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
   where mkNewIdent c 0 = mkIdent [c]
         mkNewIdent c n = mkIdent $ c : show n
 
--- | Show function for an 'Ident'
+-- |Show function for an 'Ident'
 showIdent :: Ident -> String
 showIdent (Ident _ x n) | n == globalScope = x
                         | otherwise        = x ++ '.' : show n
@@ -219,29 +219,29 @@ escName i = '`' : idName i ++ "'"
 hasGlobalScope :: Ident -> Bool
 hasGlobalScope = (== globalScope) . idUnique
 
--- | Rename an 'Ident' by changing its unique number
+-- |Rename an 'Ident' by changing its unique number
 renameIdent :: Ident -> Integer -> Ident
 renameIdent ident n = ident { idUnique = n }
 
--- | Revert the renaming of an 'Ident' by resetting its unique number
+-- |Revert the renaming of an 'Ident' by resetting its unique number
 unRenameIdent :: Ident -> Ident
 unRenameIdent ident = renameIdent ident globalScope
 
--- | Change the name of an 'Ident' using a renaming function
+-- |Change the name of an 'Ident' using a renaming function
 updIdentName :: (String -> String) -> Ident -> Ident
 updIdentName f (Ident p n i) = Ident p (f n) i
 
--- | Add a 'Position' to an 'Ident'
+-- |Add a 'Position' to an 'Ident'
 addPositionIdent :: Position -> Ident -> Ident
 addPositionIdent pos      (Ident NoPos x n) = Ident pos x n
 addPositionIdent (AST sr) (Ident pos   x n) = Ident pos { astRef = sr } x n
 addPositionIdent pos      (Ident _     x n) = Ident pos x n
 
--- | Add a 'SrcRef' to an 'Ident'
+-- |Add a 'SrcRef' to an 'Ident'
 addRefId :: SrcRef -> Ident -> Ident
 addRefId = addPositionIdent . AST
 
--- | Check whether an 'Ident' identifies an infix operation
+-- |Check whether an 'Ident' identifies an infix operation
 isInfixOp :: Ident -> Bool
 isInfixOp (Ident _ ('<' : c : cs) _) =
   last (c : cs) /= '>' || not (isAlphaNum c) && c `notElem` "_(["
@@ -252,7 +252,7 @@ isInfixOp (Ident _ _ _)          = False -- error "Zero-length identifier"
 -- Qualified identifier
 -- ---------------------------------------------------------------------------
 
--- | Qualified identifiers
+-- |Qualified identifier
 data QualIdent = QualIdent
   { qidModule :: Maybe ModuleIdent -- ^ optional module identifier
   , qidIdent  :: Ident             -- ^ identifier itself
@@ -273,16 +273,16 @@ instance HasPosition QualIdent where
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify
 
--- | show function for qualified identifiers
+-- |show function for qualified identifiers
 qualName :: QualIdent -> String
 qualName (QualIdent Nothing  x) = idName x
 qualName (QualIdent (Just m) x) = moduleName m ++ "." ++ idName x
 
--- | Retrieve the 'Position' of a 'QualIdent'
+-- |Retrieve the 'Position' of a 'QualIdent'
 qidPosition :: QualIdent -> Position
 qidPosition = idPosition . qidIdent
 
--- | Check whether an 'QualIdent' identifies an infix operation
+-- |Check whether an 'QualIdent' identifies an infix operation
 isQInfixOp :: QualIdent -> Bool
 isQInfixOp = isInfixOp . qidIdent
 
@@ -453,6 +453,7 @@ fminusId = mkIdent "-."
 anonId :: Ident
 anonId = mkIdent "_"
 
+-- |Check whether an 'Ident' represents an anonymous identifier ('anonId')
 isAnonId :: Ident -> Bool
 isAnonId = (== anonId) . unRenameIdent
 
