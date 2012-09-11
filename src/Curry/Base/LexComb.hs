@@ -39,6 +39,7 @@ import Data.Char (isDigit, isUpper, ord)
 import Curry.Base.MessageMonad
 import Curry.Base.Position
 
+
 infixl 1 `thenP`, `thenP_`
 
 -- |Type class for symbols
@@ -132,8 +133,8 @@ pushContext col cont pos s bol ctxt = cont pos s bol (col : ctxt)
 popContext :: P a -> P a
 popContext cont pos s bol (_ : ctxt) = cont pos s bol ctxt
 popContext _    pos _ _   []         = failWithAt pos $
-   "Parse error: popping layout from empty context stack. " ++
-   "Perhaps you have inserted too many '}'?"
+  "Parse error: popping layout from empty context stack. " ++
+  "Perhaps you have inserted too many '}'?"
 
 -- ---------------------------------------------------------------------------
 -- Conversions from 'String's into numbers.

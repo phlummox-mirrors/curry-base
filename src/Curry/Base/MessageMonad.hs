@@ -16,56 +16,63 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Curry.Base.MessageMonad
-  ( Message (..), showWarning, showError, toMessage, posMessage
+  ( Message (..), message, posMessage, showWarning, showError
+  , ppMessage, ppMessages
   , MsgMonadT, MsgMonad, MsgMonadIO
-  , failWith, failWithAt, warnMessage, warnMessageAt
+  , failWith, failWithAt, warn, warnAt
   , runMsg, ok, runMsgIO, dropIO
   ) where
 
 import Control.Monad.Error
 import Control.Monad.Identity
-import Control.Monad.Writer
+import Control.Monad.Writer (MonadWriter, WriterT, runWriterT, tell)
 import Data.Maybe (fromMaybe)
+import Text.PrettyPrint
 
 import Curry.Base.Position
 
 -- ---------------------------------------------------------------------------
--- Messages
+-- Message
 -- ---------------------------------------------------------------------------
 
--- |Compiler messages
+-- |Compiler message
 data Message = Message
   { msgPos :: Maybe Position -- ^ optional source code position
-  , msgTxt :: String         -- ^ the message itself
+  , msgTxt :: Doc            -- ^ the message itself
   }
+
+instance Show Message where
+  showsPrec _ = shows . ppMessage
 
 instance HasPosition Message where
   getPosition     = fromMaybe NoPos . msgPos
   setPosition p m = m { msgPos = Just p }
 
-instance Show Message where
-  showsPrec _ (Message Nothing  txt) = showString txt
-  showsPrec _ (Message (Just p) txt) = shows p . showString ": "
-                                     . showString txt
-
 instance Error Message where
-  noMsg  = Message Nothing "Failure!"
-  strMsg = Message Nothing
+  noMsg  = message (text "Failure!")
+  strMsg = message . text
+
+message :: Doc -> Message
+message = Message Nothing
+
+-- |Build a message from an entity with a 'Position' and a text
+posMessage :: HasPosition p => p -> Doc -> Message
+posMessage p msg = Message (Just $ getPosition p) msg
 
 -- |Show a 'Message' as a warning
 showWarning :: Message -> String
-showWarning w = "Warning: " ++ show w
+showWarning (Message p m) = show $ Message p (text "Warning:" <+> m)
 
 -- |Show a 'Message' as an error
 showError :: Message -> String
-showError w = "Error: " ++ show w
+showError (Message p m) = show $ Message p (text "Error:" <+> m)
 
--- |Build a message from a 'Position' and a text
-toMessage :: Position -> String -> Message
-toMessage pos msg = Message (Just pos) msg
+ppMessage :: Message -> Doc
+ppMessage (Message Nothing  txt) = txt
+ppMessage (Message (Just p) txt) = text (show p) <> char ':' $$ nest 4 txt
 
-posMessage :: HasPosition p => p -> String -> Message
-posMessage p msg = toMessage (getPosition p) msg
+ppMessages :: [Message] -> Doc
+ppMessages = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppMessage
 
 -- ---------------------------------------------------------------------------
 -- Message Monad
@@ -76,20 +83,20 @@ posMessage p msg = toMessage (getPosition p) msg
 type MsgMonadT m = ErrorT Message (WriterT [Message] m)
 
 -- |Abort the computation with an error message
-failWith :: (MonadError a m, Error a) => String -> m b
-failWith = throwError . strMsg
+failWith :: MonadError Message m => String -> m b
+failWith = throwError . message . text
 
 -- |Abort the computation with an error message at a certain position
-failWithAt :: (MonadError Message m) => Position -> String -> m a
-failWithAt p msg = throwError $ toMessage p msg
+failWithAt :: MonadError Message m => Position -> String -> m a
+failWithAt p msg = throwError $ posMessage p $ text msg
 
 -- |Report a warning message
-warnMessage :: (MonadWriter [Message] m) => String -> m ()
-warnMessage s = tell [Message Nothing s]
+warn :: MonadWriter [Message] m => String -> m ()
+warn s = tell [message $ text s]
 
 -- |Report a warning message for a given position
-warnMessageAt :: (MonadWriter [Message] m) => Position -> String -> m ()
-warnMessageAt p s  = tell [toMessage p s]
+warnAt :: MonadWriter [Message] m => Position -> String -> m ()
+warnAt p s  = tell [posMessage p $ text s]
 
 -- ---------------------------------------------------------------------------
 -- Simple Message Monad

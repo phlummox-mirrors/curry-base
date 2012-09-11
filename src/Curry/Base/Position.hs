@@ -61,10 +61,10 @@ instance Read Position where
     [ (Position "" i j noRef, s') | ((i, j), s') <- readsPrec p s ]
 
 instance Show Position where
-  showsPrec _ (Position f l c _)
-    = (if null f then id else showString (normalise f) . showString ", ")
-    . showString "line " . shows l
-    . (if c > 0 then showChar '.' . shows c else id)
+  showsPrec _ p@(Position f _ _ _)
+    | null f    = showString (showLine p)
+    | otherwise = showString (normalise f) . showString ", "
+                . showString (showLine p)
   showsPrec _ (AST _) = id
   showsPrec _ NoPos   = id
 
@@ -78,10 +78,10 @@ instance SrcRefOf Position where
 
 -- |Show the line and column of the 'Position'
 showLine :: Position -> String
-showLine NoPos  = ""
-showLine AST {} = ""
-showLine Position { line = l, column = c }
-  = "(line " ++ show l ++ "." ++ show c ++ ")"
+showLine NoPos                          = ""
+showLine AST {}                         = ""
+showLine (Position _ l c _) | c == 0    = "line " ++ show l
+                            | otherwise = "line " ++ show l ++ '.' : show c
 
 -- | Absolute first position of a file
 first :: FilePath -> Position

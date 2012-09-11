@@ -29,7 +29,7 @@ module Curry.Base.Ident
   , addPositionModuleIdent
 
     -- * Local identifiers
-  , Ident (..), mkIdent, showIdent, identSupply
+  , Ident (..), mkIdent, showIdent, escName, identSupply
   , globalScope, hasGlobalScope, renameIdent, unRenameIdent
   , updIdentName, addPositionIdent, addRefId, isInfixOp
 
@@ -210,6 +210,10 @@ identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
 showIdent :: Ident -> String
 showIdent (Ident _ x n) | n == globalScope = x
                         | otherwise        = x ++ '.' : show n
+
+-- |Show the name of an 'Ident' escaped by ticks
+escName :: Ident -> String
+escName i = '`' : idName i ++ "'"
 
 -- |Has the identifier global scope?
 hasGlobalScope :: Ident -> Bool

@@ -1,7 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Handling of literate Curry files
-    Copyright   :  (c) Holger Siegel 2009
+    Copyright   :  (c) 2009 Holger Siegel
+                       2012 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -15,19 +16,17 @@
     literate programs, Curry requires at least one program line to be
     present in the file. In addition, every block of program code must be
     preceded by a blank line and followed by a blank line.
-
-    This module has been rewritten by Holger Siegel in 2009.
 -}
 
 module Curry.Files.Unlit (isLiterate, unlit) where
 
-import Control.Monad (when, zipWithM)
-import Data.Char (isSpace)
+import Control.Monad    (when, zipWithM)
+import Data.Char        (isSpace)
 
 import Curry.Base.Position
 import Curry.Base.MessageMonad
-import Curry.Files.Filenames (lcurryExt)
-import Curry.Files.PathUtils (takeExtension)
+import Curry.Files.Filenames   (lcurryExt)
+import Curry.Files.PathUtils   (takeExtension)
 
 -- |Check whether a 'FilePath' represents a literate Curry module
 isLiterate :: FilePath -> Bool
@@ -45,7 +44,7 @@ unlit :: FilePath -> String -> MsgMonad String
 unlit fn cy
   | isLiterate fn = do
       ls <- progLines fn $ zipWith classify [1 .. ] $ lines cy
-      when (all null ls) $ failWith (fn ++ ": no code in literate script")
+      when (all null ls) $ failWithAt (first fn) "No code in literate script"
       return (unlines ls)
   | otherwise     = return cy
 
@@ -60,13 +59,14 @@ classify _ cs | all isSpace cs = Blank
 progLines :: FilePath -> [Line] -> MsgMonad [String]
 progLines fn cs = zipWithM checkAdjacency (Blank : cs) cs where
   checkAdjacency :: Line -> Line -> MsgMonad String
-  checkAdjacency (Program p _) Comment       = message fn p "followed"
-  checkAdjacency Comment       (Program p _) = message fn p "preceded"
+  checkAdjacency (Program p _) Comment       = report fn p "followed"
+  checkAdjacency Comment       (Program p _) = report fn p "preceded"
   checkAdjacency _             (Program _ s) = return s
   checkAdjacency _             _             = return ""
 
 -- |Compute an appropiate error message
-message :: String -> Int -> String -> MsgMonad a
-message f l cause = failWithAt (Position f l 1 noRef) msg
-  where msg = "When reading literate source: Program line is "
-              ++ cause ++ " by comment line."
+report :: String -> Int -> String -> MsgMonad a
+report f l cause = failWithAt (Position f l 1 noRef) msg
+  where msg = concat [ "When reading literate source: "
+                     , "Program line is " ++ cause ++ " by comment line."
+                     ]
