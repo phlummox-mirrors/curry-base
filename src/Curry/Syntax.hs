@@ -21,7 +21,7 @@ module Curry.Syntax
   ) where
 
 import           Curry.Base.Position               (Position)
-import           Curry.Base.MessageMonad           (MsgMonad)
+import           Curry.Base.Message                (MessageM)
 import           Curry.Files.Unlit                 (unlit)
 
 import qualified Curry.Syntax.Lexer      as Lexer
@@ -34,13 +34,13 @@ import           Curry.Syntax.Utils
 -- |Return the result of a lexical analysis of the source program @src@.
 --
 --  The result is a list of tuples consisting of a 'Position' and a 'Token'.
-lexFile :: FilePath -> String -> MsgMonad [(Position, Lexer.Token)]
+lexFile :: FilePath -> String -> MessageM [(Position, Lexer.Token)]
 lexFile fn src = unlit fn src >>= Lexer.lexSource fn
 
 -- |Parse a Curry header
-parseHeader :: FilePath -> String -> MsgMonad Module
+parseHeader :: FilePath -> String -> MessageM Module
 parseHeader fn src = unlit fn src >>= Parser.parseHeader fn
 
 -- |Parse a Curry module
-parseModule :: Bool -> FilePath -> String -> MsgMonad Module
+parseModule :: Bool -> FilePath -> String -> MessageM Module
 parseModule likeFlat fn src = unlit fn src >>= Parser.parseSource likeFlat fn

@@ -23,10 +23,10 @@ module Curry.Files.Unlit (isLiterate, unlit) where
 import Control.Monad    (when, zipWithM)
 import Data.Char        (isSpace)
 
-import Curry.Base.Position
-import Curry.Base.MessageMonad
-import Curry.Files.Filenames   (lcurryExt)
-import Curry.Files.PathUtils   (takeExtension)
+import Curry.Base.Position   (Position (..), first, noRef)
+import Curry.Base.Message    (MessageM, failWithAt)
+import Curry.Files.Filenames (lcurryExt)
+import Curry.Files.PathUtils (takeExtension)
 
 -- |Check whether a 'FilePath' represents a literate Curry module
 isLiterate :: FilePath -> Bool
@@ -40,7 +40,7 @@ data Line
 
 -- |Process a curry program into error messages (if any) and the
 -- corresponding non-literate program.
-unlit :: FilePath -> String -> MsgMonad String
+unlit :: FilePath -> String -> MessageM String
 unlit fn cy
   | isLiterate fn = do
       ls <- progLines fn $ zipWith classify [1 .. ] $ lines cy
@@ -56,16 +56,15 @@ classify _ cs | all isSpace cs = Blank
 
 -- |Check that each program line is not adjacent to a comment line and there
 -- is at least one program line.
-progLines :: FilePath -> [Line] -> MsgMonad [String]
+progLines :: FilePath -> [Line] -> MessageM [String]
 progLines fn cs = zipWithM checkAdjacency (Blank : cs) cs where
-  checkAdjacency :: Line -> Line -> MsgMonad String
   checkAdjacency (Program p _) Comment       = report fn p "followed"
   checkAdjacency Comment       (Program p _) = report fn p "preceded"
   checkAdjacency _             (Program _ s) = return s
   checkAdjacency _             _             = return ""
 
 -- |Compute an appropiate error message
-report :: String -> Int -> String -> MsgMonad a
+report :: String -> Int -> String -> MessageM a
 report f l cause = failWithAt (Position f l 1 noRef) msg
   where msg = concat [ "When reading literate source: "
                      , "Program line is " ++ cause ++ " by comment line."

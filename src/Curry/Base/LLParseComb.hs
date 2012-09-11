@@ -78,7 +78,7 @@ instance Show s => Show (Parser s a b) where
 -- |Apply a parser and lexer to a 'String', whereas the 'FilePath' is used
 -- to identify the origin of the 'String' in case of parsing errors.
 fullParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
-           -> MsgMonad a
+           -> MessageM a
 fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
   where successP x pos s
           | isEOF s   = returnP x
@@ -88,7 +88,7 @@ fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
 -- The 'FilePath' is used to identify the origin of the 'String' in case of
 -- parsing errors.
 prefixParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
-             -> MsgMonad a
+             -> MessageM a
 prefixParser p lexer = parse (lexer (choose p lexer discardP failP) failP)
   where discardP x _ _ = returnP x
 

@@ -8,17 +8,17 @@
     Stability   :  experimental
     Portability :  non-portable (FlexibleContexts)
 
-    The monads MsgMonad and MsgMonadIO provide a common way to log warning
+    The monads MessageM and MessageIO provide a common way to log warning
     messages and to stop execution when an error occurs. They may be used to
     integrate different compiler passes smoothly.
 -}
 
 {-# LANGUAGE FlexibleContexts #-}
 
-module Curry.Base.MessageMonad
+module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
   , ppMessage, ppMessages
-  , MsgMonadT, MsgMonad, MsgMonadIO
+  , MessageT, MessageM, MessageIO
   , failWith, failWithAt, warn, warnAt
   , runMsg, ok, runMsgIO, dropIO
   ) where
@@ -80,7 +80,7 @@ ppMessages = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppMessage
 
 -- |Message monad transformer enabling the reporting of 'Message's as
 --  warnings and additionally a 'Message' as an error message.
-type MsgMonadT m = ErrorT Message (WriterT [Message] m)
+type MessageT m = ErrorT Message (WriterT [Message] m)
 
 -- |Abort the computation with an error message
 failWith :: MonadError Message m => String -> m b
@@ -103,16 +103,16 @@ warnAt p s  = tell [posMessage p $ text s]
 -- ---------------------------------------------------------------------------
 
 -- |Simple message monad
-type MsgMonad = MsgMonadT Identity
+type MessageM = MessageT Identity
 
--- |Evaluate the value of a 'MsgMonad a'
-runMsg :: MsgMonad a -> (Either Message a, [Message])
+-- |Evaluate the value of a 'MessageM a'
+runMsg :: MessageM a -> (Either Message a, [Message])
 runMsg = runIdentity . runWriterT . runErrorT
 
--- |Directly evaluate to the success value of a 'MsgMonad a'.
+-- |Directly evaluate to the success value of a 'MessageM a'.
 --
 -- Errors are converted in a call to the 'error' function.
-ok :: MsgMonad a -> a
+ok :: MessageM a -> a
 ok = either (error . showError) id . fst . runMsg
 
 -- ---------------------------------------------------------------------------
@@ -120,10 +120,10 @@ ok = either (error . showError) id . fst . runMsg
 -- ---------------------------------------------------------------------------
 
 -- |Message monad with underlying 'IO' monad
-type MsgMonadIO = MsgMonadT IO
+type MessageIO = MessageT IO
 
--- |Sequence 'MsgMonad' action inside the 'IO' monad.
-runMsgIO :: MsgMonad a -> (a -> IO (MsgMonad b)) -> IO (MsgMonad b)
+-- |Sequence 'MessageM' action inside the 'IO' monad.
+runMsgIO :: MessageM a -> (a -> IO (MessageM b)) -> IO (MessageM b)
 runMsgIO m f = case runMsg m of
   (Left  e, msgs) -> return (tell msgs >> throwError e)
   (Right x, msgs) -> do
@@ -132,8 +132,8 @@ runMsgIO m f = case runMsg m of
       (Left _  , _    ) -> return m'
       (Right x', msgs') -> return (tell (msgs ++ msgs') >> return x')
 
--- |Convert a 'MsgMonad' to a 'MsgMonadIO'
-dropIO :: MsgMonad a -> MsgMonadIO a
+-- |Convert a 'MessageM' to a 'MessageIO'
+dropIO :: MessageM a -> MessageIO a
 dropIO m = case runMsg m of
   (Left  e, msgs) -> tell msgs >> throwError e
   (Right x, msgs) -> tell msgs >> return x

@@ -397,7 +397,7 @@ isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 -- ---------------------------------------------------------------------------
 
 -- |Lex source code
-lexSource :: FilePath -> String -> MsgMonad [(Position, Token)]
+lexSource :: FilePath -> String -> MessageM [(Position, Token)]
 lexSource = parse (applyLexer lexer)
 
 -- |CPS-Lexer for Curry

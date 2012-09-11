@@ -17,8 +17,8 @@
 module Curry.Syntax.Parser (parseSource, parseHeader, parseInterface) where
 
 import Curry.Base.Ident
-import Curry.Base.Position
-import Curry.Base.MessageMonad
+import Curry.Base.Position    (Position, mk, mk')
+import Curry.Base.Message     (MessageM)
 import Curry.Base.LLParseComb
 
 import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
@@ -26,16 +26,16 @@ import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
 -- |Parse a module
-parseSource :: Bool -> FilePath -> String -> MsgMonad Module
+parseSource :: Bool -> FilePath -> String -> MessageM Module
 parseSource flat path = fmap addSrcRefs
                       . fullParser (moduleHeader <*> decls flat) lexer path
 
 -- |Parse a module header
-parseHeader :: FilePath -> String -> MsgMonad Module
+parseHeader :: FilePath -> String -> MessageM Module
 parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
 
 -- |Parse an interface
-parseInterface :: FilePath -> String -> MsgMonad Interface
+parseInterface :: FilePath -> String -> MessageM Interface
 parseInterface = fullParser interface lexer
 
 -- ---------------------------------------------------------------------------

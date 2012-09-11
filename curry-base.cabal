@@ -37,7 +37,7 @@ Library
     Curry.Base.Ident
     Curry.Base.LexComb
     Curry.Base.LLParseComb
-    Curry.Base.MessageMonad
+    Curry.Base.Message
     Curry.Base.Position
     Curry.ExtendedFlat.CurryArithmetics
     Curry.ExtendedFlat.EraseTypes

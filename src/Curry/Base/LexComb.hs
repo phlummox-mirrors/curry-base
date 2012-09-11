@@ -21,7 +21,7 @@
 
 module Curry.Base.LexComb
   ( -- * Types
-    Symbol (..), Indent, Context, P, MsgMonad, SuccessP, FailP, Lexer
+    Symbol (..), Indent, Context, P, MessageM, SuccessP, FailP, Lexer
 
     -- * Monadic functions
   , parse, applyLexer, returnP, thenP, thenP_, failP, liftP, closeP0, closeP1
@@ -36,8 +36,8 @@ module Curry.Base.LexComb
 
 import Data.Char (isDigit, isUpper, ord)
 
-import Curry.Base.MessageMonad
-import Curry.Base.Position
+import Curry.Base.Message  (MessageM, failWithAt)
+import Curry.Base.Position (Position, first)
 
 
 infixl 1 `thenP`, `thenP_`
@@ -59,11 +59,11 @@ type P a = Position     -- ^ Current source code position
          -> Bool        -- ^ Flag whether the beginning of a line should be
                         --   parsed, which requires layout checking
          -> Context     -- ^ context as a stack of 'Indent's
-         -> MsgMonad a
+         -> MessageM a
 
 -- |Apply a lexer on a 'String' to lex the content. The second parameter
 -- requires a 'FilePath' to use in the 'Position'
-parse :: P a -> FilePath -> String -> MsgMonad a
+parse :: P a -> FilePath -> String -> MessageM a
 parse p fn s = p (first fn) s False []
 
 -- ---------------------------------------------------------------------------
