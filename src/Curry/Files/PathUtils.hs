@@ -9,6 +9,9 @@
     Stability   :  experimental
     Portability :  portable
 -}
+
+{-# LANGUAGE CPP #-}
+
 module Curry.Files.PathUtils
   ( -- * Re-exports from 'System.FilePath'
     takeBaseName, dropExtension, takeExtension, takeFileName
@@ -29,7 +32,12 @@ import qualified Control.Exception as C (IOException, handle)
 import Control.Monad (liftM, liftM2)
 import System.FilePath
 import System.Directory
+
+#if MIN_VERSION_directory(1,2,0)
+import Data.Time (UTCTime)
+#else
 import System.Time (ClockTime)
+#endif
 
 import Curry.Base.Ident
 import Curry.Files.Filenames
@@ -158,7 +166,11 @@ doesModuleExist f = liftM2 (||) (doesFileExist f)
                                 (doesFileExist $ ensureCurrySubdir f)
 
 -- | Get the modification time of a file, if existent
+#if MIN_VERSION_directory(1,2,0)
+getModuleModTime :: FilePath -> IO (Maybe UTCTime)
+#else
 getModuleModTime :: FilePath -> IO (Maybe ClockTime)
+#endif
 getModuleModTime = tryOnExistingFile getModificationTime
 
 -- ---------------------------------------------------------------------------
