@@ -1,8 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  A lexer for Curry
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       Martin Engelke, Björn Peemöller
+    Copyright   :  (c) 1999 - 2004 Wolfgang Lux
+                       2005        Martin Engelke
+                       2011 - 2012 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -19,8 +20,9 @@ module Curry.Syntax.Lexer
 
 import Prelude hiding (fail)
 import Data.Char
-  ( chr, ord, isAlpha, isAlphaNum, isSpace, isUpper, isDigit, isOctDigit
-  , isHexDigit)
+  ( chr, ord, isAlpha, isAlphaNum, isSpace, isUpper, isDigit
+  , isOctDigit, isHexDigit
+  )
 import Data.List (intercalate)
 import qualified Data.Map as Map (Map, union, lookup, fromList)
 
@@ -30,8 +32,6 @@ import Curry.Base.Position
 -- ---------------------------------------------------------------------------
 -- Tokens; note that the equality and ordering instances of Token disregard
 -- the attributes.
--- TODO@bjp: Think about a Token representation with arguments instead of the
--- category.
 -- ---------------------------------------------------------------------------
 
 -- |Data type for curry lexer tokens
@@ -132,9 +132,6 @@ data Category
   | SymDot      -- .
   | SymMinus    -- -
   | SymMinusDot -- -.
-
-  -- compiler pragma (bjp)
-  | Pragma
 
   -- comments (only for full lexer) inserted by men & bbr
   | LineComment
@@ -242,15 +239,17 @@ showsSpecialOperator :: String -> ShowS
 showsSpecialOperator s = showString "operator " . showsEscaped s
 
 instance Show Token where
-  showsPrec _ (Token Id         a) = showsIdent a
-  showsPrec _ (Token QId        a) = showString "qualified " . showsIdent a
-  showsPrec _ (Token Sym        a) = showsOperator a
-  showsPrec _ (Token QSym       a) = showString "qualified " . showsOperator a
-  showsPrec _ (Token IntTok     a) = showString "integer "   . shows a
-  showsPrec _ (Token FloatTok   a) = showString "float "     . shows a
-  showsPrec _ (Token CharTok    a) = showString "character " . shows a
-  showsPrec _ (Token IntegerTok a) = showString "integer "   . shows a
-  showsPrec _ (Token StringTok  a) = showString "string "    . shows a
+  showsPrec _ (Token Id                 a) = showsIdent a
+  showsPrec _ (Token QId                a) = showString "qualified "
+                                           . showsIdent a
+  showsPrec _ (Token Sym                a) = showsOperator a
+  showsPrec _ (Token QSym               a) = showString "qualified "
+                                           . showsOperator a
+  showsPrec _ (Token IntTok             a) = showString "integer "   . shows a
+  showsPrec _ (Token FloatTok           a) = showString "float "     . shows a
+  showsPrec _ (Token CharTok            a) = showString "character " . shows a
+  showsPrec _ (Token IntegerTok         a) = showString "integer "   . shows a
+  showsPrec _ (Token StringTok          a) = showString "string "    . shows a
   showsPrec _ (Token LeftParen          _) = showsEscaped "("
   showsPrec _ (Token RightParen         _) = showsEscaped ")"
   showsPrec _ (Token Semicolon          _) = showsEscaped ";"
@@ -310,7 +309,6 @@ instance Show Token where
   showsPrec _ (Token Id_interface       _) = showsSpecialIdent "interface"
   showsPrec _ (Token Id_primitive       _) = showsSpecialIdent "primitive"
   showsPrec _ (Token Id_qualified       _) = showsSpecialIdent "qualified"
-  showsPrec _ (Token Pragma             a) = shows a
   showsPrec _ (Token LineComment        a) = shows a
   showsPrec _ (Token NestedComment      a) = shows a
   showsPrec _ (Token EOF                _) = showString "<end-of-file>"
