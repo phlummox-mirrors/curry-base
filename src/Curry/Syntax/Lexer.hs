@@ -52,7 +52,6 @@ data Category
   = CharTok
   | IntTok
   | FloatTok
-  | IntegerTok
   | StringTok
 
   -- identifiers
@@ -152,9 +151,8 @@ data Category
 data Attributes
   = NoAttributes
   | CharAttributes    { cval     :: Char    , original :: String}
-  | IntAttributes     { ival     :: Int     , original :: String}
+  | IntAttributes     { ival     :: Integer , original :: String}
   | FloatAttributes   { fval     :: Double  , original :: String}
-  | IntegerAttributes { intval   :: Integer , original :: String}
   | StringAttributes  { sval     :: String  , original :: String}
   | IdentAttributes   { modulVal :: [String], sval     :: String}
 
@@ -163,7 +161,6 @@ instance Show Attributes where
   showsPrec _ (CharAttributes    cv _) = shows cv
   showsPrec _ (IntAttributes     iv _) = shows iv
   showsPrec _ (FloatAttributes   fv _) = shows fv
-  showsPrec _ (IntegerAttributes iv _) = shows iv
   showsPrec _ (StringAttributes  sv _) = shows sv
   showsPrec _ (IdentAttributes  mid i) = showsEscaped
                                        $ intercalate "." $ mid ++ [i]
@@ -187,21 +184,15 @@ charTok :: Char -> String -> Token
 charTok c o = Token CharTok CharAttributes { cval = c, original = o }
 
 -- |Construct a 'Token' for an int value
-intTok :: Int -> String -> Token
-intTok base digits =
-  Token IntTok IntAttributes { ival = convertIntegral base digits
-                             , original = digits }
+intTok :: Integer -> String -> Token
+intTok base digits = Token IntTok IntAttributes
+  { ival = convertIntegral base digits, original = digits }
 
 -- |Construct a 'Token' for a float value
 floatTok :: String -> String -> Int -> String -> Token
 floatTok mant frac expo rest =
   Token FloatTok FloatAttributes { fval = convertFloating mant frac expo
                                  , original = mant ++ "." ++ frac ++ rest }
-
--- |Construct a 'Token' for an integer value
-integerTok :: Integer -> String -> Token
-integerTok base digts = Token IntegerTok
-  IntegerAttributes { intval = convertIntegral base digts, original = digts }
 
 -- |Construct a 'Token' for a string value
 stringTok :: String -> String -> Token
@@ -248,7 +239,6 @@ instance Show Token where
   showsPrec _ (Token IntTok             a) = showString "integer "   . shows a
   showsPrec _ (Token FloatTok           a) = showString "float "     . shows a
   showsPrec _ (Token CharTok            a) = showString "character " . shows a
-  showsPrec _ (Token IntegerTok         a) = showString "integer "   . shows a
   showsPrec _ (Token StringTok          a) = showString "string "    . shows a
   showsPrec _ (Token LeftParen          _) = showsEscaped "("
   showsPrec _ (Token RightParen         _) = showsEscaped ")"
@@ -542,20 +532,20 @@ lexNumber cont p ('0':c:s)
   | c `elem` "oO"  = lexOctal       cont nullCont (incr p 2) s
   | c `elem` "xX"  = lexHexadecimal cont nullCont (incr p 2) s
   where nullCont _ _ = cont (intTok 10 "0") (next p) (c:s)
-lexNumber cont p s = lexOptFraction cont (integerTok 10 digits) digits
+lexNumber cont p s = lexOptFraction cont (intTok 10 digits) digits
                      (incr p $ length digits) rest
   where (digits, rest) = span isDigit s
 
 lexOctal :: (Token -> P a) -> P a -> P a
 lexOctal cont nullCont p s
   | null digits = nullCont undefined undefined
-  | otherwise   = cont (integerTok 8 digits) (incr p $ length digits) rest
+  | otherwise   = cont (intTok 8 digits) (incr p $ length digits) rest
   where (digits, rest) = span isOctDigit s
 
 lexHexadecimal :: (Token -> P a) -> P a -> P a
 lexHexadecimal cont nullCont p s
   | null digits = nullCont undefined undefined
-  | otherwise   = cont (integerTok 16 digits) (incr p $ length digits) rest
+  | otherwise   = cont (intTok 16 digits) (incr p $ length digits) rest
   where (digits, rest) = span isHexDigit s
 
 lexOptFraction :: (Token -> P a) -> Token -> String -> P a

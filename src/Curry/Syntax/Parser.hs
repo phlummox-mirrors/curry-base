@@ -47,7 +47,7 @@ moduleHeader :: Parser Token ([Decl] -> Module) a
 moduleHeader =  Module <$-> token KW_module
                        <*>  (mIdent <?> "module name expected")
                        <*>  ((Just <$> exportSpec) `opt` Nothing)
-                       <*-> (token KW_where <?> "where expected")
+                       <*-> checkWhere
                        <*>  importDecls
             <|> Module mainMIdent Nothing <$> importDecls
 
@@ -97,7 +97,7 @@ interface :: Parser Token Interface a
 interface =   Interface
          <$-> token Id_interface
          <*>  (mIdent <?> "module name expected")
-         <*-> (token KW_where <?> "where expected")
+         <*-> checkWhere
          <*-> leftBrace
          <*>  iImportDecls
          <*>  intfDecls
@@ -179,7 +179,7 @@ infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
 
 infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
-infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> integer
+infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> int
   where infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
 dataDecl :: Parser Token Decl a
@@ -359,7 +359,7 @@ listType = ListType <$> brackets type0
 
 literal :: Parser Token Literal a
 literal = mk Char   <$> char
-      <|> mkInt     <$> integer
+      <|> mkInt     <$> int
       <|> mk Float  <$> float
       <|> mk String <$> string
 
@@ -442,9 +442,9 @@ gconId = colon <|> tupleCommas
 
 negNum,negFloat :: Parser Token (Ident -> ConstrTerm) a
 negNum = flip NegativePattern
-         <$> (mkInt <$> integer <|> mk Float <$> float)
+         <$> (mkInt <$> int <|> mk Float <$> float)
 negFloat = flip NegativePattern . mk Float
-           <$> (fromIntegral <$> integer <|> float)
+           <$> (fromIntegral <$> int <|> float)
 
 optAsPattern :: Parser Token (Ident -> ConstrTerm) a
 optAsPattern = flip AsPattern <$-> token At <*> constrTerm2
@@ -650,20 +650,14 @@ exprOrBindStmt flat stmtCont exprCont =
 char :: Parser Token Char a
 char = cval <$> token CharTok
 
-{-
-int, checkInt :: Parser Token Int a
-int = ival <$> token IntTok
-checkInt = int <?> "integer number expected"
--}
-
 float :: Parser Token Double a
 float = fval <$> token FloatTok
 
 -- checkFloat :: Parser Token Double a
 -- checkFloat = float <?> "floating point number expected"
 
-integer :: Parser Token Integer a
-integer = intval <$> token IntegerTok
+int :: Parser Token Integer a
+int = ival <$> token IntTok
 
 -- checkInteger :: Parser Token Integer a
 -- checkInteger = integer <?> "integer number expected"
@@ -844,6 +838,9 @@ equals = token Equals
 
 binds :: Parser Token Attributes a
 binds = token Binds
+
+checkWhere :: Parser Token Attributes a
+checkWhere = token KW_where <?> "where expected"
 
 checkBar :: Parser Token Attributes a
 checkBar = bar <?> "| expected"
