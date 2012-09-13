@@ -24,7 +24,7 @@ module Curry.Syntax.Type
   , Interface (..), IImportDecl (..), IDecl (..)
     -- * Declarations
   , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..)
-  , EvalAnnotation (..), CallConv (..), TypeExpr (..)
+  , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), ConstrTerm (..), Expression (..), InfixOp (..)
   , Statement (..), Alt (..), Field (..)
@@ -114,7 +114,6 @@ data Decl
   | NewtypeDecl      Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
   | TypeDecl         Position Ident [Ident] TypeExpr       -- type C a b = D a b
   | TypeSig          Position [Ident] TypeExpr             -- f, g :: Bool
-  | EvalAnnot        Position [Ident] EvalAnnotation       -- ???
   | FunctionDecl     Position Ident [Equation]             -- f True = ... ; f False = ...
   | ExternalDecl     Position CallConv (Maybe String) Ident TypeExpr -- ???
   | FlatExternalDecl Position [Ident]                      -- ???
@@ -142,12 +141,6 @@ data ConstrDecl
 -- |Constructor declaration for renaming types (newtypes)
 data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
    deriving (Eq, Read, Show, Data, Typeable)
-
--- |Evaluation annotation
-data EvalAnnotation
-  = EvalRigid
-  | EvalChoice
-    deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Calling convention for C code
 data CallConv

@@ -129,12 +129,6 @@ showsDecl (TypeSig pos idents typ)
   . showsList showsIdent idents . space
   . showsTypeExpr typ
   . showsString ")"
-showsDecl (EvalAnnot pos idents annot)
-  = showsString "(EvalAnnot "
-  . showsPosition pos . space
-  . showsList showsIdent idents . space
-  . shows annot
-  . showsString ")"
 showsDecl (FunctionDecl pos ident eqs)
   = showsString "(FunctionDecl "
   . showsPosition pos . space

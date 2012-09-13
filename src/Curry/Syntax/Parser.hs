@@ -270,13 +270,9 @@ patDecl t rhs' p = PatternDecl p t rhs'
 funListDecl :: Bool -> Parser Token ([Ident] -> Position -> Decl) a
 funListDecl flat
   | flat      =  typeSig       <$-> token DoubleColon <*> type0
-             <|> evalAnnot     <$-> token KW_eval     <*> tokenOps evalKW
              <|> externalDecl' <$-> token KW_external
   | otherwise =  typeSig       <$-> token DoubleColon <*> type0
-             <|> evalAnnot     <$-> token KW_eval     <*> tokenOps evalKW
   where typeSig ty vs p    = TypeSig p vs ty
-        evalAnnot ev vs p  = EvalAnnot p vs ev
-        evalKW             = [(KW_rigid, EvalRigid), (KW_choice, EvalChoice)]
         externalDecl' vs p = FlatExternalDecl p vs
 
 valListDecl :: Bool -> Parser Token ([Ident] -> Position -> Decl) a

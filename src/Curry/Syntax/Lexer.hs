@@ -82,12 +82,10 @@ data Category
   -- reserved keywords
   | KW_case
 --  | KW_class -- not supported yet
-  | KW_choice -- deprecated
   | KW_data
 --  | KW_deriving -- not supported yet
   | KW_do
   | KW_else
-  | KW_eval -- deprecated
   | KW_external
   | KW_free
   | KW_if
@@ -101,7 +99,6 @@ data Category
   | KW_module
   | KW_newtype
   | KW_of
-  | KW_rigid -- deprecated
   | KW_then
   | KW_type
   | KW_where
@@ -229,11 +226,9 @@ instance Show Token where
   showsPrec _ (Token SymMinus           _) = showsSpecialOperator "-"
   showsPrec _ (Token SymMinusDot        _) = showsSpecialOperator "-."
   showsPrec _ (Token KW_case            _) = showsEscaped "case"
-  showsPrec _ (Token KW_choice          _) = showsEscaped "choice"
   showsPrec _ (Token KW_data            _) = showsEscaped "data"
   showsPrec _ (Token KW_do              _) = showsEscaped "do"
   showsPrec _ (Token KW_else            _) = showsEscaped "else"
-  showsPrec _ (Token KW_eval            _) = showsEscaped "eval"
   showsPrec _ (Token KW_external        _) = showsEscaped "external"
   showsPrec _ (Token KW_free            _) = showsEscaped "free"
   showsPrec _ (Token KW_if              _) = showsEscaped "if"
@@ -246,7 +241,6 @@ instance Show Token where
   showsPrec _ (Token KW_module          _) = showsEscaped "module"
   showsPrec _ (Token KW_newtype         _) = showsEscaped "newtype"
   showsPrec _ (Token KW_of              _) = showsEscaped "of"
-  showsPrec _ (Token KW_rigid           _) = showsEscaped "rigid"
   showsPrec _ (Token KW_then            _) = showsEscaped "then"
   showsPrec _ (Token KW_type            _) = showsEscaped "type"
   showsPrec _ (Token KW_where           _) = showsEscaped "where"
@@ -336,11 +330,9 @@ reservedSpecialOps = Map.union reservedOps $ Map.fromList
 keywords :: Map.Map String Category
 keywords = Map.fromList
   [ ("case"    , KW_case    )
-  , ("choice"  , KW_choice  )
   , ("data"    , KW_data    )
   , ("do"      , KW_do      )
   , ("else"    , KW_else    )
-  , ("eval"    , KW_eval    )
   , ("external", KW_external)
   , ("free"    , KW_free    )
   , ("if"      , KW_if      )
@@ -353,7 +345,6 @@ keywords = Map.fromList
   , ("module"  , KW_module  )
   , ("newtype" , KW_newtype )
   , ("of"      , KW_of      )
-  , ("rigid"   , KW_rigid   )
   , ("then"    , KW_then    )
   , ("type"    , KW_type    )
   , ("where"   , KW_where   )

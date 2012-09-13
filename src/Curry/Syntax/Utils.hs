@@ -14,7 +14,7 @@
     abstract syntax tree of Curry.
 -}
 module Curry.Syntax.Utils
-  ( isEvalAnnot, isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
+  ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
   , isRecordDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
@@ -53,11 +53,6 @@ isTypeSig :: Decl -> Bool
 isTypeSig (TypeSig      _ _ _    ) = True
 isTypeSig (ExternalDecl _ _ _ _ _) = True
 isTypeSig _                        = False
-
--- |Is the declaration an evaluation annotation?
-isEvalAnnot :: Decl -> Bool
-isEvalAnnot (EvalAnnot _ _ _) = True
-isEvalAnnot _                 = False
 
 -- |Is the declaration a value declaration?
 isValueDecl :: Decl -> Bool

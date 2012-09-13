@@ -76,10 +76,6 @@ ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 ppDecl (TypeSig _ fs ty) =
   list (map ppIdent fs) <+> text "::" <+> ppTypeExpr 0 ty
-ppDecl (EvalAnnot _ fs ev) =
-  list (map ppIdent fs) <+> text "eval" <+> ppEval ev
-  where ppEval EvalRigid = text "rigid"
-        ppEval EvalChoice = text "choice"
 ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
 ppDecl (ExternalDecl p cc impent f ty) =
   sep [text "external" <+> ppCallConv cc <+> maybePP (text . show) impent,
