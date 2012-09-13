@@ -24,14 +24,16 @@ import Data.Char
   , isOctDigit, isHexDigit
   )
 import Data.List (intercalate)
-import qualified Data.Map as Map (Map, union, lookup, fromList)
+import qualified Data.Map as Map
+  (Map, union, lookup, findWithDefault, fromList)
 
 import Curry.Base.LexComb
 import Curry.Base.Position
 
 -- ---------------------------------------------------------------------------
--- Tokens; note that the equality and ordering instances of Token disregard
--- the attributes.
+-- Tokens. Note that the equality and ordering instances of Token disregard
+-- the attributes, as so that the parser decides about accepting a token
+-- just by its category.
 -- ---------------------------------------------------------------------------
 
 -- |Data type for curry lexer tokens
@@ -116,7 +118,7 @@ data Category
   | RightArrow   -- ->
   | Tilde        -- ~
   | Binds        -- :=
---  | Context      -- => -- not supported yet
+--  | DoubleArrow   -- => -- not supported yet
 
   -- special identifiers
   | Id_as
@@ -164,50 +166,6 @@ instance Show Attributes where
   showsPrec _ (StringAttributes  sv _) = shows sv
   showsPrec _ (IdentAttributes  mid i) = showsEscaped
                                        $ intercalate "." $ mid ++ [i]
-
--- ---------------------------------------------------------------------------
--- The following functions can be used to construct tokens with
--- specific attributes.
--- ---------------------------------------------------------------------------
-
--- |Construct a simple 'Token' without 'Attributes'
-tok :: Category -> Token
-tok t = Token t NoAttributes
-
--- |Construct a 'Token' for identifiers
-idTok :: Category -> [String] -> String -> Token
-idTok t mIdent ident = Token t
-  IdentAttributes { modulVal = mIdent, sval = ident }
-
--- |Construct a 'Token' for a single 'Char'
-charTok :: Char -> String -> Token
-charTok c o = Token CharTok CharAttributes { cval = c, original = o }
-
--- |Construct a 'Token' for an int value
-intTok :: Integer -> String -> Token
-intTok base digits = Token IntTok IntAttributes
-  { ival = convertIntegral base digits, original = digits }
-
--- |Construct a 'Token' for a float value
-floatTok :: String -> String -> Int -> String -> Token
-floatTok mant frac expo rest =
-  Token FloatTok FloatAttributes { fval = convertFloating mant frac expo
-                                 , original = mant ++ "." ++ frac ++ rest }
-
--- |Construct a 'Token' for a string value
-stringTok :: String -> String -> Token
-stringTok cs s = Token StringTok
-  StringAttributes { sval = cs, original = s }
-
--- |Construct a 'Token' for a line comment
-lineCommentTok :: String -> Token
-lineCommentTok s = Token LineComment
-  StringAttributes { sval = s, original = s }
-
--- |Construct a 'Token' for a nested comment
-nestedCommentTok :: String -> Token
-nestedCommentTok s = Token NestedComment
-  StringAttributes { sval = s, original = s }
 
 -- ---------------------------------------------------------------------------
 -- The 'Show' instance of 'Token' is designed to display all tokens in their
@@ -304,6 +262,49 @@ instance Show Token where
   showsPrec _ (Token EOF                _) = showString "<end-of-file>"
 
 -- ---------------------------------------------------------------------------
+-- The following functions can be used to construct tokens with
+-- specific attributes.
+-- ---------------------------------------------------------------------------
+
+-- |Construct a simple 'Token' without 'Attributes'
+tok :: Category -> Token
+tok t = Token t NoAttributes
+
+-- |Construct a 'Token' for a single 'Char'
+charTok :: Char -> String -> Token
+charTok c o = Token CharTok CharAttributes { cval = c, original = o }
+
+-- |Construct a 'Token' for an int value
+intTok :: Integer -> String -> Token
+intTok base digits = Token IntTok IntAttributes
+  { ival = convertIntegral base digits, original = digits }
+
+-- |Construct a 'Token' for a float value
+floatTok :: String -> String -> Int -> String -> Token
+floatTok mant frac expo rest = Token FloatTok FloatAttributes
+  { fval     = convertFloating mant frac expo
+  , original = mant ++ "." ++ frac ++ rest }
+
+-- |Construct a 'Token' for a string value
+stringTok :: String -> String -> Token
+stringTok cs s = Token StringTok StringAttributes { sval = cs, original = s }
+
+-- |Construct a 'Token' for identifiers
+idTok :: Category -> [String] -> String -> Token
+idTok t mIdent ident = Token t
+  IdentAttributes { modulVal = mIdent, sval = ident }
+
+-- |Construct a 'Token' for a line comment
+lineCommentTok :: String -> Token
+lineCommentTok s = Token LineComment
+  StringAttributes { sval = s, original = s }
+
+-- |Construct a 'Token' for a nested comment
+nestedCommentTok :: String -> Token
+nestedCommentTok s = Token NestedComment
+  StringAttributes { sval = s, original = s }
+
+-- ---------------------------------------------------------------------------
 -- Tables for reserved operators and identifiers
 -- ---------------------------------------------------------------------------
 
@@ -374,9 +375,11 @@ keywordsSpecialIds = Map.union keywords $ Map.fromList
 -- Character classes
 -- ---------------------------------------------------------------------------
 
+-- |Check whether a 'Char' is allowed for identifiers
 isIdent :: Char -> Bool
 isIdent c = isAlphaNum c || c `elem` "'_"
 
+-- |Check whether a 'Char' is allowed for symbols
 isSymbol :: Char -> Bool
 isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 
@@ -390,63 +393,63 @@ lexSource = parse (applyLexer lexer)
 
 -- |CPS-Lexer for Curry
 lexer :: Lexer Token a
-lexer = skipWhiteSpace True -- skip whitespace and comments
+lexer = skipWhiteSpace True -- skip comments
 
 -- |CPS-Lexer for Curry which also lexes comments.
--- This lexer can be useful for documentation tools.
+-- This lexer is useful for documentation tools.
 fullLexer :: Lexer Token a
-fullLexer = skipWhiteSpace False -- skip whitespace
+fullLexer = skipWhiteSpace False -- lex comments
 
+-- |Lex the source code and skip whitespaces
 skipWhiteSpace :: Bool -> Lexer Token a
 skipWhiteSpace skipComments suc fail = skip
   where
-  skip p   []          bol = suc p (tok EOF) p [] bol
-  skip p   ('\t':s)    bol = skip (tab p) s bol
-  skip p   ('\n':s)    _   = skip (nl  p) s True
-  skip p c@('-':'-':s) bol
-    | skipComments         = skip (nl  p) (safeTail (dropWhile (/= '\n') s))
-                             True
-    | otherwise            = lexLineComment suc fail p c bol
-  skip p c@('{':'-':_) bol = lexNestedComment 0 id p commentSuc fail p c bol
-    where commentSuc = if skipComments then (\_ _  -> skip) else suc
-  skip p (c:s)         bol
-    | isSpace c            = skip (next p) s bol
-    | bol                  = lexBOL   suc fail p (c:s) bol
-    | otherwise            = lexToken suc fail p (c:s) bol
+  skip p   []          bol = suc p (tok EOF)                  p        [] bol
+  skip p c@('-':'-':_) _   = lexLineComment   sucComment fail p        c  True
+  skip p c@('{':'-':_) bol = lexNestedComment sucComment fail p        c  bol
+  skip p cs@(c:s)      bol
+    | c == '\t'            = skip                             (tab  p) s  bol
+    | c == '\n'            = skip                             (nl   p) s  True
+    | isSpace c            = skip                             (next p) s  bol
+    | bol                  = lexBOL   suc fail                p        cs bol
+    | otherwise            = lexToken suc fail                p        cs bol
+  sucComment = if skipComments then (\ _suc _fail -> skip) else suc
 
-  safeTail []     = []
-  safeTail (_:tl) = tl
-
+-- Lex a line comment
 lexLineComment :: Lexer Token a
-lexLineComment suc _ p s = case break (== '\n') s of
-  (cmnt, rest) -> suc p (lineCommentTok cmnt) (incr p $ length cmnt) rest
+lexLineComment suc fail p str = case break (== '\n') str of
+  (_, []) -> fail p "Unterminated line comment" p                   []
+  (c, s ) -> suc  p (lineCommentTok c)          (incr p $ length c) s
 
--- n   : nesting depth
--- comm: comment already lexed as functional list
--- p0  : Start position of comment
-lexNestedComment :: Int -> (String -> String) -> Position -> Lexer Token a
-lexNestedComment n comm p0 suc fail p str = case (n, str) of
-  (_,        []) -> fail p0 "Unterminated nested comment at end-of-file" p []
-  (1, '-':'}':s) -> suc  p0 (nestedCommentTok (comm "-}")) (incr p 2) s
-  (_, '{':'-':s) -> continue (n+1) ("{-" ++) (incr p 2) s
-  (_, '-':'}':s) -> continue (n-1) ("-}" ++) (incr p 2) s
-  (_, c@'\t' :s) -> continue n     (c:)      (tab    p) s
-  (_, c@'\n' :s) -> continue n     (c:)      (nl     p) s
-  (_, c      :s) -> continue n     (c:)      (next   p) s
-  where continue n' comm' p' s' = lexNestedComment n' (comm . comm')
-                                  p0 suc fail p' s'
+-- Lex a nested comment
+lexNestedComment :: Lexer Token a
+lexNestedComment suc fail p0 = lnc (0 :: Integer) id p0
+  where
+  -- d   : nesting depth
+  -- comm: comment already lexed as functional list
+  lnc d comm p str = case (d, str) of
+    (_,        []) -> fail p0    "Unterminated nested comment"  p          []
+    (1, '-':'}':s) -> suc  p0    (nestedCommentTok (comm "-}")) (incr p 2) s
+    (_, '{':'-':s) -> cont (d+1) ("{-" ++)                      (incr p 2) s
+    (_, '-':'}':s) -> cont (d-1) ("-}" ++)                      (incr p 2) s
+    (_, c@'\t' :s) -> cont d     (c:)                           (tab    p) s
+    (_, c@'\n' :s) -> cont d     (c:)                           (nl     p) s
+    (_, c      :s) -> cont d     (c:)                           (next   p) s
+    where cont d' comm' = lnc d' (comm . comm')
 
+-- Lex tokens at the beginning of a line
 lexBOL :: Lexer Token a
 lexBOL suc fail p s _ []            = lexToken suc fail p s False []
 lexBOL suc fail p s _ ctxt@(n:rest)
   | col <  n  = suc p (tok VRightBrace) p s True  rest
   | col == n  = suc p (tok  VSemicolon) p s False ctxt
-  | otherwise = lexToken suc fail p s False ctxt
+  | otherwise = lexToken suc fail       p s False ctxt
   where col = column p
 
+-- Lex a single 'Token'
 lexToken :: Lexer Token a
-lexToken suc _    p []    = suc p (tok EOF) p []
-lexToken suc fail p (c:s)
+lexToken suc _    p []       = suc p (tok EOF) p []
+lexToken suc fail p cs@(c:s)
   | c == '('    = token LeftParen
   | c == ')'    = token RightParen
   | c == ','    = token Comma
@@ -455,39 +458,40 @@ lexToken suc fail p (c:s)
   | c == ']'    = token RightBracket
   | c == '_'    = token Underscore
   | c == '`'    = token Backquote
-  | c == '{'    = lexLeftBrace (suc p) (next p) s
-  | c == '}'    = \bol -> token RightBrace bol . drop 1
-  | c == '\''   = lexChar   p suc fail (next p) s
-  | c == '\"'   = lexString p suc fail (next p) s
-  | isAlpha  c  = lexIdent  (suc p) p (c:s)
-  | isSymbol c  = lexSymbol (suc p) p (c:s)
-  | isDigit  c  = lexNumber (suc p) p (c:s)
+  | c == '{'    = lexLeftBrace  (suc p) (next p) s
+  | c == '}'    = lexRightBrace (suc p) (next p) s
+  | c == '\''   = lexChar   p suc fail  (next p) s
+  | c == '\"'   = lexString p suc fail  (next p) s
+  | isAlpha  c  = lexIdent      (suc p) p        cs
+  | isSymbol c  = lexSymbol     (suc p) p        cs
+  | isDigit  c  = lexNumber     (suc p) p        cs
   | otherwise   = fail p ("Illegal character " ++ show c) p s
   where token t = suc p (tok t) (next p) s
 
+-- Lex either a left brace or a left brace semicolon
 lexLeftBrace :: (Token -> P a) -> P a
 lexLeftBrace cont p (';':s) = cont (tok LeftBraceSemicolon) (next p) s
 lexLeftBrace cont p s       = cont (tok LeftBrace         ) p        s
 
+-- Lex a right brace and pop from the context stack
+lexRightBrace :: (Token -> P a) -> P a
+lexRightBrace cont p s bol ctxt = cont (tok RightBrace) p s bol (drop 1 ctxt)
+
 lexIdent :: (Token -> P a) -> P a
-lexIdent cont p s =
-  maybe (lexOptQual cont (token Id) [ident]) (cont . token)
-        (Map.lookup ident keywordsSpecialIds)
-        (incr p (length ident)) rest
-  where (ident,rest) = span isIdent s
-        token t = idTok t [] ident
+lexIdent cont p s = maybe (lexOptQual cont (token Id) [ident]) (cont . token)
+                          (Map.lookup ident keywordsSpecialIds)
+                          (incr p $ length ident) rest
+  where (ident, rest) = span isIdent s
+        token t       = idTok t [] ident
 
 lexSymbol :: (Token -> P a) -> P a
-lexSymbol cont p s =
-  cont (idTok (maybe Sym id (Map.lookup sym reservedSpecialOps)) [] sym)
-       (incr p (length sym)) rest
-  where (sym,rest) = span isSymbol s
+lexSymbol cont p s = cont
+  (idTok (Map.findWithDefault Sym sym reservedSpecialOps) [] sym)
+  (incr p $ length sym) rest
+  where (sym, rest) = span isSymbol s
 
--- ---------------------------------------------------------------------------
--- {\em Note:} the function \texttt{lexOptQual} has been extended to provide
+-- /Note:/ the function 'lexOptQual' has been extended to provide
 -- the qualified use of the Prelude list operators and tuples.
--- ---------------------------------------------------------------------------
-
 lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
 lexOptQual cont token mIdent p ('.':c:s)
   | isAlpha  c       = lexQualIdent cont identCont mIdent (next p) (c:s)
@@ -566,20 +570,19 @@ lexOptExponent cont token _    _    p s = cont token p s
 
 lexSignedExponent :: (Token -> P a) -> P a -> String -> String -> String
                   -> P a
-lexSignedExponent cont _         mant frac e p ('+':c:s)
-  | isDigit c = lexExponent cont mant frac (e++"+") id (next p) (c:s)
-lexSignedExponent cont _         mant frac e p ('-':c:s)
-  | isDigit c = lexExponent cont mant frac (e++"-") negate (next p) (c:s)
-lexSignedExponent cont _         mant frac e p (c:s)
-  | isDigit c = lexExponent cont mant frac e id p (c:s)
-lexSignedExponent _    floatCont _     _   _ p s = floatCont p s
+lexSignedExponent cont floatCont mant frac e p str = case str of
+  ('+':c:s) | isDigit c -> lexExpo (e ++ "+") id     (next p) (c:s)
+  ('-':c:s) | isDigit c -> lexExpo (e ++ "-") negate (next p) (c:s)
+  (c:_)     | isDigit c -> lexExpo e          id     p        str
+  _                     -> floatCont                 p        str
+  where lexExpo = lexExponent cont mant frac
 
 lexExponent :: (Token -> P a) -> String -> String -> String -> (Int -> Int)
             -> P a
 lexExponent cont mant frac e expSign p s =
-  cont (floatTok mant frac expo (e ++ digits)) (incr p (length digits)) rest
+  cont (floatTok mant frac expo (e ++ digits)) (incr p $ length digits) rest
   where (digits, rest) = span isDigit s
-        expo = expSign (convertIntegral 10 digits)
+        expo           = expSign (convertIntegral 10 digits)
 
 lexChar :: Position -> Lexer Token a
 lexChar p0 _       fail p []    = fail p0 "Illegal character constant" p []
@@ -596,63 +599,71 @@ lexCharEnd _ _ p0 _   fail p s        =
   fail p0 "Improperly terminated character constant" p s
 
 lexString :: Position -> Lexer Token a
-lexString p0 success fail = lexStringRest p0 success fail "" id
+lexString p0 suc fail = lexStringRest "" id
+  where
+  lexStringRest _  _  p []    = improperTermination p
+  lexStringRest s0 so p (c:s)
+    | c == '\n' = improperTermination p
+    | c == '\"' = suc p0 (stringTok (reverse s0) (so "")) (next p) s
+    | c == '\\' = lexStringEscape p s0 so lexStringRest fail (next p) s
+    | c == '\t' = lexStringRest (c:s0) (so . (c:)) (tab  p) s
+    | otherwise = lexStringRest (c:s0) (so . (c:)) (next p) s
+  improperTermination p = fail p0 "Improperly terminated string constant" p []
 
-lexStringRest :: Position -> SuccessP Token a -> FailP a -> String
-              -> (String -> String) -> P a
-lexStringRest p0 _       fail _  _  p [] =
-  fail p0 "Improperly terminated string constant" p []
-lexStringRest p0 success fail s0 so p (c:s)
-  | c == '\\' =
-      lexStringEscape p (lexStringRest p0 success fail) fail s0 so (next p) s
-  | c == '\"' = success p0 (stringTok (reverse s0) (so "")) (next p) s
-  | c == '\n' = fail p0 "Improperly terminated string constant" p []
-  | c == '\t' = lexStringRest p0 success fail (c:s0) (so . (c:)) (tab p) s
-  | otherwise = lexStringRest p0 success fail (c:s0) (so . (c:)) (next p) s
+lexStringEscape ::  Position -> String -> (String -> String)
+                -> (String -> (String -> String) -> P a)
+                -> FailP a -> P a
+lexStringEscape p0 _  _  _   fail p []      = lexEscape p0 undefined fail p []
+lexStringEscape p0 s0 so suc fail p cs@(c:s)
+    -- The escape sequence represents an empty character of length zero
+  | c == '&'  = suc s0 (so . ("\\&" ++)) (next p) s
+  | isSpace c = lexStringGap so (suc s0) fail p cs
+  | otherwise = lexEscape p0 (\ c' s' -> suc (c': s0) (so . (s' ++))) fail p cs
 
-lexStringEscape ::  Position -> (String -> (String -> String) -> P a)
-                -> FailP a -> String -> (String -> String) -> P a
-lexStringEscape p0 _       fail _  _  p [] = lexEscape p0 undefined fail p []
-lexStringEscape p0 success fail s0 so p (c:s)
-  | c == '&' = success s0 (so . ("\\&"++)) (next p) s
-  | isSpace c = lexStringGap (success s0) fail so p (c:s)
-  | otherwise = lexEscape p0 (\ c' s' -> success (c':s0) (so . (s'++)))
-                          fail p (c:s)
-
-lexStringGap :: ((String -> String) -> P a) -> FailP a -> (String -> String)
-             -> P a
-lexStringGap _       fail _  p [] = fail p "End of file in string gap" p []
-lexStringGap success fail so p (c:s)
-  | c == '\\' = success (so . (c:)) (next p) s
-  | c == '\t' = lexStringGap success fail (so . (c:)) (tab p) s
-  | c == '\n' = lexStringGap success fail (so . (c:)) (nl p) s
-  | isSpace c = lexStringGap success fail (so . (c:)) (next p) s
-  | otherwise = fail p ("Illegal character in string gap " ++ show c) p s
+lexStringGap :: (String -> String) -> ((String -> String) -> P a)
+             -> FailP a -> P a
+lexStringGap _  _   fail p []    = fail p "End-of-file in string gap" p []
+lexStringGap so suc fail p (c:s)
+  | c == '\\' = suc          (so . (c:))          (next p) s
+  | c == '\t' = lexStringGap (so . (c:)) suc fail (tab  p) s
+  | c == '\n' = lexStringGap (so . (c:)) suc fail (nl   p) s
+  | isSpace c = lexStringGap (so . (c:)) suc fail (next p) s
+  | otherwise = fail p ("Illegal character in string gap: " ++ show c) p s
 
 lexEscape :: Position -> (Char -> String -> P a) -> FailP a -> P a
-lexEscape _  suc _    p ('a' :s) = suc '\a' "\\a"  (next p) s
-lexEscape _  suc _    p ('b' :s) = suc '\b' "\\b"  (next p) s
-lexEscape _  suc _    p ('f' :s) = suc '\f' "\\f"  (next p) s
-lexEscape _  suc _    p ('n' :s) = suc '\n' "\\n"  (next p) s
-lexEscape _  suc _    p ('r' :s) = suc '\r' "\\r"  (next p) s
-lexEscape _  suc _    p ('t' :s) = suc '\t' "\\t"  (next p) s
-lexEscape _  suc _    p ('v' :s) = suc '\v' "\\v"  (next p) s
-lexEscape _  suc _    p ('\\':s) = suc '\\' "\\\\" (next p) s
-lexEscape _  suc _    p ('"' :s) = suc '\"' "\\\"" (next p) s
-lexEscape _  suc _    p ('\'':s) = suc '\'' "\\\'" (next p) s
-lexEscape _  suc _    p ('^':c:s)
-  | isUpper c || c `elem` "@[\\]^_"
-  = suc (chr (ord c `mod` 32)) ("\\^"++[c]) (incr p 2) s
-lexEscape p0 suc fail p ('o':c:s)
-  | isOctDigit c
-  = numEscape p0 suc fail 8 isOctDigit ("\\o"++) (next p) (c:s)
-lexEscape p0 suc fail p ('x':c:s)
-  | isHexDigit c
-  = numEscape p0 suc fail 16 isHexDigit ("\\x"++) (next p) (c:s)
-lexEscape p0 suc fail p (c:s)
-  | isDigit    c
-  = numEscape p0 suc fail 10 isDigit ("\\"++) p (c:s)
-lexEscape p0 suc fail p s = asciiEscape p0 suc fail p s
+lexEscape p0 suc fail p str = case str of
+  -- character escape
+  ('a' :s) -> suc '\a' "\\a"  (next p) s
+  ('b' :s) -> suc '\b' "\\b"  (next p) s
+  ('f' :s) -> suc '\f' "\\f"  (next p) s
+  ('n' :s) -> suc '\n' "\\n"  (next p) s
+  ('r' :s) -> suc '\r' "\\r"  (next p) s
+  ('t' :s) -> suc '\t' "\\t"  (next p) s
+  ('v' :s) -> suc '\v' "\\v"  (next p) s
+  ('\\':s) -> suc '\\' "\\\\" (next p) s
+  ('"' :s) -> suc '\"' "\\\"" (next p) s
+  ('\'':s) -> suc '\'' "\\\'" (next p) s
+  -- control characters
+  ('^':c:s) | isControlEsc c -> controlEsc c (incr p 2) s
+  -- numeric escape
+  ('o':c:s) | isOctDigit c   -> numEsc  8 isOctDigit ("\\o" ++) (next p) (c:s)
+  ('x':c:s) | isHexDigit c   -> numEsc 16 isHexDigit ("\\x" ++) (next p) (c:s)
+  (c:s)     | isDigit    c   -> numEsc 10 isDigit    ("\\"  ++) p        (c:s)
+  -- ascii escape
+  _        -> asciiEscape p0 suc fail p str
+  where numEsc         = numEscape p0 suc fail
+        controlEsc   c = suc (chr (ord c `mod` 32)) ("\\^" ++ [c])
+        isControlEsc c = isUpper c || c `elem` "@[\\]^_"
+
+numEscape :: Position -> (Char -> String -> P a) -> FailP a -> Int
+          -> (Char -> Bool) -> (String -> String) -> P a
+numEscape p0 suc fail b isDigit' so p s
+  | n >= ord minBound && n <= ord maxBound
+   = suc (chr n) (so digits) (incr p $ length digits) rest
+  | otherwise
+  = fail p0 "Numeric escape out-of-range" p s
+  where (digits, rest) = span isDigit' s
+        n = convertIntegral b digits
 
 asciiEscape :: Position -> (Char -> String -> P a) -> FailP a -> P a
 asciiEscape p0 suc fail p str = case str of
@@ -691,29 +702,3 @@ asciiEscape p0 suc fail p str = case str of
   ('S':'P'    :s) -> suc '\SP'  "\\SP"  (incr p 2) s
   ('D':'E':'L':s) -> suc '\DEL' "\\DEL" (incr p 3) s
   s               -> fail p0 "Illegal escape sequence" p s
-
-numEscape :: Position -> (Char -> String -> P a) -> FailP a -> Int
-          -> (Char -> Bool) -> (String -> String) -> P a
-numEscape p0 suc fail b isDigit' so p s
-  | n >= minB && n <= maxB = suc (chr n) (so digits)
-                                     (incr p (length digits)) rest
-  | otherwise              = fail p0 "Numeric escape out-of-range" p s
-  where (digits,rest) = span isDigit' s
-        n = convertIntegral b digits
-        minB = ord minBound
-        maxB = ord maxBound
-
--- OLD STUFF
-
--- skipNestedComment :: Position -> P a -> FailP a -> P a
--- skipNestedComment p0 _         fail p [] =
---   fail p0 "Unterminated nested comment at end-of-file" p []
--- skipNestedComment _  success _    p ('-':'}':s) = success (incr p 2) s
--- skipNestedComment p0 success fail p ('{':'-':s) =
---   skipNestedComment p (skipNestedComment p0 success fail) fail (incr p 2) s
--- skipNestedComment p0 success fail p ('\t':s) =
---   skipNestedComment p0 success fail (tab p) s
--- skipNestedComment p0 success fail p ('\n':s) =
---   skipNestedComment p0 success fail (nl p) s
--- skipNestedComment p0 success fail p (_:s) =
---   skipNestedComment p0 success fail (next p) s
