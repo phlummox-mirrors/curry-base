@@ -87,6 +87,7 @@ data Category
   | KW_do
   | KW_else
   | KW_external
+  | KW_fcase
   | KW_free
   | KW_if
   | KW_import
@@ -230,6 +231,7 @@ instance Show Token where
   showsPrec _ (Token KW_do              _) = showsEscaped "do"
   showsPrec _ (Token KW_else            _) = showsEscaped "else"
   showsPrec _ (Token KW_external        _) = showsEscaped "external"
+  showsPrec _ (Token KW_fcase           _) = showsEscaped "fcase"
   showsPrec _ (Token KW_free            _) = showsEscaped "free"
   showsPrec _ (Token KW_if              _) = showsEscaped "if"
   showsPrec _ (Token KW_import          _) = showsEscaped "import"
@@ -334,6 +336,7 @@ keywords = Map.fromList
   , ("do"      , KW_do      )
   , ("else"    , KW_else    )
   , ("external", KW_external)
+  , ("fcase"   , KW_fcase   )
   , ("free"    , KW_free    )
   , ("if"      , KW_if      )
   , ("import"  , KW_import  )

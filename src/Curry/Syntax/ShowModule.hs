@@ -446,8 +446,9 @@ showsExpression (IfThenElse _ exp1 exp2 exp3)
   . showsExpression exp2 . space
   . showsExpression exp3
   . showsString ")"
-showsExpression (Case _ expr alts)
+showsExpression (Case _ ct expr alts)
   = showsString "(Case "
+  . showsCaseType ct . space
   . showsExpression expr . space
   . showsList showsAlt alts
   . showsString ")"
@@ -490,6 +491,10 @@ showsStatement (StmtBind _ cons expr)
   . showsConsTerm cons . space
   . showsExpression expr
   . showsString ")"
+
+showsCaseType :: CaseType -> ShowS
+showsCaseType Rigid = showsString "Rigid"
+showsCaseType Flex  = showsString "Flex"
 
 showsAlt :: Alt -> ShowS
 showsAlt (Alt pos cons rhs)

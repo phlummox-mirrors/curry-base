@@ -289,9 +289,9 @@ ppExpr p (IfThenElse _ e1 e2 e3) =
             sep [ppExpr 0 e1,
                  text "then" <+> ppExpr 0 e2,
                  text "else" <+> ppExpr 0 e3])
-ppExpr p (Case _ e alts) =
+ppExpr p (Case _ ct e alts) =
   parenExp (p > 0)
-           (text "case" <+> ppExpr 0 e <+> text "of" $$
+           (ppCaseType ct <+> ppExpr 0 e <+> text "of" $$
             indent (vcat (map ppAlt alts)))
 ppExpr _ (RecordConstr fs) =
   braces (list (map (ppFieldExpr equals) fs))
@@ -304,9 +304,13 @@ ppExpr _ (RecordUpdate fs e) =
 
 -- |Pretty print a statement
 ppStmt :: Statement -> Doc
-ppStmt (StmtExpr _ e) = ppExpr 0 e
+ppStmt (StmtExpr   _ e) = ppExpr 0 e
 ppStmt (StmtBind _ t e) = sep [ppConstrTerm 0 t <+> larrow,indent (ppExpr 0 e)]
-ppStmt (StmtDecl ds) = text "let" <+> ppBlock ds
+ppStmt (StmtDecl    ds) = text "let" <+> ppBlock ds
+
+ppCaseType :: CaseType -> Doc
+ppCaseType Rigid = text "case"
+ppCaseType Flex  = text "fcase"
 
 -- |Pretty print an alternative in a case expression
 ppAlt :: Alt -> Doc

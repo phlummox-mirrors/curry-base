@@ -585,8 +585,10 @@ ifExpr flat =   mk IfThenElse
            <*-> (token KW_else <?> "else expected") <*> expr flat
 
 caseExpr :: Bool -> Parser Token Expression a
-caseExpr flat = mk Case <$-> token KW_case <*> expr flat
-                <*-> (token KW_of <?> "of expected") <*> layout (alts flat)
+caseExpr flat =   keyword <*> expr flat
+             <*-> (token KW_of <?> "of expected") <*> layout (alts flat)
+  where keyword =  mk Case Flex  <$-> token KW_fcase
+               <|> mk Case Rigid <$-> token KW_case
 
 alts :: Bool -> Parser Token [Alt] a
 alts flat = alt flat `sepBy1` semicolon

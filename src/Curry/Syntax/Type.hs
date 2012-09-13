@@ -27,7 +27,7 @@ module Curry.Syntax.Type
   , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), ConstrTerm (..), Expression (..), InfixOp (..)
-  , Statement (..), Alt (..), Field (..)
+  , Statement (..), CaseType (..), Alt (..), Field (..)
   ) where
 
 import Data.Generics (Data(..), Typeable(..))
@@ -238,7 +238,7 @@ data Expression
   | Let             [Decl] Expression
   | Do              [Statement] Expression
   | IfThenElse      SrcRef Expression Expression Expression
-  | Case            SrcRef Expression [Alt]
+  | Case            SrcRef CaseType Expression [Alt]
   | RecordConstr    [Field Expression]            -- {l1 = e1,...,ln = en}
   | RecordSelection Expression Ident              -- e -> l
   | RecordUpdate    [Field Expression] Expression -- {l1 := e1,...,ln := en | e}
@@ -255,6 +255,12 @@ data Statement
   = StmtExpr SrcRef Expression
   | StmtDecl [Decl]
   | StmtBind SrcRef ConstrTerm Expression
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Type of case expressions
+data CaseType
+  = Rigid
+  | Flex
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Single case alternative
