@@ -408,8 +408,8 @@ skipWhiteSpace skipComments suc fail = skip
 
 -- Lex a line comment
 lexLineComment :: Lexer Token a
-lexLineComment suc fail p str = case break (== '\n') str of
-  (_, []) -> fail p "Unterminated line comment" p                   []
+lexLineComment suc _ p str = case break (== '\n') str of
+--   (_, []) -> fail p "Unterminated line comment" p                   []
   (c, s ) -> suc  p (lineCommentTok c)          (incr p $ length c) s
 
 -- Lex a nested comment
