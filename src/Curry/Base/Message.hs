@@ -19,8 +19,8 @@ module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
   , ppMessage, ppMessages
   , MessageT, MessageM, MessageIO
-  , failWith, failWithAt, warn, warnAt
-  , runMsg, ok, runMsgIO, dropIO
+  , runMessageT, failWith, failWithAt, warn, warnAt
+  , runMsg, ok, toIO, fromIO
   ) where
 
 import Control.Monad.Error
@@ -83,7 +83,11 @@ ppMessages = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppMessage
 
 -- |Message monad transformer enabling the reporting of 'Message's as
 --  warnings and additionally a 'Message' as an error message.
-type MessageT m = ErrorT Message (WriterT [Message] m)
+type MessageT m = WriterT [Message] (ErrorT Message m)
+
+-- |Evaluate the value of a 'MessageT m a'
+runMessageT :: Monad m => MessageT m a -> m (Either Message (a, [Message]))
+runMessageT = runErrorT . runWriterT
 
 -- |Abort the computation with an error message
 failWith :: MonadError Message m => String -> m b
@@ -109,14 +113,14 @@ warnAt p s  = tell [posMessage p $ text s]
 type MessageM = MessageT Identity
 
 -- |Evaluate the value of a 'MessageM a'
-runMsg :: MessageM a -> (Either Message a, [Message])
-runMsg = runIdentity . runWriterT . runErrorT
+runMsg :: MessageM a -> (Either Message (a, [Message]))
+runMsg = runIdentity . runMessageT
 
 -- |Directly evaluate to the success value of a 'MessageM a'.
 --
 -- Errors are converted in a call to the 'error' function.
 ok :: MessageM a -> a
-ok = either (error . showError) id . fst . runMsg
+ok = either (error . showError) fst . runMsg
 
 -- ---------------------------------------------------------------------------
 -- Message Monad with IO
@@ -125,18 +129,14 @@ ok = either (error . showError) id . fst . runMsg
 -- |Message monad with underlying 'IO' monad
 type MessageIO = MessageT IO
 
--- |Sequence 'MessageM' action inside the 'IO' monad.
-runMsgIO :: MessageM a -> (a -> IO (MessageM b)) -> IO (MessageM b)
-runMsgIO m f = case runMsg m of
-  (Left  e, msgs) -> return (tell msgs >> throwError e)
-  (Right x, msgs) -> do
-    m' <- f x
-    case runMsg m' of
-      (Left _  , _    ) -> return m'
-      (Right x', msgs') -> return (tell (msgs ++ msgs') >> return x')
+toIO :: MessageM a -> MessageIO a
+toIO msg = case runMsg msg of
+  Left  e         -> throwError e
+  Right (x, msgs) -> tell msgs >> return x
 
--- |Convert a 'MessageM' to a 'MessageIO'
-dropIO :: MessageM a -> MessageIO a
-dropIO m = case runMsg m of
-  (Left  e, msgs) -> tell msgs >> throwError e
-  (Right x, msgs) -> tell msgs >> return x
+fromIO :: MessageIO a -> IO (MessageM a)
+fromIO msgio = do
+  res <- runMessageT msgio
+  case res of
+    Left e          -> return $ throwError e
+    Right (x, msgs) -> return $ tell msgs >> return x
