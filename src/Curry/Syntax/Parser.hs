@@ -26,6 +26,9 @@ import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
 -- |Parse a module
+-- The first parameter denotes which syntactic constructs are recognized
+--  if True   : fun external
+--  otherwise : newtype declarations, external C calls
 parseSource :: Bool -> FilePath -> String -> MessageM Module
 parseSource flat path = fmap addSrcRefs
                       . fullParser (moduleHeader <*> decls flat) lexer path
