@@ -29,8 +29,8 @@ eqImports :: [String] -> [String] -> Bool
 eqImports is1 is2 = sort is1 == sort is2
 
 eqTypeDecls :: [TypeDecl] -> [TypeDecl] -> Bool
-eqTypeDecls ts1 [] = null ts1
-eqTypeDecls ts1 ((Type qname vis2 is2 cs2):ts2') =
+eqTypeDecls ts1 []                               = null ts1
+eqTypeDecls ts1 (Type qname vis2 is2 cs2 : ts2') =
   let (mt,ts1') = extract (isDataType qname) ts1
   in  maybe False
             (\ t -> case t of
@@ -127,7 +127,7 @@ isOp qname (Op qname' _ _) = qname == qname'
 
 --
 extract :: (a -> Bool) -> [a] -> (Maybe a, [a])
-extract _ [] = (Nothing, [])
+extract _ []                 = (Nothing, [])
 extract p (x:xs) | p x       = (Just x, xs)
                  | otherwise = (res, x:xs') where (res, xs') = extract p xs
 {-

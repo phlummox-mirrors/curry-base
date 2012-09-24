@@ -53,7 +53,7 @@ unMutualProg p = evalState f (UnMutualState 1000) where
 rmMutualRecursion :: [Bind] -> Expr -> UnMutualMonad Expr
 rmMutualRecursion bs body
   | allWhnf bs || length bs <= 1 = return (Let bs body)
-  | otherwise = do
+  | otherwise                    = do
       rec (body', bound, fbs) <- partitionBinds (fvs body) sccs (body, mkTuple fbs, [])
       mkSingleLet body' bound fbs
     where fvsGraph = depGraph bs
@@ -151,28 +151,27 @@ partitionBinds pull (CyclicSCC d:ds) (body, bound, fbs)
 -- If the next SCC is acyclic, then it is not added to the feedback set. Instead,
 -- its declaration is added to the tuple expression. Depending on whether it
 -- is needed in the body expression, its declaration is also  added to the body expression:
-partitionBinds pull  (AcyclicSCC ((x,e),_,r):ds) (body, bound, fbs)
-    = do l <- nonrecLet x e bound
-         (body', pull') <- if x `elem` pull
-                           then do l' <- nonrecLet x e body
-                                   return (l', r `union` pull)
-                           else return (body, pull)
-         partitionBinds pull' ds (body', l, fbs)
+partitionBinds pull  (AcyclicSCC ((x,e),_,r):ds) (body, bound, fbs) = do
+  l <- nonrecLet x e bound
+  (body', pull') <- if x `elem` pull
+                      then do l' <- nonrecLet x e body
+                              return (l', r `union` pull)
+                      else return (body, pull)
+  partitionBinds pull' ds (body', l, fbs)
 
 -- When there are no more declarations to be processed, the 3-tuple is returned as
 -- result:
-partitionBinds _pull [] part
-    = return part
+partitionBinds _pull [] part = return part
 
 -- Function |pickFbNode| picks the best candidate from a SCC. Irs choice depends
 -- not only on the SCC, but also on whether the candidate is referred to by the body expression:
 
 pickFbNode :: [VarIndex] -> [FvsNode] -> (Bind, [FvsNode])
 pickFbNode pull defs = (b, d)
-    where
-    ds         = [x | (_, x, _) <- defs]
-    (b, y, _)  = maximumBy (compare `on` weight pull ds) defs
-    d          = [ n | n@(_, x, _) <- defs, x /= y]
+  where
+  ds         = [x | (_, x, _) <- defs]
+  (b, y, _)  = maximumBy (compare `on` weight pull ds) defs
+  d          = [ n | n@(_, x, _) <- defs, x /= y]
 
 -- not in ghc 6.8.2:
 on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
@@ -191,38 +190,36 @@ rated on whether it
 
 weight :: [VarIndex] -> [VarIndex] -> FvsNode -> (Bool, Int, Bool)
 weight pull defs (_,x,fv) = (recursive, length incoming, pulled)
-    where  recursive  = x `elem` fv
-           incoming   = fv `intersect` defs
-           pulled     = x `elem` pull
+  where recursive  = x `elem` fv
+        incoming   = fv `intersect` defs
+        pulled     = x `elem` pull
 
 newLocalName :: Maybe TypeExpr -> UnMutualMonad VarIndex
-newLocalName t
-    = do st <- get
-         let counter = 1 + localCounter st
-         put st { localCounter = counter  }
-         return (VarIndex t counter)
+newLocalName t = do
+  st <- get
+  let counter = 1 + localCounter st
+  put st { localCounter = counter  }
+  return (VarIndex t counter)
 
 subst :: VarIndex -> Expr -> Expr -> Expr
 subst v x = po
-    where po e@(Var v')
-              | v==v'  = x
-              | otherwise = e
-          po e@(Lit _)
-              = e
-          po (Comb t n es)
-              = Comb t n (map po es)
-          po e@(Free vs e')
-              | v `elem` vs = e
-              | otherwise   = Free vs (po e')
-          po e@(Let bs e')
-              | lookup v bs == Nothing
-              = Let (map poBind bs) (po e')
-              | otherwise = e
-          po (Or l r) = Or (po l) (po r)
-          po (Case r t e bs) = Case r t (po e) (map poBranch bs)
-          poBind  (w, rhs) = (w, po rhs)
-          poBranch e@(Branch p rhs)
-              | v `elem` trPattern (\_ args -> args) (const []) p
-              = e
-              | otherwise
-              = Branch p (po rhs)
+  where
+  po e@(Var      v')
+    | v == v'   = x
+    | otherwise = e
+  po e@(Lit       _) = e
+  po (Comb   t n es) = Comb t n (map po es)
+  po e@(Free  vs e')
+    | v `elem` vs = e
+    | otherwise   = Free vs (po e')
+  po e@(Let   bs e')
+    | lookup v bs == Nothing = Let (map poBind bs) (po e')
+    | otherwise              = e
+  po (Or        l r) = Or (po l) (po r)
+  po (Case r t e bs) = Case r t (po e) (map poBranch bs)
+
+  poBind  (w, rhs) = (w, po rhs)
+
+  poBranch e@(Branch p rhs)
+    | v `elem` trPattern (const id) (const []) p = e
+    | otherwise                                  = Branch p (po rhs)
