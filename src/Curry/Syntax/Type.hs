@@ -28,6 +28,8 @@ module Curry.Syntax.Type
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), ConstrTerm (..), Expression (..), InfixOp (..)
   , Statement (..), CaseType (..), Alt (..), Field (..)
+    -- * Goals
+  , Goal (..)
   ) where
 
 import Data.Generics (Data(..), Typeable(..))
@@ -270,6 +272,17 @@ data Alt = Alt Position ConstrTerm Rhs
 -- |Record field
 data Field a = Field Position Ident a
     deriving (Eq, Read, Show, Data, Typeable)
+
+-- ---------------------------------------------------------------------------
+-- Goals
+-- ---------------------------------------------------------------------------
+
+data Goal = Goal Position Expression [Decl]
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- ---------------------------------------------------------------------------
+-- instances
+-- ---------------------------------------------------------------------------
 
 instance SrcRefOf ConstrTerm where
   srcRefOf (LiteralPattern       l) = srcRefOf l

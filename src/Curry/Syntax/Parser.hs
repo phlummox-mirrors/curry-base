@@ -14,7 +14,9 @@
     combinators implemented in 'Curry.Base.LLParseComb'.
 -}
 
-module Curry.Syntax.Parser (parseSource, parseHeader, parseInterface) where
+module Curry.Syntax.Parser
+  ( parseSource, parseHeader, parseInterface, parseGoal
+  ) where
 
 import Curry.Base.Ident
 import Curry.Base.Position    (Position, mk, mk')
@@ -37,6 +39,10 @@ parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
 -- |Parse an interface
 parseInterface :: FilePath -> String -> MessageM Interface
 parseInterface = fullParser interface lexer
+
+-- |Parse a 'Goal'
+parseGoal :: String -> MessageM Goal
+parseGoal = fullParser goal lexer ""
 
 -- ---------------------------------------------------------------------------
 -- Module header
@@ -293,12 +299,12 @@ declRhs :: Parser Token Rhs a
 declRhs = rhs equals
 
 rhs :: Parser Token a b -> Parser Token Rhs b
-rhs eq = rhsExpr <*> localDefs
+rhs eq = rhsExpr <*> localDecls
   where rhsExpr =  SimpleRhs  <$-> eq <*> position <*> expr
                <|> GuardedRhs <$>  many1 (condExpr eq)
 
-localDefs :: Parser Token [Decl] a
-localDefs = token KW_where <-*> layout valueDecls `opt` []
+localDecls :: Parser Token [Decl] a
+localDecls = token KW_where <-*> layout valueDecls `opt` []
 
 externalDecl :: Parser Token Decl a
 externalDecl =  ExternalDecl
@@ -635,6 +641,13 @@ exprOrBindStmt :: Parser Token (Statement -> a) b
 exprOrBindStmt stmtCont exprCont =
        mk StmtBind <$> pattern0 <*-> leftArrow <*> expr <**> stmtCont
   <|?> expr <\> token KW_let <**> exprCont
+
+-- ---------------------------------------------------------------------------
+-- Goals
+-- ---------------------------------------------------------------------------
+
+goal :: Parser Token Goal a
+goal = Goal <$> position <*> expr <*> localDecls
 
 -- ---------------------------------------------------------------------------
 -- Literals, identifiers, and (infix) operators
