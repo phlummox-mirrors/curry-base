@@ -264,7 +264,8 @@ instance Read QualIdent where
                                                  , (i, t    ) <- reads s ]
 
 instance Show QualIdent where
-  show = qualName
+  show (QualIdent Nothing  x) = showIdent x
+  show (QualIdent (Just m) x) = moduleName m ++ "." ++ showIdent x
 
 instance HasPosition QualIdent where
   getPosition     = getPosition . qidIdent
