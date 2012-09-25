@@ -185,7 +185,7 @@ infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> int
 
 dataDecl :: Parser Token Decl a
 dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
-  where constrs = equals <-*> constrDecl `sepBy` bar
+  where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
 newtypeDecl :: Parser Token Decl a
 newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
