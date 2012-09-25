@@ -214,7 +214,7 @@ data ConstrTerm
   | FunctionPattern    QualIdent [ConstrTerm]
   | InfixFuncPattern   ConstrTerm QualIdent ConstrTerm
   | RecordPattern      [Field ConstrTerm] (Maybe ConstrTerm)
-        -- {l1 = p1, ..., ln = pn}  oder {l1 = p1, ..., ln = pn | p}
+        -- {l1 = p1, ..., ln = pn}  or {l1 = p1, ..., ln = pn | p}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Expression
@@ -241,8 +241,8 @@ data Expression
   | Do              [Statement] Expression
   | IfThenElse      SrcRef Expression Expression Expression
   | Case            SrcRef CaseType Expression [Alt]
-  | RecordConstr    [Field Expression]            -- {l1 = e1,...,ln = en}
-  | RecordSelection Expression Ident              -- e -> l
+  | RecordConstr    [Field Expression]            -- {l1 := e1,...,ln := en}
+  | RecordSelection Expression Ident              -- e :> l
   | RecordUpdate    [Field Expression] Expression -- {l1 := e1,...,ln := en | e}
     deriving (Eq, Read, Show, Data, Typeable)
 

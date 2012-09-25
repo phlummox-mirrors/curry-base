@@ -326,7 +326,7 @@ type0 = type1 `chainr1` (ArrowType <$-> token RightArrow)
 -- type1 ::= QTyCon { type2 } | type2
 type1 :: Parser Token TypeExpr a
 type1 = ConstructorType <$> qtycon <*> many type2
-     <|> type2 <\> qtycon
+    <|> type2 <\> qtycon
 
 -- type2 ::= '_' | identType | parenType | listType
 type2 :: Parser Token TypeExpr a
