@@ -32,8 +32,9 @@ module Curry.Base.LLParseComb
 
     -- *  parser combinators
   , (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
-  , opt, (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>), many, many1
-  , sepBy, sepBy1, chainr, chainr1, chainl, chainl1, bracket, ops
+  , opt, (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>)
+  , optional, optionMaybe, many, many1, sepBy, sepBy1
+  , chainr, chainr1, chainl, chainl1, between, ops
 
     -- * Layout combinators
   , layoutOn, layoutOff, layoutEnd
@@ -263,6 +264,12 @@ p <??> q = p <**> (q `opt` id)
       -> Parser s (a -> c) d
 p1 <.> p2 = p1 <**> ((.) <$> p2)
 
+optional :: Symbol s => Parser s a b -> Parser s () b
+optional p = const () <$> p `opt` ()
+
+optionMaybe :: Symbol s => Parser s a b -> Parser s (Maybe a) b
+optionMaybe p = Just <$> p `opt` Nothing
+
 -- |Repeatedly apply a parser for 0 or more occurences
 many :: Symbol s => Parser s a b -> Parser s [a] b
 many p = many1 p `opt` []
@@ -310,11 +317,10 @@ chainl1 p op = foldF <$> p <*> many (flip <$> op <*> p)
   where foldF x [] = x
         foldF x (f:fs) = foldF (f x) fs
 
--- |Parse an bracketed expression, with parsers provided for the opening
--- and closing bracket
-bracket :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
+-- |Parse an expression between an opening and a closing part.
+between :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
         -> Parser s b c
-bracket open p close = open <-*> p <*-> close
+between open p close = open <-*> p <*-> close
 
 -- |Parse one of the given operators
 ops :: Symbol s => [(s, a)] -> Parser s a b
