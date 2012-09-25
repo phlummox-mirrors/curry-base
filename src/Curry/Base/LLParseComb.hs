@@ -33,7 +33,7 @@ module Curry.Base.LLParseComb
     -- *  parser combinators
   , (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
   , opt, (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>)
-  , optional, optionMaybe, many, many1, sepBy, sepBy1
+  , choice, optional, optionMaybe, many, many1, sepBy, sepBy1
   , chainr, chainr1, chainl, chainl1, between, ops
 
     -- * Layout combinators
@@ -121,7 +121,7 @@ succeed :: Symbol s => a -> Parser s a b
 succeed x = Parser (Just p) Map.empty
   where p success _ = success x
 
--- |Always failing parser
+-- |Always failing parser with a given message
 failure :: String -> Parser s a b
 failure msg = Parser (Just p) Map.empty
   where p _ failp pos _ = failp pos msg
@@ -129,7 +129,7 @@ failure msg = Parser (Just p) Map.empty
 -- |Create a parser accepting the given 'Symbol'
 symbol :: Symbol s => s -> Parser s s a
 symbol s = Parser Nothing (Map.singleton s p)
-  where p lexer success failp _pos s' = lexer (success s') failp
+  where p lexer success failp _ s' = lexer (success s') failp
 
 -- ---------------------------------------------------------------------------
 -- Parser combinators
@@ -226,6 +226,9 @@ Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 -- Note that some of these combinators have not been published in the
 -- paper, but were taken from the implementation found on the web.
 -- ---------------------------------------------------------------------------
+
+choice :: Symbol s => [Parser s a b] -> Parser s a b
+choice = foldr1 (<|>)
 
 -- |Try the first parser, but return the second argument if it didn't succeed
 opt :: Symbol s => Parser s a b -> a -> Parser s a b
