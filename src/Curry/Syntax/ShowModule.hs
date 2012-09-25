@@ -135,16 +135,16 @@ showsDecl (FunctionDecl pos ident eqs)
   . showsIdent ident . space
   . showsList showsEquation eqs
   . showsString ")"
-showsDecl (ExternalDecl pos cconv mstr ident typ)
-  = showsString "(ExternalDecl "
+showsDecl (ForeignDecl pos cconv mstr ident typ)
+  = showsString "(ForeignDecl "
   . showsPosition pos . space
   . shows cconv . space
   . shows mstr . space
   . showsIdent ident . space
   . showsTypeExpr typ
   . showsString ")"
-showsDecl (FlatExternalDecl pos idents)
-  = showsString "(FlatExternalDecl "
+showsDecl (ExternalDecl pos idents)
+  = showsString "(ExternalDecl "
   . showsPosition pos . space
   . showsList showsIdent idents
   . showsString ")"
@@ -154,8 +154,8 @@ showsDecl (PatternDecl pos cons rhs)
   . showsConsTerm cons . space
   . showsRhs rhs
   . showsString ")"
-showsDecl (ExtraVariables pos idents)
-  = showsString "(ExtraVariables "
+showsDecl (FreeDecl pos idents)
+  = showsString "(FreeDecl "
   . showsPosition pos . space
   . showsList showsIdent idents
   . showsString ")"
@@ -281,7 +281,7 @@ showsLiteral (String _ s)
   . shows s
   . showsString ")"
 
-showsConsTerm :: ConstrTerm -> ShowS
+showsConsTerm :: Pattern -> ShowS
 showsConsTerm (LiteralPattern lit)
   = showsString "(LiteralPattern "
   . showsLiteral lit

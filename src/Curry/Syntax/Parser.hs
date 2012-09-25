@@ -173,7 +173,7 @@ globalDecls = topDecl `sepBy` semicolon
 
 topDecl :: Parser Token Decl a
 topDecl = choice [ infixDecl, dataDecl, newtypeDecl, typeDecl, functionDecl
-                 , externalDecl ]
+                 , foreignDecl ]
 
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
@@ -226,7 +226,7 @@ labelDecls :: Parser Token ([Ident], TypeExpr) a
 labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0
 
 valueDecls :: Parser Token [Decl] a
-valueDecls  = choice [infixDecl, valueDecl, externalDecl] `sepBy` semicolon
+valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
 
 existVars :: Parser Token [Ident] a
 {-
@@ -266,16 +266,16 @@ valueDecl = position <**> decl
 funDecl :: (Ident,Lhs) -> Rhs -> Position -> Decl
 funDecl (f,lhs) rhs' p = FunctionDecl p f [Equation p lhs rhs']
 
-patDecl :: ConstrTerm -> Rhs -> Position -> Decl
+patDecl :: Pattern -> Rhs -> Position -> Decl
 patDecl t rhs' p = PatternDecl p t rhs'
 
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-funListDecl =  typeSig               <$-> token DoubleColon <*> type0
-           <|> flip FlatExternalDecl <$-> token KW_external
-  where typeSig ty vs p    = TypeSig p vs ty
+funListDecl =  typeSig           <$-> token DoubleColon <*> type0
+           <|> flip ExternalDecl <$-> token KW_external
+  where typeSig ty vs p = TypeSig p vs ty
 
 valListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-valListDecl = funListDecl <|> flip ExtraVariables <$-> token KW_free
+valListDecl = funListDecl <|> flip FreeDecl <$-> token KW_free
 
 funLhs :: Parser Token (Ident,Lhs) a
 funLhs = funLhs' <$> fun <*> many1 pattern2
@@ -306,11 +306,11 @@ rhs eq = rhsExpr <*> localDecls
 localDecls :: Parser Token [Decl] a
 localDecls = token KW_where <-*> layout valueDecls `opt` []
 
-externalDecl :: Parser Token Decl a
-externalDecl =  ExternalDecl
-            <$> position <*-> token KW_external
-            <*> callConv <*> (optionMaybe string)
-            <*> fun <*-> token DoubleColon <*> type0
+foreignDecl :: Parser Token Decl a
+foreignDecl = ForeignDecl
+          <$> position <*-> token KW_foreign
+          <*> callConv <*> (optionMaybe string)
+          <*> fun <*-> token DoubleColon <*> type0
   where callConv =  CallConvPrimitive <$-> token Id_primitive
                 <|> CallConvCCall <$-> token Id_ccall
                 <?> "Unsupported calling convention"
@@ -370,7 +370,7 @@ literal = mk Char   <$> char
 -- ---------------------------------------------------------------------------
 
 -- pattern0 ::= pattern1 [ ConOp pattern0 ]
-pattern0 :: Parser Token ConstrTerm a
+pattern0 :: Parser Token Pattern a
 pattern0 = pattern1 `chainr1` (flip InfixPattern <$> gconop)
 
 -- pattern1 ::= varId
@@ -379,7 +379,7 @@ pattern0 = pattern1 `chainr1` (flip InfixPattern <$> gconop)
 --           |  '-.' negFloat
 --           |  '(' parenPattern'
 --           | pattern2
-pattern1 :: Parser Token ConstrTerm a
+pattern1 :: Parser Token Pattern a
 pattern1 =  varId <**> identPattern'
            <|> ConstructorPattern <$> qConId <\> varId <*> many pattern2
            <|> minus <**> negNum
@@ -401,22 +401,22 @@ pattern1 =  varId <**> identPattern'
                                     <*> many pattern2
   conPattern ts = flip ConstructorPattern ts . qualify
 
-pattern2 :: Parser Token ConstrTerm a
+pattern2 :: Parser Token Pattern a
 pattern2 =  literalPattern <|> anonPattern <|> identPattern
         <|> parenPattern   <|> listPattern <|> lazyPattern
         <|> recordPattern
 
-literalPattern :: Parser Token ConstrTerm a
+literalPattern :: Parser Token Pattern a
 literalPattern = LiteralPattern <$> literal
 
-anonPattern :: Parser Token ConstrTerm a
+anonPattern :: Parser Token Pattern a
 anonPattern = VariablePattern <$> anonIdent
 
-identPattern :: Parser Token ConstrTerm a
+identPattern :: Parser Token Pattern a
 identPattern =  varId <**> optAsPattern
             <|> flip ConstructorPattern [] <$> qConId <\> varId
 
-parenPattern :: Parser Token ConstrTerm a
+parenPattern :: Parser Token Pattern a
 parenPattern = leftParen <-*> parenPattern'
   where parenPattern' = minus <**> minusPattern negNum
                    <|> fminus <**> minusPattern negFloat
@@ -427,13 +427,13 @@ parenPattern = leftParen <-*> parenPattern'
         minusPattern p = rightParen <-*> optAsPattern
                      <|> parenMinusPattern p <*-> rightParen
 
-listPattern :: Parser Token ConstrTerm a
+listPattern :: Parser Token Pattern a
 listPattern = mk' ListPattern <$> brackets (pattern0 `sepBy` comma)
 
-lazyPattern :: Parser Token ConstrTerm a
+lazyPattern :: Parser Token Pattern a
 lazyPattern = mk LazyPattern <$-> token Tilde <*> pattern2
 
-recordPattern :: Parser Token ConstrTerm a
+recordPattern :: Parser Token Pattern a
 recordPattern = layoutOff <-*> braces content
   where
   content   = RecordPattern <$> (fieldPatt `sepBy` comma) <*> record
@@ -448,32 +448,32 @@ recordPattern = layoutOff <-*> braces content
 gconId :: Parser Token QualIdent a
 gconId = colon <|> tupleCommas
 
-negNum :: Parser Token (Ident -> ConstrTerm) a
+negNum :: Parser Token (Ident -> Pattern) a
 negNum = flip NegativePattern <$> (mkInt <$> int <|> mk Float <$> float)
 
-negFloat :: Parser Token (Ident -> ConstrTerm) a
+negFloat :: Parser Token (Ident -> Pattern) a
 negFloat = flip NegativePattern . mk Float
            <$> (fromIntegral <$> int <|> float)
 
-optAsPattern :: Parser Token (Ident -> ConstrTerm) a
+optAsPattern :: Parser Token (Ident -> Pattern) a
 optAsPattern = flip AsPattern <$-> token At <*> pattern2
          `opt` VariablePattern
 
-optInfixPattern :: Parser Token (ConstrTerm -> ConstrTerm) a
+optInfixPattern :: Parser Token (Pattern -> Pattern) a
 optInfixPattern = infixPat <$> gconop <*> pattern0
             `opt` id
   where infixPat op t2 t1 = InfixPattern t1 op t2
 
-optTuplePattern :: Parser Token (ConstrTerm -> ConstrTerm) a
+optTuplePattern :: Parser Token (Pattern -> Pattern) a
 optTuplePattern = tuple <$> many1 (comma <-*> pattern0)
             `opt` ParenPattern
   where tuple ts t = mk TuplePattern (t:ts)
 
-parenMinusPattern :: Parser Token (Ident -> ConstrTerm) a
-                  -> Parser Token (Ident -> ConstrTerm) a
+parenMinusPattern :: Parser Token (Ident -> Pattern) a
+                  -> Parser Token (Ident -> Pattern) a
 parenMinusPattern p = p <.> optInfixPattern <.> optTuplePattern
 
-parenTuplePattern :: Parser Token ConstrTerm a
+parenTuplePattern :: Parser Token Pattern a
 parenTuplePattern = pattern0 <**> optTuplePattern
               `opt` mk TuplePattern []
 

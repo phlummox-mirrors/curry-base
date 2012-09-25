@@ -15,7 +15,7 @@
     Haskell parser.
 -}
 module Curry.Syntax.Pretty
-  ( ppModule, ppInterface, ppIDecl, ppDecl, ppIdent, ppConstrTerm, ppFieldPatt
+  ( ppModule, ppInterface, ppIDecl, ppDecl, ppIdent, ppPattern, ppFieldPatt
   , ppExpr, ppOp, ppStmt, ppFieldExpr, ppTypeExpr, ppAlt
   ) where
 
@@ -40,10 +40,10 @@ ppExportSpec :: ExportSpec -> Doc
 ppExportSpec (Exporting _ es) = parenList (map ppExport es)
 
 ppExport :: Export -> Doc
-ppExport (Export x) = ppQIdent x
+ppExport (Export             x) = ppQIdent x
 ppExport (ExportTypeWith tc cs) = ppQIdent tc <> parenList (map ppIdent cs)
-ppExport (ExportTypeAll tc) = ppQIdent tc <> text "(..)"
-ppExport (ExportModule m) = text "module" <+> ppMIdent m
+ppExport (ExportTypeAll     tc) = ppQIdent tc <> text "(..)"
+ppExport (ExportModule       m) = text "module" <+> ppMIdent m
 
 ppImportDecl :: ImportDecl -> Doc
 ppImportDecl (ImportDecl _ m q asM is) =
@@ -57,9 +57,9 @@ ppImportSpec (Importing _ is) = parenList (map ppImport is)
 ppImportSpec (Hiding _ is) = text "hiding" <+> parenList (map ppImport is)
 
 ppImport :: Import -> Doc
-ppImport (Import x) = ppIdent x
+ppImport (Import             x) = ppIdent x
 ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
-ppImport (ImportTypeAll tc) = ppIdent tc <> text "(..)"
+ppImport (ImportTypeAll     tc) = ppIdent tc <> text "(..)"
 
 ppBlock :: [Decl] -> Doc
 ppBlock = vcat . map ppDecl
@@ -67,7 +67,7 @@ ppBlock = vcat . map ppDecl
 -- |Pretty print a declaration
 ppDecl :: Decl -> Doc
 ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
-ppDecl (DataDecl _ tc tvs cs) =
+ppDecl (DataDecl  _ tc tvs cs) =
   sep (ppTypeDeclLhs "data" tc tvs :
        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
 ppDecl (NewtypeDecl _ tc tvs nc) =
@@ -77,20 +77,20 @@ ppDecl (TypeDecl _ tc tvs ty) =
 ppDecl (TypeSig _ fs ty) =
   list (map ppIdent fs) <+> text "::" <+> ppTypeExpr 0 ty
 ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
-ppDecl (ExternalDecl p cc impent f ty) =
-  sep [text "external" <+> ppCallConv cc <+> maybePP (text . show) impent,
+ppDecl (ForeignDecl p cc impent f ty) =
+  sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
        indent (ppDecl (TypeSig p [f] ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
         ppCallConv CallConvCCall = text "ccall"
-ppDecl (FlatExternalDecl _ fs) = list (map ppIdent fs) <+> text "external"
-ppDecl (PatternDecl _ t rhs) = ppRule (ppConstrTerm 0 t) equals rhs
-ppDecl (ExtraVariables _ vs) = list (map ppIdent vs) <+> text "free"
+ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
+ppDecl (PatternDecl _ t rhs) = ppRule (ppPattern 0 t) equals rhs
+ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
 
 ppPrec :: Infix -> Integer -> Doc
 ppPrec fix p = ppAssoc fix <+> ppPrio p
   where ppAssoc InfixL = text "infixl"
         ppAssoc InfixR = text "infixr"
-        ppAssoc Infix = text "infix"
+        ppAssoc Infix  = text "infix"
         ppPrio p' = if p' < 0 then empty else integer p'
 
 ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
@@ -115,10 +115,10 @@ ppEquation :: Equation -> Doc
 ppEquation (Equation _ lhs rhs) = ppRule (ppLhs lhs) equals rhs
 
 ppLhs :: Lhs -> Doc
-ppLhs (FunLhs f ts) = ppIdent f <+> fsep (map (ppConstrTerm 2) ts)
+ppLhs (FunLhs f ts) = ppIdent f <+> fsep (map (ppPattern 2) ts)
 ppLhs (OpLhs t1 f t2) =
-  ppConstrTerm 1 t1 <+> ppInfixOp f <+> ppConstrTerm 1 t2
-ppLhs (ApLhs lhs ts) = parens (ppLhs lhs) <+> fsep (map (ppConstrTerm 2) ts)
+  ppPattern 1 t1 <+> ppInfixOp f <+> ppPattern 1 t2
+ppLhs (ApLhs lhs ts) = parens (ppLhs lhs) <+> fsep (map (ppPattern 2) ts)
 
 ppRule :: Doc -> Doc -> Rhs -> Doc
 ppRule lhs eq (SimpleRhs _ e ds) =
@@ -201,42 +201,42 @@ ppLiteral (String _ s) = text (show s)
 -- ---------------------------------------------------------------------------
 
 -- |Pretty print a constructor term
-ppConstrTerm :: Int -> ConstrTerm -> Doc
-ppConstrTerm p (LiteralPattern l) =
+ppPattern :: Int -> Pattern -> Doc
+ppPattern p (LiteralPattern l) =
   parenExp (p > 1 && isNegative l) (ppLiteral l)
   where isNegative (Char _ _)   = False
         isNegative (Int _ i)    = i < 0
         isNegative (Float _ f)  = f < 0.0
         isNegative (String _ _) = False
-ppConstrTerm p (NegativePattern op l) =
+ppPattern p (NegativePattern op l) =
   parenExp (p > 1) (ppInfixOp op <> ppLiteral l)
-ppConstrTerm _ (VariablePattern v) = ppIdent v
-ppConstrTerm p (ConstructorPattern c ts) =
+ppPattern _ (VariablePattern v) = ppIdent v
+ppPattern p (ConstructorPattern c ts) =
   parenExp (p > 1 && not (null ts))
-           (ppQIdent c <+> fsep (map (ppConstrTerm 2) ts))
-ppConstrTerm p (InfixPattern t1 c t2) =
+           (ppQIdent c <+> fsep (map (ppPattern 2) ts))
+ppPattern p (InfixPattern t1 c t2) =
   parenExp (p > 0)
-           (sep [ppConstrTerm 1 t1 <+> ppQInfixOp c,
-                 indent (ppConstrTerm 0 t2)])
-ppConstrTerm _ (ParenPattern t) = parens (ppConstrTerm 0 t)
-ppConstrTerm _ (TuplePattern _ ts) = parenList (map (ppConstrTerm 0) ts)
-ppConstrTerm _ (ListPattern _ ts) = bracketList (map (ppConstrTerm 0) ts)
-ppConstrTerm _ (AsPattern v t) = ppIdent v <> char '@' <> ppConstrTerm 2 t
-ppConstrTerm _ (LazyPattern _ t) = char '~' <> ppConstrTerm 2 t
-ppConstrTerm p (FunctionPattern f ts) =
+           (sep [ppPattern 1 t1 <+> ppQInfixOp c,
+                 indent (ppPattern 0 t2)])
+ppPattern _ (ParenPattern t) = parens (ppPattern 0 t)
+ppPattern _ (TuplePattern _ ts) = parenList (map (ppPattern 0) ts)
+ppPattern _ (ListPattern _ ts) = bracketList (map (ppPattern 0) ts)
+ppPattern _ (AsPattern v t) = ppIdent v <> char '@' <> ppPattern 2 t
+ppPattern _ (LazyPattern _ t) = char '~' <> ppPattern 2 t
+ppPattern p (FunctionPattern f ts) =
   parenExp (p > 1 && not (null ts))
-           (ppQIdent f <+> fsep (map (ppConstrTerm 2) ts))
-ppConstrTerm p (InfixFuncPattern t1 f t2) =
+           (ppQIdent f <+> fsep (map (ppPattern 2) ts))
+ppPattern p (InfixFuncPattern t1 f t2) =
   parenExp (p > 0)
-           (sep [ppConstrTerm 1 t1 <+> ppQInfixOp f,
-                 indent (ppConstrTerm 0 t2)])
-ppConstrTerm _ (RecordPattern fs rt) =
+           (sep [ppPattern 1 t1 <+> ppQInfixOp f,
+                 indent (ppPattern 0 t2)])
+ppPattern _ (RecordPattern fs rt) =
   braces (list (map ppFieldPatt fs)
-         <> (maybe empty (\t -> space <> char '|' <+> ppConstrTerm 0 t) rt))
+         <> (maybe empty (\t -> space <> char '|' <+> ppPattern 0 t) rt))
 
 -- |Pretty print a record field pattern
-ppFieldPatt :: Field ConstrTerm -> Doc
-ppFieldPatt (Field _ l t) = ppIdent l <> equals <> ppConstrTerm 0 t
+ppFieldPatt :: Field Pattern -> Doc
+ppFieldPatt (Field _ l t) = ppIdent l <> equals <> ppPattern 0 t
 
 -- ---------------------------------------------------------------------------
 -- Expressions
@@ -276,7 +276,7 @@ ppExpr _ (LeftSection e op) = parens (ppExpr 1 e <+> ppQInfixOp (opName op))
 ppExpr _ (RightSection op e) = parens (ppQInfixOp (opName op) <+> ppExpr 1 e)
 ppExpr p (Lambda _ t e) =
   parenExp (p > 0)
-           (sep [backsl <> fsep (map (ppConstrTerm 2) t) <+> rarrow,
+           (sep [backsl <> fsep (map (ppPattern 2) t) <+> rarrow,
                  indent (ppExpr 0 e)])
 ppExpr p (Let ds e) =
   parenExp (p > 0)
@@ -305,7 +305,7 @@ ppExpr _ (RecordUpdate fs e) =
 -- |Pretty print a statement
 ppStmt :: Statement -> Doc
 ppStmt (StmtExpr   _ e) = ppExpr 0 e
-ppStmt (StmtBind _ t e) = sep [ppConstrTerm 0 t <+> larrow,indent (ppExpr 0 e)]
+ppStmt (StmtBind _ t e) = sep [ppPattern 0 t <+> larrow,indent (ppExpr 0 e)]
 ppStmt (StmtDecl    ds) = text "let" <+> ppBlock ds
 
 ppCaseType :: CaseType -> Doc
@@ -314,7 +314,7 @@ ppCaseType Flex  = text "fcase"
 
 -- |Pretty print an alternative in a case expression
 ppAlt :: Alt -> Doc
-ppAlt (Alt _ t rhs) = ppRule (ppConstrTerm 0 t) rarrow rhs
+ppAlt (Alt _ t rhs) = ppRule (ppPattern 0 t) rarrow rhs
 
 -- |Pretty print a record field expression
 ppFieldExpr :: Doc -> Field Expression -> Doc

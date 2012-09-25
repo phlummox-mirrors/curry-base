@@ -26,7 +26,7 @@ module Curry.Syntax.Type
   , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..)
   , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
-  , Literal (..), ConstrTerm (..), Expression (..), InfixOp (..)
+  , Literal (..), Pattern (..), Expression (..), InfixOp (..)
   , Statement (..), CaseType (..), Alt (..), Field (..)
     -- * Goals
   , Goal (..)
@@ -111,16 +111,16 @@ data IDecl
 
 -- |Declaration in a module
 data Decl
-  = InfixDecl        Position Infix Integer [Ident]        -- infixl 5 (op1), (op2)
-  | DataDecl         Position Ident [Ident] [ConstrDecl]   -- data C a b = C1 a | C2 b
-  | NewtypeDecl      Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
-  | TypeDecl         Position Ident [Ident] TypeExpr       -- type C a b = D a b
-  | TypeSig          Position [Ident] TypeExpr             -- f, g :: Bool
-  | FunctionDecl     Position Ident [Equation]             -- f True = ... ; f False = ...
-  | ExternalDecl     Position CallConv (Maybe String) Ident TypeExpr -- ???
-  | FlatExternalDecl Position [Ident]                      -- ???
-  | PatternDecl      Position ConstrTerm Rhs               -- Just x = ...
-  | ExtraVariables   Position [Ident]                      -- x, y free
+  = InfixDecl    Position Infix Integer [Ident]        -- infixl 5 (op1), (op2)
+  | DataDecl     Position Ident [Ident] [ConstrDecl]   -- data C a b = C1 a | C2 b
+  | NewtypeDecl  Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
+  | TypeDecl     Position Ident [Ident] TypeExpr       -- type C a b = D a b
+  | TypeSig      Position [Ident] TypeExpr             -- f, g :: Bool
+  | FunctionDecl Position Ident [Equation]             -- f True = ... ; f False = ...
+  | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- ???
+  | ExternalDecl Position [Ident]                      -- ???
+  | PatternDecl  Position Pattern Rhs               -- Just x = ...
+  | FreeDecl     Position [Ident]                      -- x, y free
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -171,9 +171,9 @@ data Equation = Equation Position Lhs Rhs
 
 -- |Left-hand-side of an 'Equation' (function identifier and patterns)
 data Lhs
-  = FunLhs Ident [ConstrTerm]
-  | OpLhs  ConstrTerm Ident ConstrTerm
-  | ApLhs  Lhs [ConstrTerm]
+  = FunLhs Ident [Pattern]
+  | OpLhs  Pattern Ident Pattern
+  | ApLhs  Lhs [Pattern]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Right-hand-side of an 'Equation'
@@ -200,20 +200,20 @@ data Literal
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Constructor term (used for patterns)
-data ConstrTerm
+data Pattern
   = LiteralPattern     Literal
   | NegativePattern    Ident Literal
   | VariablePattern    Ident
-  | ConstructorPattern QualIdent [ConstrTerm]
-  | InfixPattern       ConstrTerm QualIdent ConstrTerm
-  | ParenPattern       ConstrTerm
-  | TuplePattern       SrcRef [ConstrTerm]
-  | ListPattern        [SrcRef] [ConstrTerm]
-  | AsPattern          Ident ConstrTerm
-  | LazyPattern        SrcRef ConstrTerm
-  | FunctionPattern    QualIdent [ConstrTerm]
-  | InfixFuncPattern   ConstrTerm QualIdent ConstrTerm
-  | RecordPattern      [Field ConstrTerm] (Maybe ConstrTerm)
+  | ConstructorPattern QualIdent [Pattern]
+  | InfixPattern       Pattern QualIdent Pattern
+  | ParenPattern       Pattern
+  | TuplePattern       SrcRef [Pattern]
+  | ListPattern        [SrcRef] [Pattern]
+  | AsPattern          Ident Pattern
+  | LazyPattern        SrcRef Pattern
+  | FunctionPattern    QualIdent [Pattern]
+  | InfixFuncPattern   Pattern QualIdent Pattern
+  | RecordPattern      [Field Pattern] (Maybe Pattern)
         -- {l1 = p1, ..., ln = pn}  or {l1 = p1, ..., ln = pn | p}
     deriving (Eq, Read, Show, Data, Typeable)
 
@@ -236,7 +236,7 @@ data Expression
   | InfixApply      Expression InfixOp Expression
   | LeftSection     Expression InfixOp
   | RightSection    InfixOp Expression
-  | Lambda          SrcRef [ConstrTerm] Expression
+  | Lambda          SrcRef [Pattern] Expression
   | Let             [Decl] Expression
   | Do              [Statement] Expression
   | IfThenElse      SrcRef Expression Expression Expression
@@ -256,7 +256,7 @@ data InfixOp
 data Statement
   = StmtExpr SrcRef Expression
   | StmtDecl [Decl]
-  | StmtBind SrcRef ConstrTerm Expression
+  | StmtBind SrcRef Pattern Expression
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Type of case expressions
@@ -266,7 +266,7 @@ data CaseType
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Single case alternative
-data Alt = Alt Position ConstrTerm Rhs
+data Alt = Alt Position Pattern Rhs
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Record field
@@ -284,7 +284,7 @@ data Goal = Goal Position Expression [Decl]
 -- instances
 -- ---------------------------------------------------------------------------
 
-instance SrcRefOf ConstrTerm where
+instance SrcRefOf Pattern where
   srcRefOf (LiteralPattern       l) = srcRefOf l
   srcRefOf (NegativePattern    i _) = srcRefOf i
   srcRefOf (VariablePattern      i) = srcRefOf i

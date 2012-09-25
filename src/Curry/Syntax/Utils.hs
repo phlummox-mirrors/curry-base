@@ -50,17 +50,17 @@ isTypeDecl _                     = False
 
 -- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
-isTypeSig (TypeSig      _ _ _    ) = True
-isTypeSig (ExternalDecl _ _ _ _ _) = True
-isTypeSig _                        = False
+isTypeSig (TypeSig         _ _ _) = True
+isTypeSig (ForeignDecl _ _ _ _ _) = True
+isTypeSig _                       = False
 
 -- |Is the declaration a value declaration?
 isValueDecl :: Decl -> Bool
-isValueDecl (FunctionDecl     _ _ _    ) = True
-isValueDecl (ExternalDecl     _ _ _ _ _) = True
-isValueDecl (FlatExternalDecl _ _      ) = True
-isValueDecl (PatternDecl      _ _ _    ) = True
-isValueDecl (ExtraVariables    _ _     ) = True
+isValueDecl (FunctionDecl    _ _ _) = True
+isValueDecl (ForeignDecl _ _ _ _ _) = True
+isValueDecl (ExternalDecl      _ _) = True
+isValueDecl (PatternDecl     _ _ _) = True
+isValueDecl (FreeDecl          _ _) = True
 isValueDecl _ = False
 
 -- |Is the declaration a record declaration?
@@ -74,7 +74,7 @@ infixOp (InfixOp     op) = Variable op
 infixOp (InfixConstr op) = Constructor op
 
 -- |flatten the left-hand-side to the identifier and all constructor terms
-flatLhs :: Lhs -> (Ident, [ConstrTerm])
+flatLhs :: Lhs -> (Ident, [Pattern])
 flatLhs lhs = flat lhs []
   where flat (FunLhs    f ts) ts' = (f, ts ++ ts')
         flat (OpLhs t1 op t2) ts' = (op, t1 : t2 : ts')
@@ -137,7 +137,7 @@ addSrcRefs x = evalState (addRefs x) 0
     addRefIdent :: M Ident
     addRefIdent ident = flip addRefId ident `liftM` nextRef
 
-    addRefListPat :: M ConstrTerm
+    addRefListPat :: M Pattern
     addRefListPat (ListPattern _ ts) = uncurry ListPattern `liftM` addRefList ts
     addRefListPat ct                 = down ct
 
@@ -152,4 +152,3 @@ addSrcRefs x = evalState (addRefs x) 0
       ists <- sequence (map add ts)
       let (is,ts') = unzip ists
       return (i:is,ts')
-
