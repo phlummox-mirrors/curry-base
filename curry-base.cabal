@@ -31,9 +31,9 @@ Library
   else
     Build-Depends: base == 3.*
   if flag(new-time)
-    Build-Depends: time, directory >= 1.2
+    Build-Depends: time, directory >= 1.2, base >= 4.6
   else
-    Build-Depends: old-time, directory < 1.2
+    Build-Depends: old-time, directory < 1.2, base < 4.6
   Build-Depends:
       mtl
     , containers
