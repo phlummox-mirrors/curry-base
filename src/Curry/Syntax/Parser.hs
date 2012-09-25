@@ -50,8 +50,7 @@ parseGoal = fullParser goal lexer ""
 
 -- |Parser for a module header
 moduleHeader :: Parser Token ([Decl] -> Module) a
-moduleHeader =  Module <$-> token KW_module
-                       <*>  modIdent
+moduleHeader =  Module <$-> token KW_module <*>  modIdent
                        <*>  optionMaybe exportSpec
                        <*-> checkWhere
                        <*>  importDecls
@@ -67,7 +66,7 @@ export =  qtycon <**> (parens spec `opt` Export)         -- type constructor
       <|> Export <$> qfun <\> qtycon                     -- fun
       <|> ExportModule <$-> token KW_module <*> modIdent -- module
   where spec =       ExportTypeAll  <$-> token DotDot
-            <|> flip ExportTypeWith <$> con `sepBy` comma
+            <|> flip ExportTypeWith <$>  con `sepBy` comma
 
 -- |Parser for import declarations
 importDecls :: Parser Token [ImportDecl] a
@@ -79,7 +78,7 @@ importDecl =  flip . ImportDecl
           <$> position <*-> token KW_import
           <*> (True <$-> token Id_qualified `opt` False)
           <*> modIdent
-          <*> optionMaybe (token Id_as <-*> mIdent)
+          <*> optionMaybe (token Id_as <-*> modIdent)
           <*> optionMaybe importSpec
 
 -- |Parser for an import specification
@@ -88,10 +87,10 @@ importSpec =   position
           <**> (Hiding <$-> token Id_hiding `opt` Importing)
           <*>  parens (spec `sepBy` comma)
   where
-  spec    =  tycon <**> (parens constrs `opt` Import)
-          <|> Import <$> fun <\> tycon
-  constrs =  ImportTypeAll <$-> token DotDot
-          <|> flip ImportTypeWith <$> con `sepBy` comma
+  spec    =  tycon <**> (parens constrs `opt` Import)   -- type constructor
+         <|> Import <$> fun <\> tycon                   -- fun
+  constrs =       ImportTypeAll  <$-> token DotDot
+         <|> flip ImportTypeWith <$> con `sepBy` comma
 
 -- ---------------------------------------------------------------------------
 -- Interfaces
@@ -191,8 +190,7 @@ newtypeDecl :: Parser Token Decl a
 newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
 typeDecl :: Parser Token Decl a
-typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> typeDeclRhs --was type0
-  where typeDeclRhs = type0 <|> recordDecl
+typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> (type0 <|> recordDecl)
 
 typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
             -> Parser Token a b
@@ -278,18 +276,19 @@ valListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 valListDecl = funListDecl <|> flip FreeDecl <$-> token KW_free
 
 funLhs :: Parser Token (Ident,Lhs) a
-funLhs = funLhs' <$> fun <*> many1 pattern2
+funLhs = funLhs'     <$> fun      <*> many1 pattern2
     <|?> flip ($ id) <$> pattern1 <*> opLhs'
     <|?> curriedLhs
-  where opLhs' = opLhs <$> funSym <*> pattern0
-             <|> infixPat <$> gConSym <\> funSym <*> pattern1 <*> opLhs'
-             <|> backquote <-*> opIdLhs
-        opIdLhs = opLhs <$> funId <*-> checkBackquote <*> pattern0
-              <|> infixPat <$> qConId <\> funId <*-> backquote <*> pattern1
-                           <*> opLhs'
-        funLhs' f ts = (f,FunLhs f ts)
-        opLhs op t2 f t1 = (op,OpLhs (f t1) op t2)
-        infixPat op t2 f g t1 = f (g . InfixPattern t1 op) t2
+  where
+  opLhs' = opLhs <$> funSym <*> pattern0
+      <|> infixPat <$> gConSym <\> funSym <*> pattern1 <*> opLhs'
+      <|> backquote <-*> opIdLhs
+  opIdLhs = opLhs <$> funId <*-> checkBackquote <*> pattern0
+        <|> infixPat <$> qConId <\> funId <*-> backquote <*> pattern1
+                      <*> opLhs'
+  funLhs' f ts = (f,FunLhs f ts)
+  opLhs op t2 f t1 = (op,OpLhs (f t1) op t2)
+  infixPat op t2 f g t1 = f (g . InfixPattern t1 op) t2
 
 curriedLhs :: Parser Token (Ident,Lhs) a
 curriedLhs = apLhs <$> parens funLhs <*> many1 pattern2
