@@ -508,16 +508,17 @@ expr1 flat = UnaryMinus <$> (minus <|> fminus) <*> expr2 flat
 
 -- expr2 ::= lambdaExpr | letExpr | doExpr | ifExpr | caseExpr | expr3
 expr2 :: Bool -> Parser Token Expression a
-expr2 flat = lambdaExpr flat <|> letExpr flat <|> doExpr flat
-         <|> ifExpr flat <|> caseExpr flat
-         <|> expr3 flat <**> (recordSelect <|?> application)
+expr2 flat = choice [ lambdaExpr flat, letExpr flat , doExpr flat
+                    , ifExpr     flat, caseExpr flat
+                    , expr3 flat <**> (recordSelect <|?> application) ]
   where
-  recordSelect = flip RecordSelection <$-> checkRightArrow <*> labId
-  application  = (\es e -> foldl1 Apply (e:es)) <$> many (expr3 flat)
+  recordSelect = (flip (foldl RecordSelection))
+              <$> many1 (checkSelect <-*> labId)
+  application  = (\es e -> foldl1 Apply (e:es)) <$> many  (expr3 flat)
 
 expr3 :: Bool -> Parser Token Expression a
-expr3 flat =  constant       <|> anonFreeVariable <|> variable
-          <|> parenExpr flat <|> listExpr flat    <|> recordExpr flat
+expr3 flat = choice [ constant, anonFreeVariable, variable, parenExpr flat
+                    , listExpr flat, recordExpr flat]
 
 constant :: Parser Token Expression a
 constant = Literal <$> literal
@@ -580,13 +581,10 @@ listExpr flat = brackets (elements `opt` mk' List [])
 recordExpr :: Bool -> Parser Token Expression a
 recordExpr flat = layoutOff <-*> braces content
   where
-    content =    RecordConstr <$> fieldConstr `sepBy` comma
-            <|?> RecordUpdate <$> fieldUpdate `sepBy` comma
-                              <*-> checkBar <*> expr flat
-    fieldConstr = Field <$> position <*> labId
-                  <*-> checkEquals <*> expr flat
-    fieldUpdate = Field <$> position <*> labId
-                  <*-> checkBinds <*> expr flat
+  content        = fieldAccess `sepBy` comma <**> constrOpUpdate
+  fieldAccess    = Field <$> position <*> labId <*-> checkBind <*> expr flat
+  constrOpUpdate = flip RecordUpdate <$-> checkBar <*> expr flat
+                   `opt` RecordConstr
 
 lambdaExpr :: Bool -> Parser Token Expression a
 lambdaExpr flat =   mk Lambda
@@ -859,11 +857,11 @@ bar = token Bar
 equals :: Parser Token Attributes a
 equals = token Equals
 
-binds :: Parser Token Attributes a
-binds = token Binds
-
 checkWhere :: Parser Token Attributes a
 checkWhere = token KW_where <?> "where expected"
+
+checkSelect :: Parser Token Attributes a
+checkSelect = token Select <?> ":-> expected"
 
 checkRightArrow :: Parser Token Attributes a
 checkRightArrow  = token RightArrow <?> "-> expected"
@@ -874,8 +872,8 @@ checkBar = bar <?> "| expected"
 checkEquals :: Parser Token Attributes a
 checkEquals = equals <?> "= expected"
 
-checkBinds :: Parser Token Attributes a
-checkBinds = binds <?> ":= expected"
+checkBind :: Parser Token Attributes a
+checkBind = token Bind <?> ":= expected"
 
 backquote :: Parser Token Attributes a
 backquote = token Backquote

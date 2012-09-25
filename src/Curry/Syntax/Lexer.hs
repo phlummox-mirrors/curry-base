@@ -115,7 +115,8 @@ data Category
   | LeftArrow    -- <-
   | RightArrow   -- ->
   | Tilde        -- ~
-  | Binds        -- :=
+  | Bind         -- :=
+  | Select       -- :>
 --  | DoubleArrow   -- => -- not supported yet
 
   -- special identifiers
@@ -222,7 +223,8 @@ instance Show Token where
   showsPrec _ (Token LeftArrow          _) = showsEscaped "<-"
   showsPrec _ (Token RightArrow         _) = showsEscaped "->"
   showsPrec _ (Token Tilde              _) = showsEscaped "~"
-  showsPrec _ (Token Binds              _) = showsEscaped ":="
+  showsPrec _ (Token Bind               _) = showsEscaped ":="
+  showsPrec _ (Token Select             _) = showsEscaped ":>"
   showsPrec _ (Token SymDot             _) = showsSpecialOperator "."
   showsPrec _ (Token SymMinus           _) = showsSpecialOperator "-"
   showsPrec _ (Token SymMinusDot        _) = showsSpecialOperator "-."
@@ -317,7 +319,8 @@ reservedOps = Map.fromList
   , ("<-", LeftArrow  )
   , ("->", RightArrow )
   , ("~" , Tilde      )
-  , (":=", Binds      )
+  , (":=", Bind       )
+  , (":>", Select     )
   ]
 
 -- |Map of reserved and special operators
