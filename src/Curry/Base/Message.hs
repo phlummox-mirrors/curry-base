@@ -82,7 +82,7 @@ ppMessages = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppMessage
 -- ---------------------------------------------------------------------------
 
 -- |Message monad transformer enabling the reporting of 'Message's as
---  warnings and additionally a 'Message' as an error message.
+-- warnings and additionally a 'Message' as an error message.
 type MessageT m = WriterT [Message] (ErrorT Message m)
 
 -- |Evaluate the value of a 'MessageT m a'
@@ -117,7 +117,6 @@ runMsg :: MessageM a -> (Either Message (a, [Message]))
 runMsg = runIdentity . runMessageT
 
 -- |Directly evaluate to the success value of a 'MessageM a'.
---
 -- Errors are converted in a call to the 'error' function.
 ok :: MessageM a -> a
 ok = either (error . showError) fst . runMsg
@@ -129,11 +128,13 @@ ok = either (error . showError) fst . runMsg
 -- |Message monad with underlying 'IO' monad
 type MessageIO = MessageT IO
 
+-- |Convert a non-IO 'MessageM' action into a 'MessageIO' action
 toIO :: MessageM a -> MessageIO a
 toIO msg = case runMsg msg of
   Left  e         -> throwError e
   Right (x, msgs) -> tell msgs >> return x
 
+-- |Convert a non-IO 'MessageM' action into a 'MessageIO' action
 fromIO :: MessageIO a -> IO (MessageM a)
 fromIO msgio = do
   res <- runMessageT msgio

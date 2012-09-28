@@ -32,8 +32,8 @@ module Curry.Base.LLParseComb
 
     -- *  parser combinators
   , (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
-  , opt, (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>)
-  , choice, optional, optionMaybe, many, many1, sepBy, sepBy1
+  , (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>)
+  , opt, choice, flag, optional, optionMaybe, many, many1, sepBy, sepBy1
   , chainr, chainr1, chainl, chainl1, between, ops
 
     -- * Layout combinators
@@ -227,13 +227,6 @@ Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 -- paper, but were taken from the implementation found on the web.
 -- ---------------------------------------------------------------------------
 
-choice :: Symbol s => [Parser s a b] -> Parser s a b
-choice = foldr1 (<|>)
-
--- |Try the first parser, but return the second argument if it didn't succeed
-opt :: Symbol s => Parser s a b -> a -> Parser s a b
-p `opt` x = p <|> succeed x
-
 -- |Apply a function to the result of a parser.
 (<$>) :: Symbol s => (a -> b) -> Parser s a c -> Parser s b c
 f <$> p = succeed f <*> p
@@ -267,9 +260,24 @@ p <??> q = p <**> (q `opt` id)
       -> Parser s (a -> c) d
 p1 <.> p2 = p1 <**> ((.) <$> p2)
 
+-- |Try the first parser, but return the second argument if it didn't succeed
+opt :: Symbol s => Parser s a b -> a -> Parser s a b
+p `opt` x = p <|> succeed x
+
+-- |Choose the first succeeding parser from a non-empty list of parsers
+choice :: Symbol s => [Parser s a b] -> Parser s a b
+choice = foldr1 (<|>)
+
+-- |Try to apply a given parser and return a boolean value if the parser
+-- succeeded.
+flag :: Symbol s => Parser s a b -> Parser s Bool b
+flag p = True <$-> p `opt` False
+
+-- |Try to apply a parser but forget if it succeeded
 optional :: Symbol s => Parser s a b -> Parser s () b
 optional p = const () <$> p `opt` ()
 
+-- |Try to apply a parser and return its result in a 'Maybe' type
 optionMaybe :: Symbol s => Parser s a b -> Parser s (Maybe a) b
 optionMaybe p = Just <$> p `opt` Nothing
 

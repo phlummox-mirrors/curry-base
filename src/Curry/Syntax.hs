@@ -31,19 +31,18 @@ import           Curry.Syntax.Type
 import           Curry.Syntax.Utils
 
 -- |Return the result of a lexical analysis of the source program @src@.
---
---  The result is a list of tuples consisting of a 'Position' and a 'Token'.
+-- The result is a list of tuples consisting of a 'Position' and a 'Token'.
 lexSource :: FilePath -> String -> MessageM [(Position, Lexer.Token)]
 lexSource fn src = unlit fn src >>= Lexer.lexSource fn
 
--- |Parse a Curry header
+-- |Parse a Curry 'Module' header
 parseHeader :: FilePath -> String -> MessageM Module
 parseHeader fn src = unlit fn src >>= Parser.parseHeader fn
 
--- |Parse a Curry module
+-- |Parse a Curry 'Module'
 parseModule :: FilePath -> String -> MessageM Module
 parseModule fn src = unlit fn src >>= Parser.parseSource fn
 
--- Parse a 'Goal', i.e. an expression with (optional) local declarations
+-- |Parse a 'Goal', i.e. an expression with (optional) local declarations
 parseGoal :: String -> MessageM Goal
 parseGoal = Parser.parseGoal

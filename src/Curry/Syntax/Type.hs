@@ -1,9 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  Abstract syntax for Curry
-    Copyright   :  (c) 1999-2004 Wolfgang Lux
-                       2005 Martin Engelke
-                       2011 Björn Peemöller
+    Copyright   :  (c) 1999 - 2004 Wolfgang Lux
+                       2005        Martin Engelke
+                       2011 - 2012 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -32,7 +32,7 @@ module Curry.Syntax.Type
   , Goal (..)
   ) where
 
-import Data.Generics (Data(..), Typeable(..))
+import Data.Generics (Data (..), Typeable (..))
 
 import Curry.Base.Ident
 import Curry.Base.Position
@@ -68,7 +68,7 @@ type Qualified = Bool
 -- |Import specification
 data ImportSpec
   = Importing Position [Import]
-  | Hiding Position [Import]
+  | Hiding    Position [Import]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Single imported entity
@@ -97,8 +97,8 @@ data IImportDecl = IImportDecl Position ModuleIdent
 
 -- |Interface declaration
 data IDecl
-  = IInfixDecl     Position Infix Integer QualIdent
-  | HidingDataDecl Position Ident [Ident]
+  = IInfixDecl     Position Infix Integer QualIdent -- TODO: change to int?
+  | HidingDataDecl Position Ident [Ident]           -- TODO: change to QualIdent?
   | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
@@ -111,16 +111,16 @@ data IDecl
 
 -- |Declaration in a module
 data Decl
-  = InfixDecl    Position Infix Integer [Ident]        -- infixl 5 (op1), (op2)
-  | DataDecl     Position Ident [Ident] [ConstrDecl]   -- data C a b = C1 a | C2 b
-  | NewtypeDecl  Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
-  | TypeDecl     Position Ident [Ident] TypeExpr       -- type C a b = D a b
-  | TypeSig      Position [Ident] TypeExpr             -- f, g :: Bool
-  | FunctionDecl Position Ident [Equation]             -- f True = ... ; f False = ...
-  | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- ???
-  | ExternalDecl Position [Ident]                      -- ???
-  | PatternDecl  Position Pattern Rhs               -- Just x = ...
-  | FreeDecl     Position [Ident]                      -- x, y free
+  = InfixDecl    Position Infix Integer [Ident]                  -- infixl 5 (op), `fun` -- TODO: Make precedence optional and change to int
+  | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
+  | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
+  | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
+  | TypeSig      Position [Ident] TypeExpr                       -- f, g :: Bool
+  | FunctionDecl Position Ident [Equation]                       -- f True = 1 ; f False = 0
+  | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
+  | ExternalDecl Position [Ident]                                -- f, g external
+  | PatternDecl  Position Pattern Rhs                            -- Just x = ...
+  | FreeDecl     Position [Ident]                                -- x, y free
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -171,18 +171,18 @@ data Equation = Equation Position Lhs Rhs
 
 -- |Left-hand-side of an 'Equation' (function identifier and patterns)
 data Lhs
-  = FunLhs Ident [Pattern]
-  | OpLhs  Pattern Ident Pattern
-  | ApLhs  Lhs [Pattern]
+  = FunLhs Ident [Pattern]       -- f x y
+  | OpLhs  Pattern Ident Pattern -- x $ y
+  | ApLhs  Lhs [Pattern]         -- ($) x y
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Right-hand-side of an 'Equation'
 data Rhs
-  = SimpleRhs  Position Expression [Decl]
-  | GuardedRhs [CondExpr] [Decl]
+  = SimpleRhs  Position Expression [Decl] -- @expr where decls@
+  | GuardedRhs [CondExpr] [Decl]          -- @| cond = expr where decls@
     deriving (Eq, Read, Show, Data, Typeable)
 
--- |Conditional expression (conditioned by a guard expression)
+-- |Conditional expression (expression conditioned by a guard)
 data CondExpr = CondExpr Position Expression Expression
     deriving (Eq, Read, Show, Data, Typeable)
 
@@ -214,7 +214,7 @@ data Pattern
   | FunctionPattern    QualIdent [Pattern]
   | InfixFuncPattern   Pattern QualIdent Pattern
   | RecordPattern      [Field Pattern] (Maybe Pattern)
-        -- {l1 = p1, ..., ln = pn}  or {l1 = p1, ..., ln = pn | p}
+        -- {l1 = p1, ..., ln = pn | p}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Expression
@@ -277,6 +277,7 @@ data Field a = Field Position Ident a
 -- Goals
 -- ---------------------------------------------------------------------------
 
+-- |Goal in REPL (expression to evaluate)
 data Goal = Goal Position Expression [Decl]
     deriving (Eq, Read, Show, Data, Typeable)
 
@@ -292,12 +293,14 @@ instance SrcRefOf Pattern where
   srcRefOf (InfixPattern     _ i _) = srcRefOf i
   srcRefOf (ParenPattern         c) = srcRefOf c
   srcRefOf (TuplePattern       s _) = s
-  srcRefOf (ListPattern        _ _) = error "list pattern has several source refs"
+  srcRefOf (ListPattern        _ _)
+    = error "list pattern has several source refs"
   srcRefOf (AsPattern          i _) = srcRefOf i
   srcRefOf (LazyPattern        s _) = s
   srcRefOf (FunctionPattern    i _) = srcRefOf i
   srcRefOf (InfixFuncPattern _ i _) = srcRefOf i
-  srcRefOf (RecordPattern      _ _) = error "record pattern has several source refs"
+  srcRefOf (RecordPattern      _ _)
+    = error "record pattern has several source refs"
 
 instance SrcRefOf Literal where
   srcRefOf (Char   s _) = s

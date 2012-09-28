@@ -6,7 +6,7 @@ Module overview of package `curry-base`
       * `.Ident`       : Identifier (unqualified, qualified, module identifier)
       * `.LexComb`     : CPS lexer combinators
       * `.LLParseComb` : CPS parser combinators
-      * `.MessageMonad`: Error/Warning monad
+      * `.Message`     : Error/Warning monad
       * `.Position`    : source code position
   * `Curry.ExtendedFlat`
       * `.CurryArithmetics` :
