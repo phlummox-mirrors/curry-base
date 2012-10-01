@@ -93,7 +93,7 @@ fieldTerm :: Field a -> a
 fieldTerm (Field _ _ t) = t
 
 -- |Select the label and term of a field
-field2Tuple :: Field a -> (Ident,a)
+field2Tuple :: Field a -> (Ident, a)
 field2Tuple (Field _ l t) = (l, t)
 
 -- |Get the operator name of an infix operator

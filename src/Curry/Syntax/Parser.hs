@@ -173,7 +173,8 @@ infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
 
 infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
-infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> int
+infixDeclLhs f = f <$> position <*> tokenOps infixKW
+                   <*> (int <?> "precedence level expected")
   where
   infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
