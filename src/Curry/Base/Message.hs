@@ -1,7 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Monads for message handling
-    Copyright   :  (c) 2009, Holger Siegel
+    Copyright   :  2009 Holger Siegel
+                   2012 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -17,7 +18,7 @@
 
 module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
-  , ppMessage, ppMessages
+  , ppMessage, ppWarning, ppError, ppMessages
   , MessageT, MessageM, MessageIO
   , runMessageT, failWith, failWithAt, warn, warnAt
   , runMsg, ok, toIO, fromIO
@@ -62,20 +63,34 @@ posMessage p msg = Message (Just $ getPosition p) msg
 
 -- |Show a 'Message' as a warning
 showWarning :: Message -> String
-showWarning (Message p m) = show $ Message p (text "Warning:" <+> m)
+showWarning = show . ppWarning
 
 -- |Show a 'Message' as an error
 showError :: Message -> String
-showError (Message p m) = show $ Message p (text "Error:" <+> m)
+showError = show . ppError
 
 -- |Pretty print a 'Message'
 ppMessage :: Message -> Doc
-ppMessage (Message Nothing  txt) = txt
-ppMessage (Message (Just p) txt) = text (show p) <> char ':' $$ nest 4 txt
+ppMessage = ppAs ""
+
+-- |Pretty print a 'Message' as a warning
+ppWarning :: Message -> Doc
+ppWarning = ppAs "Warning"
+
+-- |Pretty print a 'Message' as an error
+ppError :: Message -> Doc
+ppError = ppAs "Error"
+
+-- |Pretty print a 'Message' with a given key
+ppAs :: String -> Message -> Doc
+ppAs key (Message mbPos txt) = posPP <+> keyPP $$ nest 4 txt
+  where
+  posPP = maybe empty ((<> colon) . ppPosition) mbPos
+  keyPP = if null key then empty else text key <> colon
 
 -- |Pretty print a list of 'Message's by vertical concatenation
-ppMessages :: [Message] -> Doc
-ppMessages = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppMessage
+ppMessages :: (Message -> Doc) -> [Message] -> Doc
+ppMessages ppFun = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppFun
 
 -- ---------------------------------------------------------------------------
 -- Message Monad

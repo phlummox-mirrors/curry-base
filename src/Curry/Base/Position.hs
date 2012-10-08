@@ -23,14 +23,16 @@
 module Curry.Base.Position
   ( -- * Source code position
     HasPosition (..), Position (..)
-  , first, next, incr, tab, tabWidth, nl, showLine, incPosition
+  , ppPosition, ppLine, showLine
+  , first, next, incr, tab, tabWidth, nl, incPosition
 
     -- * source reference
   , SrcRef (..), SrcRefOf (..), srcRef, noRef, mk, mk', incSrcRef
   ) where
 
-import Data.Generics (Data(..), Typeable (..))
+import Data.Generics    (Data(..), Typeable (..))
 import System.FilePath
+import Text.PrettyPrint
 
 -- |Type class for entities which have a source code 'Position'
 class HasPosition a where
@@ -64,12 +66,7 @@ instance Read Position where
     [ (Position "" i j noRef, s') | ((i, j), s') <- readsPrec p s ]
 
 instance Show Position where
-  showsPrec _ p@(Position f _ _ _)
-    | null f    = showString (showLine p)
-    | otherwise = showString (normalise f) . showString ", "
-                . showString (showLine p)
-  showsPrec _ (AST _) = id
-  showsPrec _ NoPos   = id
+  showsPrec _ = showString . show . ppPosition
 
 instance HasPosition Position where
   getPosition = id
@@ -79,12 +76,23 @@ instance SrcRefOf Position where
   srcRefOf NoPos = noRef
   srcRefOf x     = astRef x
 
--- |Show the line and column of the 'Position'
+-- |Pretty print a 'Position'
+ppPosition :: Position -> Doc
+ppPosition p@(Position f _ _ _)
+  | null f    = lineCol
+  | otherwise = text (normalise f) <> comma <+> lineCol
+  where lineCol = ppLine p
+ppPosition _  = empty
+
+-- |Pretty print the line and column of a 'Position'
+ppLine :: Position -> Doc
+ppLine (Position _ l c _) = text "line" <+> text (show l)
+                            <> if c == 0 then empty else text ('.' : show c)
+ppLine _                  = empty
+
+-- |Show the line and column of a 'Position'
 showLine :: Position -> String
-showLine NoPos                          = ""
-showLine AST {}                         = ""
-showLine (Position _ l c _) | c == 0    = "line " ++ show l
-                            | otherwise = "line " ++ show l ++ '.' : show c
+showLine = show . ppLine
 
 -- | Absolute first position of a file
 first :: FilePath -> Position
