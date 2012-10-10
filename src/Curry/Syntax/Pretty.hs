@@ -30,11 +30,11 @@ ppModule :: Module -> Doc
 ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppBlock ds
 
 ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> [ImportDecl] -> Doc
-ppModuleHeader m es is = text "module"
-                      <+> ppMIdent m
-                      <+> maybePP ppExportSpec es
-                      <+> text "where"
-                       $$ (vcat $ map ppImportDecl is)
+ppModuleHeader m es is
+  | null is   = header
+  | otherwise = header $+$ text "" $+$ (vcat $ map ppImportDecl is)
+  where header = text "module" <+> ppMIdent m
+                 <+> maybePP ppExportSpec es <+> text "where"
 
 ppExportSpec :: ExportSpec -> Doc
 ppExportSpec (Exporting _ es) = parenList (map ppExport es)
@@ -62,7 +62,7 @@ ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
 ppImport (ImportTypeAll     tc) = ppIdent tc <> text "(..)"
 
 ppBlock :: [Decl] -> Doc
-ppBlock = vcat . map ppDecl
+ppBlock = vcat . map (\d -> text "" $+$ ppDecl d)
 
 -- |Pretty print a declaration
 ppDecl :: Decl -> Doc
