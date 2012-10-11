@@ -28,8 +28,8 @@ module Curry.Syntax.Type
     -- * Interface
   , Interface (..), IImportDecl (..), Arity, IDecl (..)
     -- * Declarations
-  , Decl (..), Precedence, Infix (..), ConstrDecl (..), NewConstrDecl (..)
-  , CallConv (..), TypeExpr (..)
+  , TopDecl (..), ConstrDecl (..), NewConstrDecl (..), CallConv (..)
+  , TypeExpr (..), Decl (..), Precedence, Infix (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), Pattern (..), Expression (..), InfixOp (..)
   , Statement (..), CaseType (..), Alt (..), Field (..)
@@ -50,7 +50,7 @@ import Curry.Syntax.Extension
 
 -- |Curry module
 data Module = Module [ModulePragma] ModuleIdent (Maybe ExportSpec)
-                     [ImportDecl] [Decl]
+                     [ImportDecl] [TopDecl]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Module pragma
@@ -123,21 +123,56 @@ data IDecl
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
--- Declarations (local or top-level)
+-- Top-level declarations
+-- ---------------------------------------------------------------------------
+
+-- |Top-level declaration
+data TopDecl
+  = DataDecl     Position Ident [Ident] [ConstrDecl]   -- data C a b = C1 a | C2 b
+  | NewtypeDecl  Position Ident [Ident] NewConstrDecl  -- newtype C a b = C a b
+  | TypeDecl     Position Ident [Ident] TypeExpr       -- type C a b = D a b
+  | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
+  | ExternalDecl Position [Ident]                      -- f1, f2 external
+  | BlockDecl    Decl
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Constructor declaration for algebraic data types
+data ConstrDecl
+  = ConstrDecl Position [Ident] Ident [TypeExpr]
+  | ConOpDecl  Position [Ident] TypeExpr Ident TypeExpr
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Constructor declaration for renaming types (newtypes)
+data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
+   deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Type expressions
+data TypeExpr
+  = ConstructorType QualIdent [TypeExpr]  -- Maybe a
+  | VariableType    Ident                 -- a
+  | TupleType       [TypeExpr]            -- () or (a,b), ...
+  | ListType        TypeExpr              -- [a]
+  | ArrowType       TypeExpr TypeExpr     -- a -> b
+  | RecordType      [([Ident], TypeExpr)] -- {ls1 :: t1,...,lsn :: tn}
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Calling convention for C code
+data CallConv
+  = CallConvPrimitive
+  | CallConvCCall
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- ---------------------------------------------------------------------------
+-- Local declarations
 -- ---------------------------------------------------------------------------
 
 -- |Declaration in a module
 data Decl
-  = InfixDecl    Position Infix (Maybe Precedence) [Ident]       -- infixl 5 (op), `fun`
-  | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
-  | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
-  | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
-  | TypeSig      Position [Ident] TypeExpr                       -- f, g :: Bool
-  | FunctionDecl Position Ident [Equation]                       -- f True = 1 ; f False = 0
-  | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
-  | ExternalDecl Position [Ident]                                -- f, g external
-  | PatternDecl  Position Pattern Rhs                            -- Just x = ...
-  | FreeDecl     Position [Ident]                                -- x, y free
+  = InfixDecl    Position Infix (Maybe Precedence) [Ident] -- infixl 5 (op), `fun`
+  | TypeSig      Position [Ident] TypeExpr                 -- f, g :: Bool
+  | FunctionDecl Position Ident [Equation]                 -- f True = 1 ; f False = 0
+  | PatternDecl  Position Pattern Rhs                      -- Just x = ...
+  | FreeDecl     Position [Ident]                          -- x, y free
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -152,33 +187,6 @@ data Infix
   = InfixL -- ^ left-associative
   | InfixR -- ^ right-associative
   | Infix  -- ^ no associativity
-    deriving (Eq, Read, Show, Data, Typeable)
-
--- |Constructor declaration for algebraic data types
-data ConstrDecl
-  = ConstrDecl Position [Ident] Ident [TypeExpr]
-  | ConOpDecl  Position [Ident] TypeExpr Ident TypeExpr
-    deriving (Eq, Read, Show, Data, Typeable)
-
--- |Constructor declaration for renaming types (newtypes)
-data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
-   deriving (Eq, Read, Show, Data, Typeable)
-
--- |Calling convention for C code
-data CallConv
-  = CallConvPrimitive
-  | CallConvCCall
-    deriving (Eq, Read, Show, Data, Typeable)
-
--- |Type expressions
-data TypeExpr
-  = ConstructorType QualIdent [TypeExpr]
-  | VariableType    Ident
-  | TupleType       [TypeExpr]
-  | ListType        TypeExpr
-  | ArrowType       TypeExpr TypeExpr
-  | RecordType      [([Ident], TypeExpr)]
-    -- {l1 :: t1,...,ln :: tn | r}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------

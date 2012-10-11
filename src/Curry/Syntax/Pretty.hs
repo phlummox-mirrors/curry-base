@@ -27,7 +27,7 @@ import Curry.Syntax.Utils (opName)
 
 -- |Pretty print a module
 ppModule :: Module -> Doc
-ppModule (Module ps m es is ds) = ppModuleHeader ps m es is $$ ppSepBlock ds
+ppModule (Module ps m es is ds) = ppModuleHeader ps m es is $$ ppTopDecls ds
 
 ppModuleHeader :: [ModulePragma] -> ModuleIdent -> Maybe ExportSpec
                -> [ImportDecl] -> Doc
@@ -77,33 +77,37 @@ ppImport (Import             x) = ppIdent x
 ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
 ppImport (ImportTypeAll     tc) = ppIdent tc <> text "(..)"
 
-ppBlock :: [Decl] -> Doc
-ppBlock = vcat . map ppDecl
+ppTopDecls :: [TopDecl] -> Doc
+ppTopDecls = vcat . map (\d -> text "" $+$ ppTopDecl d)
 
-ppSepBlock :: [Decl] -> Doc
-ppSepBlock = vcat . map (\d -> text "" $+$ ppDecl d)
-
--- |Pretty print a declaration
-ppDecl :: Decl -> Doc
-ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
-ppDecl (DataDecl  _ tc tvs cs) =
+-- |Pretty print a top-level declaration
+ppTopDecl :: TopDecl -> Doc
+ppTopDecl (DataDecl  _ tc tvs cs) =
   sep (ppTypeDeclLhs "data" tc tvs :
        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
-ppDecl (NewtypeDecl _ tc tvs nc) =
+ppTopDecl (NewtypeDecl _ tc tvs nc) =
   sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
-ppDecl (TypeDecl _ tc tvs ty) =
+ppTopDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppDecl (TypeSig _ fs ty) =
-  list (map ppIdent fs) <+> text "::" <+> ppTypeExpr 0 ty
-ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
-ppDecl (ForeignDecl p cc impent f ty) =
+ppTopDecl (ForeignDecl p cc impent f ty) =
   sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
        indent (ppDecl (TypeSig p [f] ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
-        ppCallConv CallConvCCall     = text "ccall"
-ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
-ppDecl (PatternDecl _ t rhs) = ppRule (ppPattern 0 t) equals rhs
-ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
+        ppCallConv CallConvCCall     = text "stdcall"
+ppTopDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
+ppTopDecl (BlockDecl         d) = ppDecl d
+
+ppDecls :: [Decl] -> Doc
+ppDecls = vcat . map ppDecl
+
+-- |Pretty print a local declaration
+ppDecl :: Decl -> Doc
+ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
+ppDecl (TypeSig       _ fs ty) = list (map ppIdent fs) <+> text "::"
+                                 <+> ppTypeExpr 0 ty
+ppDecl (FunctionDecl  _ _ eqs) = vcat (map ppEquation eqs)
+ppDecl (PatternDecl   _ t rhs) = ppRule (ppPattern 0 t) equals rhs
+ppDecl (FreeDecl         _ vs) = list (map ppIdent vs) <+> text "free"
 
 ppPrec :: Infix -> Maybe Precedence -> Doc
 ppPrec fix p = ppAssoc fix <+> ppPrio p
@@ -151,7 +155,7 @@ ppRule lhs eq (GuardedRhs es ds) =
 ppLocalDefs :: [Decl] -> Doc
 ppLocalDefs ds
   | null ds   = empty
-  | otherwise = indent (text "where" <+> ppBlock ds)
+  | otherwise = indent (text "where" <+> ppDecls ds)
 
 -- ---------------------------------------------------------------------------
 -- Interfaces
@@ -289,7 +293,7 @@ ppExpr _ (RightSection     op e) = parens (ppQInfixOp (opName op) <+> ppExpr 1 e
 ppExpr p (Lambda          _ t e) = parenIf (p > 0)
   (sep [backsl <> fsep (map (ppPattern 2) t) <+> rarrow, indent (ppExpr 0 e)])
 ppExpr p (Let              ds e) = parenIf (p > 0)
-          (sep [text "let" <+> ppBlock ds, text "in" <+> ppExpr 0 e])
+          (sep [text "let" <+> ppDecls ds, text "in" <+> ppExpr 0 e])
 ppExpr p (Do              sts e) = parenIf (p > 0)
           (text "do" <+> (vcat (map ppStmt sts) $$ ppExpr 0 e))
 ppExpr p (IfThenElse _ e1 e2 e3) = parenIf (p > 0)
@@ -311,7 +315,7 @@ ppExpr _ (RecordUpdate   fs e) = braces
 ppStmt :: Statement -> Doc
 ppStmt (StmtExpr   _ e) = ppExpr 0 e
 ppStmt (StmtBind _ t e) = sep [ppPattern 0 t <+> larrow,indent (ppExpr 0 e)]
-ppStmt (StmtDecl    ds) = text "let" <+> ppBlock ds
+ppStmt (StmtDecl    ds) = text "let" <+> ppDecls ds
 
 ppCaseType :: CaseType -> Doc
 ppCaseType Rigid = text "case"

@@ -56,7 +56,7 @@ parseGoal = fullParser goal lexer ""
 -- ---------------------------------------------------------------------------
 
 -- |Parser for a module header
-moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
+moduleHeader :: Parser Token ([ImportDecl] -> [TopDecl] -> Module) a
 moduleHeader = (\ps (m, es) -> Module ps m es)
            <$> modulePragmas
            <*> header
@@ -94,7 +94,7 @@ export =  qtycon <**> (parens spec `opt` Export)         -- type constructor
   where spec =       ExportTypeAll  <$-> token DotDot
             <|> flip ExportTypeWith <$>  con `sepBy` comma
 
-moduleDecls :: Parser Token ([ImportDecl], [Decl]) a
+moduleDecls :: Parser Token ([ImportDecl], [TopDecl]) a
 moduleDecls = impDecl <$> importDecl
                       <*> (semicolon <-*> moduleDecls `opt` ([], []))
           <|> (,) []  <$> topDecls
@@ -194,21 +194,21 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*> qtycon <*> many tyvar
 -- Top-Level Declarations
 -- ---------------------------------------------------------------------------
 
-topDecls :: Parser Token [Decl] a
+topDecls :: Parser Token [TopDecl] a
 topDecls = topDecl `sepBy` semicolon
 
-topDecl :: Parser Token Decl a
-topDecl = choice [ dataDecl, newtypeDecl, typeDecl
-                 , foreignDecl, infixDecl, functionDecl ]
+topDecl :: Parser Token TopDecl a
+topDecl = choice [ dataDecl   , newtypeDecl , typeDecl
+                 , foreignDecl, topInfixDecl, topFunctionDecl ]
 
-dataDecl :: Parser Token Decl a
+dataDecl :: Parser Token TopDecl a
 dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
   where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
-newtypeDecl :: Parser Token Decl a
+newtypeDecl :: Parser Token TopDecl a
 newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
-typeDecl :: Parser Token Decl a
+typeDecl :: Parser Token TopDecl a
 typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> type0 True
 
 typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
@@ -242,17 +242,33 @@ existVars flat
 -}
 existVars = succeed []
 
-functionDecl :: Parser Token Decl a
-functionDecl = position <**> decl
+foreignDecl :: Parser Token TopDecl a
+foreignDecl = ForeignDecl
+          <$> tokenPos KW_foreign
+          <*> callConv <*> option string
+          <*> fun <*-> token DoubleColon <*> type0 False
+  where callConv =  CallConvPrimitive <$-> token Id_primitive
+                <|> CallConvCCall     <$-> token Id_ccall
+                <?> "Unsupported calling convention"
+
+topInfixDecl :: Parser Token TopDecl a
+topInfixDecl = BlockDecl <$> infixDecl
+
+topFunctionDecl :: Parser Token TopDecl a
+topFunctionDecl = position <**> decl
   where
   decl = fun `sepBy1` comma <**> funListDecl
-    <|?> mkFunDecl <$> lhs <*> declRhs
+    <|?> (\l r p -> BlockDecl (mkFunDecl l r p)) <$> lhs <*> declRhs
   lhs = (\f -> (f, FunLhs f [])) <$> fun <|?> funLhs
+  funListDecl =  (\f fs p -> BlockDecl (f fs p)) <$> typeSig
+             <|> flip ExternalDecl <$-> token KW_external
 
-funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-funListDecl =  typeSig           <$-> token DoubleColon <*> type0 False
-           <|> flip ExternalDecl <$-> token KW_external
-  where typeSig ty vs p = TypeSig p vs ty
+-- ---------------------------------------------------------------------------
+-- Local Declarations
+-- ---------------------------------------------------------------------------
+
+typeSig :: Parser Token ([Ident] -> Position -> Decl) a
+typeSig = (\ ty vs p -> TypeSig p vs ty) <$-> token DoubleColon <*> type0 False
 
 mkFunDecl :: (Ident, Lhs) -> Rhs -> Position -> Decl
 mkFunDecl (f, lhs) rhs' p = FunctionDecl p f [Equation p lhs rhs']
@@ -287,7 +303,7 @@ localDecls :: Parser Token [Decl] a
 localDecls = token KW_where <-*> layout valueDecls `opt` []
 
 valueDecls :: Parser Token [Decl] a
-valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
+valueDecls  = choice [infixDecl, valueDecl] `sepBy` semicolon
 
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> option integer <*> funop `sepBy1` comma
@@ -303,7 +319,7 @@ valueDecl = position <**> decl
       <|?> patOrFunDecl <$> pattern0   <*> declRhs
       <|?> mkFunDecl    <$> curriedLhs <*> declRhs
 
-  valListDecl = funListDecl <|> flip FreeDecl <$-> token KW_free
+  valListDecl = typeSig <|> flip FreeDecl <$-> token KW_free
 
   patOrFunDecl (ConstructorPattern c ts)
     | not (isConstrId c) = mkFunDecl (f, FunLhs f ts)
@@ -319,15 +335,6 @@ valueDecl = position <**> decl
   mkPatDecl t rhs' p = PatternDecl p t rhs'
 
   isConstrId c = c == qConsId || isQualified c || isQTupleId c
-
-foreignDecl :: Parser Token Decl a
-foreignDecl = ForeignDecl
-          <$> tokenPos KW_foreign
-          <*> callConv <*> (option string)
-          <*> fun <*-> token DoubleColon <*> type0 False
-  where callConv =  CallConvPrimitive <$-> token Id_primitive
-                <|> CallConvCCall     <$-> token Id_ccall
-                <?> "Unsupported calling convention"
 
 -- ---------------------------------------------------------------------------
 -- Types

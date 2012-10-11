@@ -3,7 +3,7 @@
     Description :  Utility functions for Curry's abstract syntax
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2014 Björn Peemöller
+                       2011 - 2015 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -16,8 +16,8 @@
 
 module Curry.Syntax.Utils
   ( hasLanguageExtension, knownExtensions
-  , isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl, isFunctionDecl, isExternalDecl, patchModuleId
+  , isTypeSig, isTopTypeSig, infixOp, isTypeDecl, isTopValueDecl, isValueDecl
+  , isInfixDecl, isRecordDecl, isFunctionDecl, isExternalDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
@@ -47,48 +47,57 @@ patchModuleId fn m@(Module ps mid es is ds)
   | mid == mainMIdent = Module ps (mkMIdent [takeBaseName fn]) es is ds
   | otherwise         = m
 
--- |Is the declaration an infix declaration?
-isInfixDecl :: Decl -> Bool
-isInfixDecl (InfixDecl _ _ _ _) = True
-isInfixDecl _                   = False
-
 -- |Is the declaration a type declaration?
-isTypeDecl :: Decl -> Bool
+isTypeDecl :: TopDecl -> Bool
 isTypeDecl (DataDecl    _ _ _ _) = True
 isTypeDecl (NewtypeDecl _ _ _ _) = True
 isTypeDecl (TypeDecl    _ _ _ _) = True
 isTypeDecl _                     = False
 
+-- |Is the declaration a record declaration?
+isRecordDecl :: TopDecl -> Bool
+isRecordDecl (TypeDecl _ _ _ (RecordType _)) = True
+isRecordDecl _                               = False
+
+-- |Is the declaration an external declaration?
+isExternalDecl :: TopDecl -> Bool
+isExternalDecl (ForeignDecl _ _ _ _ _) = True
+isExternalDecl (ExternalDecl      _ _) = True
+isExternalDecl _                       = False
+
+-- |Is the top-level declaration a value declaration?
+isTopValueDecl :: TopDecl -> Bool
+isTopValueDecl (ForeignDecl _ _ _ _ _) = True
+isTopValueDecl (ExternalDecl      _ _) = True
+isTopValueDecl (BlockDecl           d) = isValueDecl d
+isTopValueDecl _                       = False
+
+-- |Is the declaration an infix declaration?
+isInfixDecl :: Decl -> Bool
+isInfixDecl (InfixDecl _ _ _ _) = True
+isInfixDecl _                   = False
+
+isTopTypeSig :: TopDecl -> Bool
+isTopTypeSig (ForeignDecl _ _ _ _ _) = True
+isTopTypeSig (BlockDecl           d) = isTypeSig d
+isTopTypeSig _                       = False
+
 -- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
 isTypeSig (TypeSig         _ _ _) = True
-isTypeSig (ForeignDecl _ _ _ _ _) = True
 isTypeSig _                       = False
 
 -- |Is the declaration a value declaration?
 isValueDecl :: Decl -> Bool
 isValueDecl (FunctionDecl    _ _ _) = True
-isValueDecl (ForeignDecl _ _ _ _ _) = True
-isValueDecl (ExternalDecl      _ _) = True
 isValueDecl (PatternDecl     _ _ _) = True
 isValueDecl (FreeDecl          _ _) = True
 isValueDecl _                       = False
-
--- |Is the declaration a record declaration?
-isRecordDecl :: Decl -> Bool
-isRecordDecl (TypeDecl _ _ _ (RecordType _)) = True
-isRecordDecl _                               = False
 
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool
 isFunctionDecl (FunctionDecl _ _ _) = True
 isFunctionDecl _                    = False
-
--- |Is the declaration an external declaration?
-isExternalDecl :: Decl -> Bool
-isExternalDecl (ForeignDecl _ _ _ _ _) = True
-isExternalDecl (ExternalDecl      _ _) = True
-isExternalDecl _                       = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression

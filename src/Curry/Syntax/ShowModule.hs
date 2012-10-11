@@ -1,6 +1,7 @@
 {- |
     Module      :  $Header$
-    Copyright   :  (c) Sebastian Fischer 2008
+    Copyright   :  2008        Sebastian Fischer
+                   2012 - 2015 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -30,7 +31,7 @@ showsModule (Module ps mident espec imps decls)
   . showsModuleIdent mident . newline
   . showsMaybe showsExportSpec espec . newline
   . showsList (\i -> showsImportDecl i . newline) imps
-  . showsList (\d -> showsDecl d . newline) decls
+  . showsList (\d -> showsTopDecl d . newline) decls
 
 showsPragma :: ModulePragma -> ShowS
 showsPragma (LanguagePragma pos exts)
@@ -108,6 +109,46 @@ showsImport (ImportTypeAll ident)
   . showsIdent ident
   . showsString ")"
 
+showsTopDecl :: TopDecl -> ShowS
+showsTopDecl (DataDecl pos ident idents consdecls)
+  = showsString "(DataDecl "
+  . showsPosition pos . space
+  . showsIdent ident . space
+  . showsList showsIdent idents . space
+  . showsList showsConsDecl consdecls
+  . showsString ")"
+showsTopDecl (NewtypeDecl pos ident idents newconsdecl)
+  = showsString "(NewtypeDecl "
+  . showsPosition pos . space
+  . showsIdent ident . space
+  . showsList showsIdent idents . space
+  . showsNewConsDecl newconsdecl
+  . showsString ")"
+showsTopDecl (TypeDecl pos ident idents typ)
+  = showsString "(TypeDecl "
+  . showsPosition pos . space
+  . showsIdent ident . space
+  . showsList showsIdent idents . space
+  . showsTypeExpr typ
+  . showsString ")"
+showsTopDecl (ForeignDecl pos cconv mstr ident typ)
+  = showsString "(ForeignDecl "
+  . showsPosition pos . space
+  . shows cconv . space
+  . shows mstr . space
+  . showsIdent ident . space
+  . showsTypeExpr typ
+  . showsString ")"
+showsTopDecl (ExternalDecl pos idents)
+  = showsString "(ExternalDecl "
+  . showsPosition pos . space
+  . showsList showsIdent idents
+  . showsString ")"
+showsTopDecl (BlockDecl decl)
+  = showsString "(BlockDecl "
+  . showsDecl decl
+  . showsString ")"
+
 showsDecl :: Decl -> ShowS
 showsDecl (InfixDecl pos infx prec idents)
   = showsString "(InfixDecl "
@@ -115,27 +156,6 @@ showsDecl (InfixDecl pos infx prec idents)
   . shows infx . space
   . shows prec . space
   . showsList showsIdent idents
-  . showsString ")"
-showsDecl (DataDecl pos ident idents consdecls)
-  = showsString "(DataDecl "
-  . showsPosition pos . space
-  . showsIdent ident . space
-  . showsList showsIdent idents . space
-  . showsList showsConsDecl consdecls
-  . showsString ")"
-showsDecl (NewtypeDecl pos ident idents newconsdecl)
-  = showsString "(NewtypeDecl "
-  . showsPosition pos . space
-  . showsIdent ident . space
-  . showsList showsIdent idents . space
-  . showsNewConsDecl newconsdecl
-  . showsString ")"
-showsDecl (TypeDecl pos ident idents typ)
-  = showsString "(TypeDecl "
-  . showsPosition pos . space
-  . showsIdent ident . space
-  . showsList showsIdent idents . space
-  . showsTypeExpr typ
   . showsString ")"
 showsDecl (TypeSig pos idents typ)
   = showsString "(TypeSig "
@@ -148,19 +168,6 @@ showsDecl (FunctionDecl pos ident eqs)
   . showsPosition pos . space
   . showsIdent ident . space
   . showsList showsEquation eqs
-  . showsString ")"
-showsDecl (ForeignDecl pos cconv mstr ident typ)
-  = showsString "(ForeignDecl "
-  . showsPosition pos . space
-  . shows cconv . space
-  . shows mstr . space
-  . showsIdent ident . space
-  . showsTypeExpr typ
-  . showsString ")"
-showsDecl (ExternalDecl pos idents)
-  = showsString "(ExternalDecl "
-  . showsPosition pos . space
-  . showsList showsIdent idents
   . showsString ")"
 showsDecl (PatternDecl pos cons rhs)
   = showsString "(PatternDecl "
