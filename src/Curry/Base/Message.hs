@@ -26,8 +26,8 @@ module Curry.Base.Message
 
 import Control.Monad.Error
 import Control.Monad.Identity
-import Control.Monad.Writer (MonadWriter, WriterT, runWriterT, tell)
-import Data.Maybe (fromMaybe)
+import Control.Monad.Writer   (MonadWriter, WriterT, runWriterT, tell)
+import Data.Maybe             (fromMaybe)
 import Text.PrettyPrint
 
 import Curry.Base.Position
@@ -41,6 +41,12 @@ data Message = Message
   { msgPos :: Maybe Position -- ^ optional source code position
   , msgTxt :: Doc            -- ^ the message itself
   }
+
+instance Eq Message where
+  Message p1 t1 == Message p2 t2 = (p1, show t1) == (p2, show t2)
+
+instance Ord Message where
+  Message p1 t1 `compare` Message p2 t2 = compare (p1, show t1) (p2, show t2)
 
 instance Show Message where
   showsPrec _ = shows . ppMessage
