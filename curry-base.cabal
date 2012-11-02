@@ -1,5 +1,5 @@
 Name:          curry-base
-Version:       0.3.4
+Version:       0.3.5
 Cabal-Version: >= 1.6
 Synopsis:      Functions for manipulating Curry programs
 Description:   This package serves as a foundation for Curry compilers.
@@ -20,9 +20,13 @@ Flag split-syb
   Description: Has the syb functionality been split into the package syb?
   Default:     True
 
-Flag new-time
-  Description: Does the directory package use the new time implementation?
-  Default:     True
+Flag broken-directory
+  Description: Is the cabal configuration of directory incomplete?
+  Default:     False
+
+Flag old-time
+  Description: Does the directory package use the old time implementation?
+  Default:     False
 
 Library
   hs-source-dirs: src
@@ -30,10 +34,14 @@ Library
     Build-Depends: base == 4.*, syb
   else
     Build-Depends: base == 3.*
-  if flag(new-time)
-    Build-Depends: time, directory >= 1.2, base >= 4.6
-  else
-    Build-Depends: old-time, directory < 1.2, base < 4.6
+  if flag(broken-directory) {
+    Build-Depends: time, directory == 1.2.0.0, base >= 4.6
+  } else  { if flag(old-time) {
+            Build-Depends: old-time, directory
+            } else {
+            Build-Depends: time, directory >= 1.2.0.1
+          }
+  }
   Build-Depends:
       mtl
     , containers
