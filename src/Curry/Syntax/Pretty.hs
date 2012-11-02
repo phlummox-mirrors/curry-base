@@ -1,9 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  A pretty printer for Curry
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       2005 Martin Engelke
-                       2011 Björn Peemöller
+    Copyright   :  (c) 1999 - 2004 Wolfgang Lux
+                       2005        Martin Engelke
+                       2011 - 2012 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -54,7 +54,7 @@ ppImportDecl (ImportDecl _ m q asM is) =
 
 ppImportSpec :: ImportSpec -> Doc
 ppImportSpec (Importing _ is) = parenList (map ppImport is)
-ppImportSpec (Hiding _ is) = text "hiding" <+> parenList (map ppImport is)
+ppImportSpec (Hiding    _ is) = text "hiding" <+> parenList (map ppImport is)
 
 ppImport :: Import -> Doc
 ppImport (Import             x) = ppIdent x
@@ -97,10 +97,10 @@ ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
 ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)
 
 ppConstr :: ConstrDecl -> Doc
-ppConstr (ConstrDecl _ tvs c tys) =
-  sep [ppExistVars tvs,ppIdent c <+> fsep (map (ppTypeExpr 2) tys)]
+ppConstr (ConstrDecl     _ tvs c tys) =
+  sep [ppExistVars tvs, ppIdent c <+> fsep (map (ppTypeExpr 2) tys)]
 ppConstr (ConOpDecl _ tvs ty1 op ty2) =
-  sep [ppExistVars tvs,ppTypeExpr 1 ty1,ppInfixOp op <+> ppTypeExpr 1 ty2]
+  sep [ppExistVars tvs, ppTypeExpr 1 ty1, ppInfixOp op <+> ppTypeExpr 1 ty2]
 
 ppNewConstr :: NewConstrDecl -> Doc
 ppNewConstr (NewConstrDecl _ tvs c ty) =
@@ -115,10 +115,9 @@ ppEquation :: Equation -> Doc
 ppEquation (Equation _ lhs rhs) = ppRule (ppLhs lhs) equals rhs
 
 ppLhs :: Lhs -> Doc
-ppLhs (FunLhs f ts) = ppIdent f <+> fsep (map (ppPattern 2) ts)
-ppLhs (OpLhs t1 f t2) =
-  ppPattern 1 t1 <+> ppInfixOp f <+> ppPattern 1 t2
-ppLhs (ApLhs lhs ts) = parens (ppLhs lhs) <+> fsep (map (ppPattern 2) ts)
+ppLhs (FunLhs   f ts) = ppIdent f <+> fsep (map (ppPattern 2) ts)
+ppLhs (OpLhs t1 f t2) = ppPattern 1 t1 <+> ppInfixOp f <+> ppPattern 1 t2
+ppLhs (ApLhs  lhs ts) = parens (ppLhs lhs) <+> fsep (map (ppPattern 2) ts)
 
 ppRule :: Doc -> Doc -> Rhs -> Doc
 ppRule lhs eq (SimpleRhs _ e ds) =
@@ -128,7 +127,7 @@ ppRule lhs eq (GuardedRhs es ds) =
 
 ppLocalDefs :: [Decl] -> Doc
 ppLocalDefs ds
-  | null ds = empty
+  | null ds   = empty
   | otherwise = indent (text "where" <+> ppBlock ds)
 
 -- ---------------------------------------------------------------------------
@@ -248,8 +247,8 @@ ppCondExpr eq (CondExpr _ g e) =
 
 -- |Pretty print an expression
 ppExpr :: Int -> Expression -> Doc
-ppExpr _ (Literal l) = ppLiteral l
-ppExpr _ (Variable v) = ppQIdent v
+ppExpr _ (Literal     l) = ppLiteral l
+ppExpr _ (Variable    v) = ppQIdent v
 ppExpr _ (Constructor c) = ppQIdent c
 ppExpr _ (Paren e) = parens (ppExpr 0 e)
 ppExpr p (Typed e ty) =
@@ -278,29 +277,23 @@ ppExpr p (Lambda _ t e) =
   parenExp (p > 0)
            (sep [backsl <> fsep (map (ppPattern 2) t) <+> rarrow,
                  indent (ppExpr 0 e)])
-ppExpr p (Let ds e) =
-  parenExp (p > 0)
-           (sep [text "let" <+> ppBlock ds <+> text "in",ppExpr 0 e])
-ppExpr p (Do sts e) =
-  parenExp (p > 0) (text "do" <+> (vcat (map ppStmt sts) $$ ppExpr 0 e))
-ppExpr p (IfThenElse _ e1 e2 e3) =
-  parenExp (p > 0)
+ppExpr p (Let ds e) = parenExp (p > 0)
+          (sep [text "let" <+> ppBlock ds <+> text "in",ppExpr 0 e])
+ppExpr p (Do sts e) = parenExp (p > 0)
+          (text "do" <+> (vcat (map ppStmt sts) $$ ppExpr 0 e))
+ppExpr p (IfThenElse _ e1 e2 e3) = parenExp (p > 0)
            (text "if" <+>
             sep [ppExpr 0 e1,
                  text "then" <+> ppExpr 0 e2,
                  text "else" <+> ppExpr 0 e3])
-ppExpr p (Case _ ct e alts) =
-  parenExp (p > 0)
+ppExpr p (Case _ ct e alts) = parenExp (p > 0)
            (ppCaseType ct <+> ppExpr 0 e <+> text "of" $$
             indent (vcat (map ppAlt alts)))
-ppExpr _ (RecordConstr fs) =
-  braces (list (map (ppFieldExpr equals) fs))
-ppExpr p (RecordSelection e l) =
-  parenExp (p > 0)
-           (ppExpr 1 e <+> text "->" <+> ppIdent l)
-ppExpr _ (RecordUpdate fs e) =
-  braces (list (map (ppFieldExpr (text ":=")) fs)
-         <+> char '|' <+> ppExpr 0 e)
+ppExpr _ (RecordConstr     fs) = braces (list (map ppFieldExpr fs))
+ppExpr p (RecordSelection e l) = parenExp (p > 0)
+                                 (ppExpr 1 e <+> recSelect <+> ppIdent l)
+ppExpr _ (RecordUpdate   fs e) =
+  braces (list (map ppFieldExpr fs) <+> char '|' <+> ppExpr 0 e)
 
 -- |Pretty print a statement
 ppStmt :: Statement -> Doc
@@ -317,12 +310,12 @@ ppAlt :: Alt -> Doc
 ppAlt (Alt _ t rhs) = ppRule (ppPattern 0 t) rarrow rhs
 
 -- |Pretty print a record field expression
-ppFieldExpr :: Doc -> Field Expression -> Doc
-ppFieldExpr comb (Field _ l e) = ppIdent l <> comb <> ppExpr 0 e
+ppFieldExpr :: Field Expression -> Doc
+ppFieldExpr (Field _ l e) = ppIdent l <> recBind <> ppExpr 0 e
 
 -- |Pretty print an operator
 ppOp :: InfixOp -> Doc
-ppOp (InfixOp op) = ppQInfixOp op
+ppOp (InfixOp     op) = ppQInfixOp op
 ppOp (InfixConstr op) = ppQInfixOp op
 
 -- ---------------------------------------------------------------------------
@@ -361,17 +354,32 @@ parenExp b doc = if b then parens doc else doc
 backQuoteExp :: Bool -> Doc -> Doc
 backQuoteExp b doc = if b then backQuote <> doc <> backQuote else doc
 
-list, parenList, bracketList :: [Doc] -> Doc
+list :: [Doc] -> Doc
 list = fsep . punctuate comma
+
+parenList :: [Doc] -> Doc
 parenList = parens . list
+
+bracketList :: [Doc] -> Doc
 bracketList = brackets . list
 
--- braceList :: [Doc] -> Doc
--- braceList = braces . list
-
-backQuote,backsl,vbar,rarrow,larrow :: Doc
+backQuote :: Doc
 backQuote = char '`'
+
+backsl :: Doc
 backsl = char '\\'
+
+vbar :: Doc
 vbar = char '|'
+
+rarrow :: Doc
 rarrow = text "->"
+
+larrow :: Doc
 larrow = text "<-"
+
+recBind :: Doc
+recBind = text ":="
+
+recSelect :: Doc
+recSelect = text ":>"
