@@ -33,10 +33,11 @@ module Curry.ExtendedFlat.Type
   ) where
 
 import Control.Monad (liftM)
+import Data.Char     (ord)
 import Data.Function (on)
 import Data.Generics (Data, Typeable
   , extQ, ext1Q, ext2Q, gmapQ, toConstr, showConstr)
-import Data.List (intersperse)
+import Data.List     (intersperse)
 
 import Curry.Base.Position   (SrcRef)
 import Curry.Files.Filenames (flatName, flatIntName, extFlatName)
@@ -447,11 +448,20 @@ gshowsPrec showType d = genericShowsPrec d
   `extQ`  (const id :: SrcRef   -> ShowS)
   `extQ`  (const id :: [SrcRef] -> ShowS)
   `extQ`  (shows    :: String   -> ShowS)
-  `extQ`  (shows    :: Char     -> ShowS)
+  `extQ`  showsEscape
   `extQ`  showsQName d
   `extQ`  showsVarIndex d
 
   where
+
+  showsEscape :: Char -> ShowS
+  showsEscape c
+    | o <   10  = showString "'\\00" . shows o . showChar '\''
+    | o <   32  = showString "'\\0"  . shows o . showChar '\''
+    | o == 127  = showString "'\\127'"
+    | otherwise = shows c
+    where o = ord c
+
   showsQName :: Bool -> QName -> ShowS
   showsQName d' qn
     | showType  = showParen d' (shows qn { srcRef = Nothing })

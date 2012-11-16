@@ -15,6 +15,7 @@ module Curry.FlatCurry.Pretty
   , ppFuncDecl, ppExpr, ppLiteral, ppOpDecl
   ) where
 
+import Data.Char (ord)
 import Text.PrettyPrint
 
 import Curry.FlatCurry.Type
@@ -146,7 +147,15 @@ ppPattern (LPattern     l) = ppLiteral l
 ppLiteral :: Literal -> Doc
 ppLiteral (Intc   i) = integer i
 ppLiteral (Floatc f) = double  f
-ppLiteral (Charc  c) = text (show c)
+ppLiteral (Charc  c) = text (showEscape c)
+
+showEscape :: Char -> String
+showEscape c
+  | o <   10  = "'\\00" ++ show o ++ "'"
+  | o <   32  = "'\\0"  ++ show o ++ "'"
+  | o == 127  = "'\\127'"
+  | otherwise = show c
+  where o = ord c
 
 -- |pretty-print a operator fixity declaration
 ppOpDecl :: OpDecl -> Doc
