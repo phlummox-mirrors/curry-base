@@ -389,7 +389,7 @@ isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 
 -- |Lex source code
 lexSource :: FilePath -> String -> MessageM [(Position, Token)]
-lexSource = parse (applyLexer lexer)
+lexSource = parse (applyLexer fullLexer)
 
 -- |CPS-Lexer for Curry
 lexer :: Lexer Token a
