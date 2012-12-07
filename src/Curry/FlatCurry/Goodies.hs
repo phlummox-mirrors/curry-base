@@ -748,71 +748,66 @@ isCase e = case e of
   _ -> False
 
 -- |transform expression
-trExpr :: (VarIndex -> a) ->
-          (Literal -> a) ->
-          (CombType -> QName -> [a] -> a) ->
-          ([(VarIndex,a)] -> a -> a) ->
-          ([VarIndex] -> a -> a) ->
-          (a -> a -> a) ->
-          (CaseType -> a -> [b] -> a) ->
-          (Pattern -> a -> b)         -> Expr -> a
-trExpr var _ _ _ _ _ _ _ (Var n) = var n
-
-trExpr _ lit _ _ _ _ _ _ (Lit l) = lit l
-
-trExpr var lit comb lt fr oR cas branch (Comb ct name args)
-  = comb ct name (map (trExpr var lit comb lt fr oR cas branch) args)
-
-trExpr var lit comb lt fr oR cas branch (Let bs e)
-  = lt (map (\ (n,e') -> (n,f e')) bs) (f e)
- where
-  f = trExpr var lit comb lt fr oR cas branch
-
-trExpr var lit comb lt fr oR cas branch (Free vs e)
-  = fr vs (trExpr var lit comb lt fr oR cas branch e)
-
-trExpr var lit comb lt fr oR cas branch (Or e1 e2) = oR (f e1) (f e2)
- where
-  f = trExpr var lit comb lt fr oR cas branch
-
-trExpr var lit comb lt fr oR cas branch (Case ct e bs)
-  = cas ct (f e) (map (\ (Branch pat e') -> branch pat (f e')) bs)
- where
-  f = trExpr var lit comb lt fr oR cas branch
+trExpr  :: (VarIndex -> a)
+        -> (Literal -> a)
+        -> (CombType -> QName -> [a] -> a)
+        -> ([(VarIndex, a)] -> a -> a)
+        -> ([VarIndex] -> a -> a)
+        -> (a -> a -> a)
+        -> (CaseType -> a -> [b] -> a)
+        -> (Pattern -> a -> b)
+        -> (a -> TypeExpr -> a)
+        -> Expr
+        -> a
+trExpr var lit comb lt fr oR cas branch typed expr = case expr of
+  Var n             -> var n
+  Lit l             -> lit l
+  Comb ct name args -> comb ct name (map f args)
+  Let bs e          -> lt (map (\(v, x) -> (v, f x)) bs) (f e)
+  Free vs e         -> fr vs (f e)
+  Or e1 e2          -> oR (f e1) (f e2)
+  Case ct e bs      -> cas ct (f e) (map (\ (Branch p e') -> branch p (f e')) bs)
+  Typed e ty        -> typed (f e) ty
+  where
+  f = trExpr var lit comb lt fr oR cas branch typed
 
 -- Update Operations
 
 -- |update all variables in given expression
 updVars :: (VarIndex -> Expr) -> Expr -> Expr
-updVars var = trExpr var Lit Comb Let Free Or Case Branch
+updVars var = trExpr var Lit Comb Let Free Or Case Branch Typed
 
 -- |update all literals in given expression
 updLiterals :: (Literal -> Expr) -> Expr -> Expr
-updLiterals lit = trExpr Var lit Comb Let Free Or Case Branch
+updLiterals lit = trExpr Var lit Comb Let Free Or Case Branch Typed
 
 -- |update all combined expressions in given expression
 updCombs :: (CombType -> QName -> [Expr] -> Expr) -> Expr -> Expr
-updCombs comb = trExpr Var Lit comb Let Free Or Case Branch
+updCombs comb = trExpr Var Lit comb Let Free Or Case Branch Typed
 
 -- |update all let expressions in given expression
 updLets :: ([(VarIndex,Expr)] -> Expr -> Expr) -> Expr -> Expr
-updLets lt = trExpr Var Lit Comb lt Free Or Case Branch
+updLets lt = trExpr Var Lit Comb lt Free Or Case Branch Typed
 
 -- |update all free declarations in given expression
 updFrees :: ([VarIndex] -> Expr -> Expr) -> Expr -> Expr
-updFrees fr = trExpr Var Lit Comb Let fr Or Case Branch
+updFrees fr = trExpr Var Lit Comb Let fr Or Case Branch Typed
 
 -- |update all or expressions in given expression
 updOrs :: (Expr -> Expr -> Expr) -> Expr -> Expr
-updOrs oR = trExpr Var Lit Comb Let Free oR Case Branch
+updOrs oR = trExpr Var Lit Comb Let Free oR Case Branch Typed
 
 -- |update all case expressions in given expression
 updCases :: (CaseType -> Expr -> [BranchExpr] -> Expr) -> Expr -> Expr
-updCases cas = trExpr Var Lit Comb Let Free Or cas Branch
+updCases cas = trExpr Var Lit Comb Let Free Or cas Branch Typed
 
 -- |update all case branches in given expression
 updBranches :: (Pattern -> Expr -> BranchExpr) -> Expr -> Expr
-updBranches branch = trExpr Var Lit Comb Let Free Or Case branch
+updBranches branch = trExpr Var Lit Comb Let Free Or Case branch Typed
+
+-- |update all typed expressions in given expression
+updTypeds :: (Expr -> TypeExpr -> Expr) -> Expr -> Expr
+updTypeds = trExpr Var Lit Comb Let Free Or Case Branch
 
 -- Auxiliary Functions
 
@@ -841,7 +836,7 @@ isGround e
 
 -- |get all variables (also pattern variables) in expression
 allVars :: Expr -> [VarIndex]
-allVars e = trExpr (:) (const id) comb lt fr (.) cas branch e []
+allVars e = trExpr (:) (const id) comb lt fr (.) cas branch const e []
  where
   comb _ _ = foldr (.) id
   lt bs e' = e' . foldr (.) id (map (\ (n,ns) -> (n:) . ns) bs)
@@ -853,14 +848,14 @@ allVars e = trExpr (:) (const id) comb lt fr (.) cas branch e []
 
 -- |rename all variables (also in patterns) in expression
 rnmAllVars :: Update Expr VarIndex
-rnmAllVars f = trExpr (Var . f) Lit Comb lt (Free . map f) Or Case branch
+rnmAllVars f = trExpr (Var . f) Lit Comb lt (Free . map f) Or Case branch Typed
  where
    lt = Let . map (\ (n,e) -> (f n,e))
    branch = Branch . updPatArgs (map f)
 
 -- |update all qualified names in expression
 updQNames :: Update Expr QName
-updQNames f = trExpr Var Lit comb Let Free Or Case (Branch . updPatCons f)
+updQNames f = trExpr Var Lit comb Let Free Or Case (Branch . updPatCons f) Typed
  where
   comb ct name args = Comb ct (f name) args
 
