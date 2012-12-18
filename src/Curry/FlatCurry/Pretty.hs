@@ -65,7 +65,7 @@ ppTypeDecl :: TypeDecl -> Doc
 ppTypeDecl (Type    qn _ ixs cs) = text "data" <+> ppQName qn
   <+> hcat (map ppTVarIndex ixs) $+$ ppConsDecls cs
 ppTypeDecl (TypeSyn qn _ ixs ty) = text "type" <+> ppQName qn
-  <+> hcat (map ppTVarIndex ixs) <+> text "=" <+> ppTypeExpr 0 ty
+  <+> hcat (map ppTVarIndex ixs) <+> equals <+> ppTypeExpr 0 ty
 
 -- |pretty-print the constructor declarations
 ppConsDecls :: [ConsDecl] -> Doc
@@ -120,6 +120,8 @@ ppExpr p (Or     e1 e2) = parenIf (p > 0)
 ppExpr p (Case ct e bs) = parenIf (p > 0)
                         $ ppCaseType ct <+> ppExpr 0 e <+> text "of"
                           $$ indent (vcat (map ppBranch bs))
+ppExpr p (Typed   e ty) = parenIf (p > 0)
+                        $ ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty
 
 -- |pretty-print a list of declarations
 ppDecls :: [(VarIndex, Expr)] -> Doc

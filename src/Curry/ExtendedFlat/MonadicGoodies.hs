@@ -35,6 +35,8 @@ postOrderM f = po where
   po (Case r t e bs) = do e' <- po e
                           bs' <- mapM poBranch bs
                           f (Case r t e' bs')
+  po (Typed e ty)    = do e' <- po e
+                          f (Typed e' ty)
   poBind  (v, rhs) = do rhs' <- po rhs
                         return (v, rhs')
   poBranch (Branch p rhs) = do rhs' <- po rhs

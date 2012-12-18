@@ -54,7 +54,8 @@ prettyType (TCons qn ts)  = let  n = let (m,l) = qnOf qn in m ++ '.' : l
                             in text n <+> hsep (map (parens . prettyType) ts)
 
 prettyAllEqns :: ((String, String), TypeExpr, [(TVarIndex, TypeExpr)]) -> String
-prettyAllEqns = render . prettyEqns where
+prettyAllEqns = render . prettyEqns
+  where
   prettyEqn ::(TVarIndex, TypeExpr)  -> Doc
   prettyEqn (l, r) = char 't' <> int l <+> text "->" <+> prettyType r
 
@@ -64,23 +65,26 @@ prettyAllEqns = render . prettyEqns where
 
 postOrderExpr :: Monad m => (Expr -> m Expr) -> Expr -> m Expr
 postOrderExpr f = po
-    where po e@(Var _) = f e
-          po e@(Lit _) = f e
-          po (Comb t n es) = do es' <- mapM po es
-                                f (Comb t n es')
-          po (Free vs e) = do e' <- po e
-                              f (Free vs e')
-          po (Let bs e) = do bs' <- mapM poBind bs
-                             e'  <- po e
-                             f (Let bs' e')
-          po (Or l r) = liftM2 Or (po l) (po r) >>= f
-          po (Case r t e bs) = do e' <- po e
-                                  bs' <- mapM poBranch bs
-                                  f (Case r t e' bs')
-          poBind  (v, rhs) = do rhs' <- po rhs
-                                return (v, rhs')
-          poBranch (Branch p rhs) = do rhs' <- po rhs
-                                       return (Branch p rhs')
+  where
+  po e@(Var       _) = f e
+  po e@(Lit       _) = f e
+  po (Comb   t n es) = do es' <- mapM po es
+                          f (Comb t n es')
+  po (Free     vs e) = do e' <- po e
+                          f (Free vs e')
+  po (Let      bs e) = do bs' <- mapM poBind bs
+                          e'  <- po e
+                          f (Let bs' e')
+  po (Or        l r) = liftM2 Or (po l) (po r) >>= f
+  po (Case r t e bs) = do e' <- po e
+                          bs' <- mapM poBranch bs
+                          f (Case r t e' bs')
+  po (Typed    e ty) = do e' <- po e
+                          f (Typed e' ty)
+  poBind  (v, rhs) = do rhs' <- po rhs
+                        return (v, rhs')
+  poBranch (Branch p rhs) = do rhs' <- po rhs
+                               return (Branch p rhs')
 
 postOrderType :: Monad m => (TypeExpr -> m TypeExpr) -> TypeExpr -> m TypeExpr
 postOrderType f = po
@@ -150,6 +154,8 @@ labelVarsWithTypes = updProgFuncs updateFunc
           = do e' <- po e
                bs' <- mapM poBranch bs
                return (Case r t e' bs')
+      po (Typed e ty) = do e' <- po e
+                           return (Typed e' ty)
 
       poBranch :: BranchExpr -> TDictM BranchExpr
       poBranch (Branch (Pattern qn vs) rhs)
@@ -247,55 +253,59 @@ genEquations = updProgFuncs updateFunc
 
 
 equations :: Expr -> EqnMonad TypeExpr
-equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn orEqn casEqn branchEqn
-    where
-      combEqn :: (CombType -> QName -> [EqnMonad TypeExpr] -> EqnMonad TypeExpr)
-      combEqn _ qn args
-          = do resultType' <- lift$freshTVar
-               argTypes' <- sequence args
-               tqn <- qnType qn
-               _ <- tqn =:= foldr FuncType resultType' argTypes'
-               return resultType'
+equations = trExpr varIndexType (return . typeofLiteral) combEqn letEqn frEqn orEqn casEqn branchEqn typedEqn
+  where
+  combEqn :: (CombType -> QName -> [EqnMonad TypeExpr] -> EqnMonad TypeExpr)
+  combEqn _ qn args = do
+    resultType' <- lift$freshTVar
+    argTypes' <- sequence args
+    tqn <- qnType qn
+    _ <- tqn =:= foldr FuncType resultType' argTypes'
+    return resultType'
 
-      letEqn :: ([(VarIndex, EqnMonad TypeExpr)] -> EqnMonad TypeExpr -> EqnMonad TypeExpr)
-      letEqn bs = (mapM_ bindEqn bs >>)
+  letEqn :: ([(VarIndex, EqnMonad TypeExpr)] -> EqnMonad TypeExpr -> EqnMonad TypeExpr)
+  letEqn bs = (mapM_ bindEqn bs >>)
 
-      frEqn _ e = e
+  frEqn _ e = e
 
-      orEqn l r = do l' <- l
-                     r' <- r
-                     l' =:= r'
+  orEqn l r = do
+    l' <- l
+    r' <- r
+    l' =:= r'
 
-      casEqn :: SrcRef -> CaseType -> EqnMonad TypeExpr -> [EqnMonad (Pattern, TypeExpr)] -> EqnMonad TypeExpr
-      casEqn _ _ scr [] = scr >> (lift$freshTVar)
-      casEqn _ _ scr ps = do
-        scrt <- scr
-        -- unify patterns with scrutinee
-        branches <- sequence ps
-        let pats = map fst branches
-        let (p:ps') = map snd branches
-        mapM_ (unifLhs scrt) pats
-        -- foldM (\l r -> unifLhs scrt r >>= (=:= l)) scrt pats
-        -- unify right hand sides
-        foldM (=:=) p ps'
+  casEqn :: SrcRef -> CaseType -> EqnMonad TypeExpr -> [EqnMonad (Pattern, TypeExpr)] -> EqnMonad TypeExpr
+  casEqn _ _ scr [] = scr >> (lift$freshTVar)
+  casEqn _ _ scr ps = do
+    scrt <- scr
+    -- unify patterns with scrutinee
+    branches <- sequence ps
+    let pats = map fst branches
+    let (p:ps') = map snd branches
+    mapM_ (unifLhs scrt) pats
+    -- foldM (\l r -> unifLhs scrt r >>= (=:= l)) scrt pats
+    -- unify right hand sides
+    foldM (=:=) p ps'
 
-      unifLhs scrt (LPattern lit)
-          = typeofLiteral lit =:= scrt
-      unifLhs scrt (Pattern qn vs)
-          = do qnt <- qnType qn
-              -- FIXME: Variablentypen in Map eintragen!!!
-               argTypes' <- mapM varIndexType vs
-               qnt =:= foldr FuncType scrt argTypes'
+  unifLhs scrt (LPattern l)    = typeofLiteral l =:= scrt
+  unifLhs scrt (Pattern qn vs) = do
+    qnt <- qnType qn
+    -- FIXME: Variablentypen in Map eintragen!!!
+    argTypes' <- mapM varIndexType vs
+    qnt =:= foldr FuncType scrt argTypes'
 
+  branchEqn :: Pattern -> EqnMonad TypeExpr -> EqnMonad (Pattern, TypeExpr)
+  branchEqn p e = do trhs <- e
+                     return (p, trhs)
 
-      branchEqn :: Pattern -> EqnMonad TypeExpr -> EqnMonad (Pattern, TypeExpr)
-      branchEqn p e = do trhs <- e
-                         return (p, trhs)
+  typedEqn :: EqnMonad TypeExpr -> TypeExpr -> EqnMonad TypeExpr
+  typedEqn e ty = do
+    ety <- e
+    ety =:= ty
 
-      bindEqn :: (VarIndex, EqnMonad TypeExpr) -> EqnMonad TypeExpr
-      bindEqn (vi, rhs) = do vit <- varIndexType vi
-                             rvi <- rhs
-                             vit =:= rvi
+  bindEqn :: (VarIndex, EqnMonad TypeExpr) -> EqnMonad TypeExpr
+  bindEqn (vi, rhs) = do vit <- varIndexType vi
+                         rvi <- rhs
+                         vit =:= rvi
 
 unify :: TypeExpr -> TypeExpr -> TypeMap -> TypeMap
 -- t =:= u = return t
@@ -345,7 +355,7 @@ maxFuncTV = trFunc (\qn _ _ te r -> max (maxQNameTV qn) (max (maxTypeTV te) (max
       maxRuleTV = trRule (\vis e -> maximum (maxExprTV e : map maxVarIndexTV vis)) (const (-1))
 
       maxExprTV :: Expr -> Int
-      maxExprTV = trExpr var lit comb lt fr max cas branch
+      maxExprTV = trExpr var lit comb lt fr max cas branch typed
           where var  = maxVarIndexTV
                 lit  = const (-1)
                 comb _ qn ms = maximum (maxQNameTV qn : ms)
@@ -353,6 +363,7 @@ maxFuncTV = trFunc (\qn _ _ te r -> max (maxQNameTV qn) (max (maxTypeTV te) (max
                 fr vs e = maximum (e : map maxVarIndexTV vs)
                 cas _ _ e ps = maximum (e : ps)
                 branch p e = max e (maxPatternTV p)
+                typed e _  = e
 
       maxQNameTV = maybe (-1) maxTypeTV . typeofQName
 
@@ -368,42 +379,31 @@ maxFuncTV = trFunc (\qn _ _ te r -> max (maxQNameTV qn) (max (maxTypeTV te) (max
 
 --------------------
 
-
 specialiseType :: TypeMap -> TypeExpr -> TypeExpr
 specialiseType m t = trTypeExpr (foo m) TCons FuncType t
     where foo m' i = maybe (TVar i) (specialiseType m') (IntMap.lookup i m')
-
 
 -- boilerplate
 specInRule :: TypeMap -> Rule -> Rule
 specInRule = modifyType . specialiseType
 
-
-
 -- boilerplate
 modifyType :: (TypeExpr -> TypeExpr) -> Rule -> Rule
 modifyType f = updRule (map specInVarIndex) specInExpr id
-    where specInExpr
-              = trExpr var Lit comb letexp free Or Case alt
-          var = Var . specInVarIndex
-          comb ct
-              = Comb ct . specInQName
-          letexp
-              = Let . map specInBind
-          free
-              = Free . map specInVarIndex
-          alt
-              = Branch . specInPattern
+  where
+  specInExpr = trExpr var Lit comb letexp free Or Case alt typed
+  var        = Var . specInVarIndex
+  comb ct    = Comb ct . specInQName
+  letexp     = Let . map specInBind
+  free       = Free . map specInVarIndex
+  alt        = Branch . specInPattern
+  typed e    = Typed e . f
 
-          specInBind (vi, e)
-              = (specInVarIndex vi, e)
+  specInBind (vi, e) = (specInVarIndex vi, e)
 
-          specInPattern (Pattern qn vis)
-              = Pattern (specInQName qn) (map specInVarIndex vis)
-          specInPattern p = p
+  specInPattern (Pattern qn vis) = Pattern (specInQName qn) (map specInVarIndex vis)
+  specInPattern p = p
 
-          specInVarIndex vi
-              = vi { typeofVar = fmap f (typeofVar vi)}
+  specInVarIndex vi = vi { typeofVar = fmap f (typeofVar vi)}
 
-          specInQName qn
-              = qn { typeofQName = fmap f (typeofQName qn)}
+  specInQName qn = qn { typeofQName = fmap f (typeofQName qn)}

@@ -266,6 +266,8 @@ data Expr
   | Or Expr Expr
   -- |case expression
   | Case CaseType Expr [BranchExpr]
+  -- |typed expression
+  | Typed Expr TypeExpr
     deriving (Eq, Read, Show)
 
 -- |Data type for representing literals.

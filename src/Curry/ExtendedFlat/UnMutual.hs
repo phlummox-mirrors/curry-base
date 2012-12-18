@@ -217,6 +217,7 @@ subst v x = po
     | otherwise              = e
   po (Or        l r) = Or (po l) (po r)
   po (Case r t e bs) = Case r t (po e) (map poBranch bs)
+  po (Typed    e ty) = Typed (po e) ty
 
   poBind  (w, rhs) = (w, po rhs)
 
