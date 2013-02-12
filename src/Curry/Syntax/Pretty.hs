@@ -3,7 +3,7 @@
     Description :  A pretty printer for Curry
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2012 Björn Peemöller
+                       2011 - 2013 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -27,7 +27,7 @@ import Curry.Syntax.Utils (opName)
 
 -- |Pretty print a module
 ppModule :: Module -> Doc
-ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppBlock ds
+ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppSepBlock ds
 
 ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> [ImportDecl] -> Doc
 ppModuleHeader m es is
@@ -62,7 +62,10 @@ ppImport (ImportTypeWith tc cs) = ppIdent tc <> parenList (map ppIdent cs)
 ppImport (ImportTypeAll     tc) = ppIdent tc <> text "(..)"
 
 ppBlock :: [Decl] -> Doc
-ppBlock = vcat . map (\d -> text "" $+$ ppDecl d)
+ppBlock = vcat . map ppDecl
+
+ppSepBlock :: [Decl] -> Doc
+ppSepBlock = vcat . map (\d -> text "" $+$ ppDecl d)
 
 -- |Pretty print a declaration
 ppDecl :: Decl -> Doc
@@ -269,7 +272,7 @@ ppExpr _ (RightSection     op e) = parens (ppQInfixOp (opName op) <+> ppExpr 1 e
 ppExpr p (Lambda          _ t e) = parenExp (p > 0)
   (sep [backsl <> fsep (map (ppPattern 2) t) <+> rarrow, indent (ppExpr 0 e)])
 ppExpr p (Let              ds e) = parenExp (p > 0)
-          (sep [text "let" <+> ppBlock ds <+> text "in",ppExpr 0 e])
+          (sep [text "let" <+> ppBlock ds, text "in" <+> ppExpr 0 e])
 ppExpr p (Do              sts e) = parenExp (p > 0)
           (text "do" <+> (vcat (map ppStmt sts) $$ ppExpr 0 e))
 ppExpr p (IfThenElse _ e1 e2 e3) = parenExp (p > 0)
