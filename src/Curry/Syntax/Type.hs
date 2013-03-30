@@ -30,6 +30,8 @@ module Curry.Syntax.Type
   , Statement (..), CaseType (..), Alt (..), Field (..)
     -- * Goals
   , Goal (..)
+    -- * Type classes
+  , SContext (..), TypeConstructor (..)
   ) where
 
 import Data.Generics (Data (..), Typeable (..))
@@ -121,6 +123,8 @@ data Decl
   | ExternalDecl Position [Ident]                                -- f, g external
   | PatternDecl  Position Pattern Rhs                            -- Just x = ...
   | FreeDecl     Position [Ident]                                -- x, y free
+  | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}
+  | InstanceDecl Position SContext QualIdent TypeConstructor [Ident] [Decl] -- instance Foo a => Module1.Bar (Module2.TyCon a b c) where {FunctionDecl}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -307,3 +311,20 @@ instance SrcRefOf Literal where
   srcRefOf (Int    i _) = srcRefOf i
   srcRefOf (Float  s _) = s
   srcRefOf (String s _) = s
+
+-- ---------------------------------------------------------------------------
+-- type classes
+-- ---------------------------------------------------------------------------
+
+-- |Simple class context, consisting of (classname, type variable) pairs
+data SContext = SContext [(QualIdent, Ident)]
+  deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Type constructors. Can be a qualified type constructor like "Prelude.Bool"
+-- and the following special constructors: "()" "(,{,})" "[]" "(->)"
+data TypeConstructor = QualTC QualIdent
+                     | UnitTC
+                     | TupleTC Int
+                     | ListTC
+                     | FuncTC
+  deriving (Eq, Read, Show, Data, Typeable)

@@ -88,6 +88,12 @@ ppDecl (ForeignDecl p cc impent f ty) =
 ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
 ppDecl (PatternDecl _ t rhs) = ppRule (ppPattern 0 t) equals rhs
 ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
+ppDecl (ClassDecl _ cx c a decls) = 
+  text "class" <+> ppSContext cx <+> ppIdent c <+> ppIdent a $$
+  vcat (map (indent . ppDecl) decls)
+ppDecl (InstanceDecl _ cx c tc tvars decls) = 
+  text "instance" <+> ppSContext cx <+> ppQIdent c <+> ppInst (tc, tvars) $$
+  vcat (map (indent . ppDecl) decls) 
 
 ppPrec :: Infix -> Integer -> Doc
 ppPrec fix p = ppAssoc fix <+> ppPrio p
@@ -311,6 +317,36 @@ ppFieldExpr (Field _ l e) = ppIdent l <> recBind <> ppExpr 0 e
 ppOp :: InfixOp -> Doc
 ppOp (InfixOp     op) = ppQInfixOp op
 ppOp (InfixConstr op) = ppQInfixOp op
+
+-- ---------------------------------------------------------------------------
+-- Type class elements
+-- ---------------------------------------------------------------------------
+
+-- |simple class context
+ppSContext :: SContext -> Doc
+ppSContext (SContext []) = empty
+ppSContext (SContext [(c,a)]) = ppQIdent c <+> ppIdent a <+> text "=>"
+ppSContext (SContext cs) = 
+  (parens $ hsep $ 
+    punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) cs)) 
+  <+> text "=>"  
+
+ppInst :: (TypeConstructor, [Ident]) -> Doc
+ppInst (QualTC tcon, []) = ppQIdent tcon
+ppInst (QualTC tcon, xs) = parens (ppQIdent tcon <+> hsep (map ppIdent xs))
+ppInst (UnitTC, []) = text "()"
+ppInst (UnitTC, _xs) = text "(<unit constructor error>)"
+ppInst (TupleTC n, xs) 
+  | length xs == n = parens $ hsep $ punctuate comma (map ppIdent xs)
+  | length xs > n = text "<tuple error>"
+  | otherwise = (parens $ hcat $ replicate (n-1) comma) <+> hsep (map ppIdent xs)
+ppInst (ListTC, []) = brackets empty
+ppInst (ListTC, [x]) = brackets $ ppIdent x
+ppInst (ListTC, _) = text "[<list error>]"
+ppInst (FuncTC, []) = text "(->)"
+ppInst (FuncTC, (x:[])) = text "(" <> ppIdent x <> text "->)"
+ppInst (FuncTC, (x:y:[])) = parens $ ppIdent x <+> text "->" <+> ppIdent y
+ppInst (FuncTC, _) = text "<func error>" 
 
 -- ---------------------------------------------------------------------------
 -- Names

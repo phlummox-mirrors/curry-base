@@ -167,7 +167,7 @@ topDecls = topDecl `sepBy` semicolon
 
 topDecl :: Parser Token Decl a
 topDecl = choice [ dataDecl, newtypeDecl, typeDecl, foreignDecl
-                 , infixDecl, functionDecl ]
+                 , infixDecl, functionDecl, classDecl, instanceDecl ]
 
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
@@ -308,6 +308,52 @@ foreignDecl = ForeignDecl
   where callConv =  CallConvPrimitive <$-> token Id_primitive
                 <|> CallConvCCall     <$-> token Id_ccall
                 <?> "Unsupported calling convention"
+
+-- Since the grammer used is not LL(1), we have to use the <|?>
+-- operator. The problem is the following:
+-- class Eq a
+--       ^
+-- class Eq a => Ord b
+--       ^
+-- At the points marked, we cannot decide, whether we have 
+-- a context or not, so we don't know whether to apply 
+-- "scontext <*-> token DoubleArrow" or "succeed emptyscontext" and "tycls". 
+-- What was the right interpretation can only be decided later, 
+-- and that's what the <|?> operator does: It tries both parsers 
+-- and afterward chooses the appropriate one.
+classDecl :: Parser Token Decl a
+classDecl = (\p (scon,c,v) decls -> ClassDecl p scon c v decls) <$>
+  tokenPos KW_class
+  <*> 
+    (((,,) <$> scontext <*-> token DoubleArrow
+    <*> tycls
+    <*> tyvar)
+    <|?>
+    ((,,) <$> succeed emptyscontext
+    <*> tycls
+    <*> tyvar))
+  <*> (token KW_where <-*> layout classDecls `opt` [])
+  where classDecls = oneClassDecl `sepBy` semicolon
+        -- TODO: support infix declarations
+        oneClassDecl = choice [ functionDecl {-, infixDecl -}]
+
+instanceDecl :: Parser Token Decl a
+instanceDecl = 
+  (\p (scon, qc, (itycon, vars)) decls 
+    -> InstanceDecl p scon qc itycon vars decls)
+  <$>
+  tokenPos KW_instance
+  <*> 
+    (((,,) <$> scontext <*-> token DoubleArrow
+    <*> qtycls
+    <*> inst)
+    <|?>
+    ((,,) <$> succeed emptyscontext
+    <*> qtycls
+    <*> inst))
+  <*> (token KW_where <-*> layout instDecls `opt` [])
+  where instDecls = oneInstDecl `sepBy` semicolon
+        oneInstDecl = functionDecl -- TODO: only rules!
 
 -- ---------------------------------------------------------------------------
 -- Types
@@ -691,6 +737,12 @@ funSym = sym
 conSym :: Parser Token Ident a
 conSym = sym
 
+tycls :: Parser Token Ident a
+tycls = conId
+
+qtycls :: Parser Token QualIdent a
+qtycls = qConId 
+
 modIdent :: Parser Token ModuleIdent a
 modIdent = mIdent <?> "module name expected"
 
@@ -883,3 +935,59 @@ leftArrow = token LeftArrow
 
 mkIdentPosition :: Position -> String -> Ident
 mkIdentPosition pos = addPositionIdent pos . mkIdent
+
+-- ---------------------------------------------------------------------------
+-- Type classes
+-- ---------------------------------------------------------------------------
+
+-- |Simple class context, consisting of pairs (class, type variable)
+scontext :: Parser Token SContext a
+scontext = SContext <$> ((parens (sepBy simpleclass comma)) <|> ((:[]) <$> simpleclass))
+
+emptyscontext :: SContext
+emptyscontext = SContext [] 
+
+simpleclass :: Parser Token (QualIdent, Ident) a
+simpleclass = (,) <$> qtycls <*> tyvar
+
+-- |Type in instance declaration. Also recognizes special syntax forms
+-- for tuples, lists and function types. 
+inst :: Parser Token (TypeConstructor, [Ident]) a
+inst = 
+  -- qualified type constructor or special type constructor 
+  -- ( "()", "[]", "->", "(,{,})" ) standing alone
+  (\tcon -> (tcon,[])) <$> gtycon 
+  -- (<qualified type constructor or special type constructor> {tvars})
+  <|?> parens ((,) <$> gtycon <*> many tyvar)
+  -- Tuple (tvar1, ..., tvarn)
+  <|?> (\vars -> (TupleTC (length vars), vars)) 
+         <$> parens ((:) <$> tyvar <*> many1 (comma <-*> tyvar))
+  -- List [tvar]
+  <|?> (\lvar -> (ListTC, [lvar])) <$> brackets tyvar
+  -- Function type (tvar1 -> tvar2)
+  <|?> (\(v1, v2) -> (FuncTC, [v1, v2])) 
+         <$> parens ((,) <$> (tyvar <*-> token RightArrow) <*> tyvar) 
+
+-- | any (qualfied) type constructor, and the special type constructors
+-- (), [], (->) and (,{,})
+gtycon :: Parser Token TypeConstructor a
+gtycon = QualTC <$> qtycon 
+    <|?> UnitTC <$-> parens (succeed ()) 
+    <|?> ListTC <$-> brackets (succeed ()) 
+    <|?> FuncTC <$-> leftParen <*-> token RightArrow <*-> rightParen
+    <|?> TupleTC <$> tupleTC
+
+-- | a tuple type constructor, i.e. "(,)", "(,,)", "(,,,)", ...
+tupleTC :: Parser Token Int a
+tupleTC = ((+1) . length) <$> parens (many1 comma)
+   
+
+
+
+
+
+
+
+
+
+

@@ -159,6 +159,10 @@ showsDecl (FreeDecl pos idents)
   . showsPosition pos . space
   . showsList showsIdent idents
   . showsString ")"
+showsDecl (ClassDecl _ _ _ _ _)
+  = showsString "class-declaration-todo-showModule" -- TODO
+showsDecl (InstanceDecl _ _ _ _ _ _)
+  = showsString "instance-declaration-todo-showModule" -- TODO
 
 showsConsDecl :: ConstrDecl -> ShowS
 showsConsDecl (ConstrDecl pos idents ident types)

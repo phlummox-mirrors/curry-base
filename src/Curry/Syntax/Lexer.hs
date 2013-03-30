@@ -81,7 +81,7 @@ data Category
 
   -- reserved keywords
   | KW_case
---  | KW_class -- not supported yet
+  | KW_class 
   | KW_data
 --  | KW_deriving -- not supported yet
   | KW_do
@@ -96,7 +96,7 @@ data Category
   | KW_infix
   | KW_infixl
   | KW_infixr
---  | KW_instance -- not supported yet
+  | KW_instance
   | KW_let
   | KW_module
   | KW_newtype
@@ -118,7 +118,7 @@ data Category
   | Tilde        -- ~
   | Bind         -- :=
   | Select       -- :>
---  | DoubleArrow   -- => -- not supported yet
+  | DoubleArrow  -- =>
 
   -- special identifiers
   | Id_as
@@ -226,10 +226,12 @@ instance Show Token where
   showsPrec _ (Token Tilde              _) = showsEscaped "~"
   showsPrec _ (Token Bind               _) = showsEscaped ":="
   showsPrec _ (Token Select             _) = showsEscaped ":>"
+  showsPrec _ (Token DoubleArrow        _) = showsEscaped "=>"
   showsPrec _ (Token SymDot             _) = showsSpecialOperator "."
   showsPrec _ (Token SymMinus           _) = showsSpecialOperator "-"
   showsPrec _ (Token SymMinusDot        _) = showsSpecialOperator "-."
   showsPrec _ (Token KW_case            _) = showsEscaped "case"
+  showsPrec _ (Token KW_class           _) = showsEscaped "class"
   showsPrec _ (Token KW_data            _) = showsEscaped "data"
   showsPrec _ (Token KW_do              _) = showsEscaped "do"
   showsPrec _ (Token KW_else            _) = showsEscaped "else"
@@ -243,6 +245,7 @@ instance Show Token where
   showsPrec _ (Token KW_infix           _) = showsEscaped "infix"
   showsPrec _ (Token KW_infixl          _) = showsEscaped "infixl"
   showsPrec _ (Token KW_infixr          _) = showsEscaped "infixr"
+  showsPrec _ (Token KW_instance        _) = showsEscaped "instance"
   showsPrec _ (Token KW_let             _) = showsEscaped "let"
   showsPrec _ (Token KW_module          _) = showsEscaped "module"
   showsPrec _ (Token KW_newtype         _) = showsEscaped "newtype"
@@ -323,6 +326,7 @@ reservedOps = Map.fromList
   , ("~" , Tilde      )
   , (":=", Bind       )
   , (":>", Select     )
+  , ("=>", DoubleArrow)
   ]
 
 -- |Map of reserved and special operators
@@ -337,6 +341,7 @@ reservedSpecialOps = Map.union reservedOps $ Map.fromList
 keywords :: Map.Map String Category
 keywords = Map.fromList
   [ ("case"    , KW_case    )
+  , ("class"   , KW_class   )
   , ("data"    , KW_data    )
   , ("do"      , KW_do      )
   , ("else"    , KW_else    )
@@ -350,6 +355,7 @@ keywords = Map.fromList
   , ("infix"   , KW_infix   )
   , ("infixl"  , KW_infixl  )
   , ("infixr"  , KW_infixr  )
+  , ("instance", KW_instance)
   , ("let"     , KW_let     )
   , ("module"  , KW_module  )
   , ("newtype" , KW_newtype )
