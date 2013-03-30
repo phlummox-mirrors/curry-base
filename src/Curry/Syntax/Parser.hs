@@ -233,7 +233,11 @@ functionDecl :: Parser Token Decl a
 functionDecl = position <**> decl
   where
   decl = fun `sepBy1` comma <**> funListDecl
-    <|?> funDecl <$> lhs <*> declRhs
+    <|?> funRule
+
+funRule :: Parser Token (Position -> Decl) a
+funRule = funDecl <$> lhs <*> declRhs
+  where
   lhs = (\f -> (f, FunLhs f [])) <$> fun <|?> funLhs
 
 valueDecl :: Parser Token Decl a
@@ -263,9 +267,15 @@ patDecl :: Pattern -> Rhs -> Position -> Decl
 patDecl t rhs' p = PatternDecl p t rhs'
 
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-funListDecl =  typeSig           <$-> token DoubleColon <*> type0
-           <|> flip ExternalDecl <$-> token KW_external
+funListDecl =  typeSignature
+           <|> externalDecl
+  
+typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
+typeSignature = typeSig <$-> token DoubleColon <*> type0
   where typeSig ty vs p = TypeSig p vs ty
+
+externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
+externalDecl = flip ExternalDecl <$-> token KW_external 
 
 valListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 valListDecl = funListDecl <|> flip FreeDecl <$-> token KW_free
@@ -334,8 +344,9 @@ classDecl = (\p (scon,c,v) decls -> ClassDecl p scon c v decls) <$>
     <*> tyvar))
   <*> (token KW_where <-*> layout classDecls `opt` [])
   where classDecls = oneClassDecl `sepBy` semicolon
+        fullTypeSig = position <**> (fun `sepBy1` comma <**> typeSignature)
         -- TODO: support infix declarations
-        oneClassDecl = choice [ functionDecl {-, infixDecl -}]
+        oneClassDecl = foldl1 (<|?>) [ fullTypeSig, position <**> funRule {-, infixDecl -}]
 
 instanceDecl :: Parser Token Decl a
 instanceDecl = 
@@ -353,7 +364,7 @@ instanceDecl =
     <*> inst))
   <*> (token KW_where <-*> layout instDecls `opt` [])
   where instDecls = oneInstDecl `sepBy` semicolon
-        oneInstDecl = functionDecl -- TODO: only rules!
+        oneInstDecl = position <**> funRule
 
 -- ---------------------------------------------------------------------------
 -- Types

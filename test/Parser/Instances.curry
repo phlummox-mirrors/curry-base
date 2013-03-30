@@ -90,8 +90,24 @@ instance Eq (a -> b)
 
 
 
+instance Eq a where
 
 instance Eq a where
   x = 5
   y = z
-  a :: Int-> Int
+  -- a :: Int-> Int
+  -- a external
+
+instance Eq a where
+  x = 1
+
+instance Eq a where
+  x = y
+  z = d
+  e = f
+
+instance Eq a where
+  a `op` b = c
+  a 1 2 3 = e
+  a + c = 2
+

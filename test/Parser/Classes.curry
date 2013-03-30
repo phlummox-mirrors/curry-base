@@ -90,6 +90,7 @@ class Eq a where
   -- (a, b) = (1, 2)
   a `op` b = 1
   b + c = 2
+  c 1 2 3 = 1
 
 
 class Eq a where
@@ -97,4 +98,5 @@ class Eq a where
   b = 2
   b = 1
   b = 10
+  -- b external
   
