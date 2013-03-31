@@ -229,7 +229,7 @@ data Expression
   | Variable        QualIdent
   | Constructor     QualIdent
   | Paren           Expression
-  | Typed           Expression {- Context -} TypeExpr -- TODO
+  | Typed           Expression Context TypeExpr
   | Tuple           SrcRef [Expression]
   | List            [SrcRef] [Expression]
   | ListCompr       SrcRef Expression [Statement] -- the ref corresponds to the main list

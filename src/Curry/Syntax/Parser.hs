@@ -27,6 +27,8 @@ import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
+import Prelude hiding (exp)
+
 -- |Parse a 'Module'
 parseSource :: FilePath -> String -> MessageM Module
 parseSource path = fmap addSrcRefs
@@ -539,9 +541,13 @@ parenTuplePattern = pattern0 <**> optTuplePattern
 condExpr :: Parser Token a b -> Parser Token CondExpr b
 condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 
--- expr ::= expr0 [ '::' type0 ]
+-- expr ::= expr0 [ '::' [context =>] type0 ]
 expr :: Parser Token Expression a
-expr = expr0 <??> (flip Typed <$-> token DoubleColon <*> type0)
+expr = (expr0 <??> 
+   (typed <$-> token DoubleColon <*> succeed (Context []) <*> type0
+    <|?> 
+    typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0))
+ where typed cons ty exp = Typed exp cons ty 
 
 -- expr0 ::= expr1 { infixOp expr1 }
 expr0 :: Parser Token Expression a
@@ -591,7 +597,10 @@ parenExpr = parens pExpr
               <|> (.) <$> (optType <.> tupleExpr)
   leftSectionOrExp = expr1 <**> (infixApp <$> infixOrTuple')
                 `opt` leftSection
-  optType   = flip Typed <$-> token DoubleColon <*> type0 `opt` id
+  optType   = ((typed <$-> token DoubleColon <*> succeed (Context []) <*> type0)
+          <|?> (typed <$-> token DoubleColon <*> context <*-> 
+                           token DoubleArrow <*> type0)) `opt` id
+  typed cons ty exp = Typed exp cons ty
   tupleExpr = tuple <$> many1 (comma <-*> expr) `opt` Paren
   opOrRightSection =  qFunSym <**> optRightSection
                   <|> colon   <**> optCRightSection

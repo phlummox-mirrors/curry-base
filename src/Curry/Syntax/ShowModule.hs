@@ -365,7 +365,7 @@ showsExpression (Paren expr)
   = showsString "(Paren "
   . showsExpression expr
   . showsString ")"
-showsExpression (Typed expr typ)
+showsExpression (Typed expr cx typ) --TODO
   = showsString "(Typed "
   . showsExpression expr . space
   . showsTypeExpr typ

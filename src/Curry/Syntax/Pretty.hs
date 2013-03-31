@@ -254,8 +254,8 @@ ppExpr _ (Literal        l) = ppLiteral l
 ppExpr _ (Variable       v) = ppQIdent v
 ppExpr _ (Constructor    c) = ppQIdent c
 ppExpr _ (Paren          e) = parens (ppExpr 0 e)
-ppExpr p (Typed       e ty) =
-  parenExp (p > 0) (ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty)
+ppExpr p (Typed    e cx ty) =
+  parenExp (p > 0) (ppExpr 0 e <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty)
 ppExpr _ (Tuple       _ es) = parenList (map (ppExpr 0) es)
 ppExpr _ (List        _ es) = bracketList (map (ppExpr 0) es)
 ppExpr _ (ListCompr _ e qs) =

@@ -36,3 +36,4 @@ j17 :: Eq (a [e] [f]) => b
 j18 :: Eq (a [e] [f] (c,d) () [x]) => b
 
 k :: (Eq (a e), Ord (b Int)) => b
+l :: (Eq a, Ord (b Int)) => a
