@@ -271,8 +271,9 @@ funListDecl =  typeSignature
            <|> externalDecl
   
 typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
-typeSignature = typeSig <$-> token DoubleColon <*> type0
-  where typeSig ty vs p = TypeSig p vs ty
+typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0)
+  <|?> (typeSig <$-> token DoubleColon <*> succeed (Context []) <*> type0)
+  where typeSig cx ty vs p = TypeSig p vs cx ty
 
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
 externalDecl = flip ExternalDecl <$-> token KW_external 
@@ -380,6 +381,7 @@ type1 = ConstructorType <$> qtycon <*> many type2
     <|> type2 <\> qtycon
 
 -- type2 ::= '_' | identType | parenType | listType
+-- TODO: allow also "[]", "(->)" and "(,{,})"
 type2 :: Parser Token TypeExpr a
 type2 = anonType <|> identType <|> parenType <|> listType
 
@@ -976,29 +978,54 @@ inst =
   -- List [tvar]
   <|?> (\lvar -> (ListTC, [lvar])) <$> brackets tyvar
   -- Function type (tvar1 -> tvar2)
-  <|?> (\(v1, v2) -> (FuncTC, [v1, v2])) 
+  <|?> (\(v1, v2) -> (ArrowTC, [v1, v2])) 
          <$> parens ((,) <$> (tyvar <*-> token RightArrow) <*> tyvar) 
 
 -- | any (qualfied) type constructor, and the special type constructors
 -- (), [], (->) and (,{,})
 gtycon :: Parser Token TypeConstructor a
 gtycon = QualTC <$> qtycon 
-    <|?> UnitTC <$-> parens (succeed ()) 
-    <|?> ListTC <$-> brackets (succeed ()) 
-    <|?> FuncTC <$-> leftParen <*-> token RightArrow <*-> rightParen
+    <|?> UnitTC <$-> unit
+    <|?> ListTC <$-> emptyList
+    <|?> ArrowTC <$-> funArrow
     <|?> TupleTC <$> tupleTC
+
+unit :: Parser Token () a
+unit = parens (succeed ())
+
+emptyList :: Parser Token () a
+emptyList = brackets (succeed ()) 
+
+funArrow :: Parser Token () a
+funArrow = () <$-> leftParen <*-> token RightArrow <*-> rightParen
 
 -- | a tuple type constructor, i.e. "(,)", "(,,)", "(,,,)", ...
 tupleTC :: Parser Token Int a
 tupleTC = ((+1) . length) <$> parens (many1 comma)
-   
+
+-- | a saturated context (not the simple context as above)   
+context :: Parser Token Context a
+context = (\c -> Context [c]) <$> contextElem 
+      <|> Context <$> (parens $ (contextElem `sepBy` comma))  
+
+-- | each saturated context element has the following form:
+-- contextElem ::= qtycls tyvar | qtycls (tyvar atype_1 ... atype_n) n >= 1
+contextElem :: Parser Token ContextElem a
+contextElem = (\tcon (tvar, types) -> ContextElem tcon tvar types) 
+  <$> qtycon <*> 
+  ((,) <$> tyvar <*> succeed [] <|> parens ((,) <$> tyvar <*> many1 atype))
+
+-- TODO: later replace by type2
+atype :: Parser Token TypeExpr a
+atype = gtycon' <|?> identType <|?> parenType <|?> listType 
 
 
-
-
-
-
-
+gtycon' :: Parser Token TypeExpr a
+gtycon' = {-(flip ConstructorType []) <$> qtycon
+     <|?> SpecialConstructorType UnitTC [] <$-> unit
+     <|?> -}SpecialConstructorType ListTC [] <$-> emptyList
+     <|?> SpecialConstructorType ArrowTC [] <$-> funArrow
+     <|?> (flip SpecialConstructorType  []) <$> (TupleTC <$> tupleTC) 
 
 
 

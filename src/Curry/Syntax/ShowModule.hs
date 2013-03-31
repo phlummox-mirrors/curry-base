@@ -123,7 +123,7 @@ showsDecl (TypeDecl pos ident idents typ)
   . showsList showsIdent idents . space
   . showsTypeExpr typ
   . showsString ")"
-showsDecl (TypeSig pos idents typ)
+showsDecl (TypeSig pos idents cx typ)
   = showsString "(TypeSig "
   . showsPosition pos . space
   . showsList showsIdent idents . space

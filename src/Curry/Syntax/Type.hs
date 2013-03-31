@@ -31,7 +31,7 @@ module Curry.Syntax.Type
     -- * Goals
   , Goal (..)
     -- * Type classes
-  , SContext (..), TypeConstructor (..)
+  , SContext (..), TypeConstructor (..), Context (..), ContextElem (..)
   ) where
 
 import Data.Generics (Data (..), Typeable (..))
@@ -117,7 +117,7 @@ data Decl
   | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
-  | TypeSig      Position [Ident] TypeExpr                       -- f, g :: Bool
+  | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
   | FunctionDecl Position Ident [Equation]                       -- f True = 1 ; f False = 0
   | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
   | ExternalDecl Position [Ident]                                -- f, g external
@@ -157,6 +157,8 @@ data CallConv
 -- |Type expressions
 data TypeExpr
   = ConstructorType QualIdent [TypeExpr]
+  -- TODO: merge ConstructorType + SpecialConstructorType
+  | SpecialConstructorType TypeConstructor [TypeExpr]
   | VariableType    Ident
   | TupleType       [TypeExpr]
   | ListType        TypeExpr
@@ -227,7 +229,7 @@ data Expression
   | Variable        QualIdent
   | Constructor     QualIdent
   | Paren           Expression
-  | Typed           Expression TypeExpr
+  | Typed           Expression {- Context -} TypeExpr -- TODO
   | Tuple           SrcRef [Expression]
   | List            [SrcRef] [Expression]
   | ListCompr       SrcRef Expression [Statement] -- the ref corresponds to the main list
@@ -326,5 +328,15 @@ data TypeConstructor = QualTC QualIdent
                      | UnitTC
                      | TupleTC Int
                      | ListTC
-                     | FuncTC
+                     | ArrowTC
   deriving (Eq, Read, Show, Data, Typeable)
+  
+data Context = Context [ContextElem]
+  deriving (Eq, Read, Show, Data, Typeable)
+
+data ContextElem = ContextElem QualIdent Ident [TypeExpr]
+  deriving (Eq, Read, Show, Data, Typeable)
+
+
+
+

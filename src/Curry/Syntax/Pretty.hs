@@ -77,12 +77,12 @@ ppDecl (NewtypeDecl _ tc tvs nc) =
   sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppDecl (TypeSig _ fs ty) =
-  list (map ppIdent fs) <+> text "::" <+> ppTypeExpr 0 ty
+ppDecl (TypeSig _ fs cx ty) =
+  list (map ppIdent fs) <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty
 ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
 ppDecl (ForeignDecl p cc impent f ty) =
   sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
-       indent (ppDecl (TypeSig p [f] ty))]
+       indent (ppDecl (TypeSig p [f] (Context []) ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
         ppCallConv CallConvCCall     = text "ccall"
 ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
@@ -193,6 +193,7 @@ ppTypeExpr _ (RecordType fs rty) = braces (list (map ppTypedField fs)
     <> maybe empty (\ty -> space <> char '|' <+> ppTypeExpr 0 ty) rty)
   where
   ppTypedField (ls,ty) = list (map ppIdent ls) <> text "::" <> ppTypeExpr 0 ty
+ppTypeExpr _ (SpecialConstructorType c exps) = ppInst (c, []) <+> (hsep $ map (ppTypeExpr 0) exps)
 
 -- ---------------------------------------------------------------------------
 -- Literals
@@ -343,10 +344,21 @@ ppInst (TupleTC n, xs)
 ppInst (ListTC, []) = brackets empty
 ppInst (ListTC, [x]) = brackets $ ppIdent x
 ppInst (ListTC, _) = text "[<list error>]"
-ppInst (FuncTC, []) = text "(->)"
-ppInst (FuncTC, (x:[])) = text "(" <> ppIdent x <> text "->)"
-ppInst (FuncTC, (x:y:[])) = parens $ ppIdent x <+> text "->" <+> ppIdent y
-ppInst (FuncTC, _) = text "<func error>" 
+ppInst (ArrowTC, []) = text "(->)"
+ppInst (ArrowTC, (x:[])) = text "(" <> ppIdent x <> text "->)"
+ppInst (ArrowTC, (x:y:[])) = parens $ ppIdent x <+> text "->" <+> ppIdent y
+ppInst (ArrowTC, _) = text "<func error>" 
+
+ppContext :: Context -> Doc
+ppContext (Context []) = empty
+ppContext (Context [x]) = ppContextElem x <+> text "=>"
+ppContext (Context xs) = 
+  parens (hsep $ punctuate comma (map ppContextElem xs)) <+> text "=>"
+
+ppContextElem :: ContextElem -> Doc
+ppContextElem (ContextElem cls tyvar []) = ppQIdent cls <+> ppIdent tyvar
+ppContextElem (ContextElem cls tyvar ts) = 
+  ppQIdent cls <+> parens (ppIdent tyvar <+> hsep (map (ppTypeExpr 0) ts))
 
 -- ---------------------------------------------------------------------------
 -- Names
