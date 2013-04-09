@@ -127,6 +127,7 @@ showsDecl (TypeSig pos idents cx typ)
   = showsString "(TypeSig "
   . showsPosition pos . space
   . showsList showsIdent idents . space
+  . showsContext cx
   . showsTypeExpr typ
   . showsString ")"
 showsDecl (FunctionDecl pos ident eqs)
@@ -159,10 +160,19 @@ showsDecl (FreeDecl pos idents)
   . showsPosition pos . space
   . showsList showsIdent idents
   . showsString ")"
-showsDecl (ClassDecl _ _ _ _ _)
-  = showsString "class-declaration-todo-showModule" -- TODO
-showsDecl (InstanceDecl _ _ _ _ _ _)
-  = showsString "instance-declaration-todo-showModule" -- TODO
+showsDecl (ClassDecl pos scx c u decls)
+  = showsString "(ClassDecl "
+  . showsPosition pos . space
+  . showsSContext scx . space . showsIdent c . space . showsIdent u . space
+  . showsList (\d -> showsDecl d . newline) decls
+  . showsString ")"
+showsDecl (InstanceDecl pos scx cls ty as decls)
+  = showsString "(InstanceDecl "
+  . showsPosition pos . space
+  . showsSContext scx . space . showsQualIdent cls . space . showsTC ty 
+  . space . showsList (\a -> showsIdent a . space) as
+  . space . showsList (\d -> showsDecl d . newline) decls
+  . showsString ")"
 
 showsConsDecl :: ConstrDecl -> ShowS
 showsConsDecl (ConstrDecl pos idents ident types)
@@ -194,6 +204,11 @@ showsTypeExpr :: TypeExpr -> ShowS
 showsTypeExpr (ConstructorType qident types)
   = showsString "(ConstructorType "
   . showsQualIdent qident . space
+  . showsList showsTypeExpr types
+  . showsString ")"
+showsTypeExpr (SpecialConstructorType tycon types)
+  = showsString "(SpecialConstructorType "
+  . showsTC tycon . space
   . showsList showsTypeExpr types
   . showsString ")"
 showsTypeExpr (VariableType ident)
@@ -365,9 +380,10 @@ showsExpression (Paren expr)
   = showsString "(Paren "
   . showsExpression expr
   . showsString ")"
-showsExpression (Typed expr cx typ) --TODO
+showsExpression (Typed expr cx typ)
   = showsString "(Typed "
   . showsExpression expr . space
+  . showsContext cx . space
   . showsTypeExpr typ
   . showsString ")"
 showsExpression (Tuple _ exps)
@@ -565,3 +581,29 @@ showsQualIdent (QualIdent mident ident)
 
 showsModuleIdent :: ModuleIdent -> ShowS
 showsModuleIdent = shows . moduleName
+
+
+-- type classes specific
+showsSContext :: SContext -> ShowS
+showsSContext (SContext cs) = 
+  showsString "(SContext "
+  . showsList (\(qid, idt) -> showsQualIdent qid . space . showsIdent idt) cs
+  . showsString ")"
+  
+showsTC :: TypeConstructor -> ShowS
+showsTC (QualTC idt) = showsString "(QualTC " . showsQualIdent idt . showsString ")"
+showsTC (UnitTC) = showsString "(UnitTC)"
+showsTC (TupleTC n) = showsString "(TupleTC " . showsString (show n) . showsString ")"
+showsTC (ListTC) = showsString "(ListTC)"
+showsTC (ArrowTC) = showsString "(ArrowTC)"
+
+showsContext :: Context -> ShowS
+showsContext (Context elems) 
+  = showsString "(Context "
+  . showsList (\(ContextElem qid idt exps) -> 
+     showsString "(ContextElem " . showsQualIdent qid . space 
+     . showsIdent idt . showsList showsTypeExpr exps . showsString ")") elems
+  . showsString ")" 
+  
+  
+  
