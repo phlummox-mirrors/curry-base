@@ -382,10 +382,10 @@ type1 :: Parser Token TypeExpr a
 type1 = ConstructorType <$> qtycon <*> many type2
     <|> type2 <\> qtycon
 
--- type2 ::= '_' | identType | parenType | listType
--- TODO: allow also "[]", "(->)" and "(,{,})"
+-- type2 ::= '_' | identType | parenType | listType | [] | (->) | (,{,})
+-- allow also "[]", "(->)" and "(,{,})"!
 type2 :: Parser Token TypeExpr a
-type2 = anonType <|> identType <|> parenType <|> listType
+type2 = (anonType <|> identType <|> parenType <|> listType) <|?> gtycon'
 
 anonType :: Parser Token TypeExpr a
 anonType = VariableType <$> anonIdent
@@ -1024,7 +1024,6 @@ contextElem = (\tcon (tvar, types) -> ContextElem tcon tvar types)
   <$> qtycon <*> 
   ((,) <$> tyvar <*> succeed [] <|> parens ((,) <$> tyvar <*> many1 atype))
 
--- TODO: later replace by type2
 atype :: Parser Token TypeExpr a
 atype = gtycon' <|?> identType <|?> parenType <|?> listType 
 
