@@ -51,9 +51,9 @@ updFuncExpsM _ func@(Func _ _ _ _ (External _)) = return func
 
 -- |Update all 'FuncDecl's in a program
 updProgFuncsM :: Monad m => UpdateM m Prog FuncDecl
-updProgFuncsM f (Prog name imps types funcs ops) = do
+updProgFuncsM f (Prog name imps types funcs ops cs) = do
   funcs' <- mapM f funcs
-  return (Prog name imps types funcs' ops)
+  return (Prog name imps types funcs' ops cs)
 
 -- |Update all let-declarations in a function declaration
 updFuncLetsM  :: Monad m => ([(VarIndex, Expr)] -> Expr -> m Expr)

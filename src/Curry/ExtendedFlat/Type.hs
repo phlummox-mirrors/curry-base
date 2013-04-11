@@ -27,6 +27,7 @@ module Curry.ExtendedFlat.Type
   , TVarIndex, ConsDecl (..), OpDecl (..), Fixity (..)
   , FuncDecl (..), Rule(..), Expr (..), Literal (..)
   , CombType (..), CaseType (..), BranchExpr (..), Pattern (..)
+  , Class (..), Interface (..), ClassExport
     -- * Functions for reading and writing FlatCurry terms
   , readFlatCurry, readFlatInterface, readFlat
   , writeFlatCurry, writeExtendedFlat
@@ -145,7 +146,7 @@ data Visibility
 --
 -- A value of this data type has the form
 --
--- @Prog modname imports typedecls functions opdecls@
+-- @Prog modname imports typedecls functions opdecls classExp@
 --
 -- where
 --
@@ -154,7 +155,8 @@ data Visibility
 -- [@typedecls@] Type declarations
 -- [@funcdecls@] Function declarations
 -- [@ opdecls@]  Operator declarations
-data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl]
+-- [@classExp@]  Class declaration and type classes specific exports
+data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl] ClassExport
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Declaration of algebraic data type or type synonym.
@@ -492,3 +494,29 @@ gshowsPrec showType d = genericShowsPrec d
   showsTuple (x,y)
     = showChar '(' . gshowsPrec showType False x
     . showChar ',' . gshowsPrec showType False y . showChar ')'
+
+    
+    
+-- ----------------------------------------------------------------------------
+-- type classes specific
+-- ----------------------------------------------------------------------------
+
+data Class = Class
+  { superClasses :: [QName]
+  , theClass :: QName
+  , typeVar :: VarIndex -- TODO needed?
+  , kind :: Int
+  , methods :: [TypeExpr]
+  }
+  deriving (Eq, Read, Show, Data, Typeable)
+
+data Interface = Interface
+  { context :: [(QName,QName)]
+  , iClass :: QName
+  , iType :: QName
+  , typeVars :: [VarIndex]
+  -- , funcDefinitions :: [???]
+  }
+  deriving (Eq, Read, Show, Data, Typeable)
+  
+type ClassExport = Maybe ([Class], [Interface])

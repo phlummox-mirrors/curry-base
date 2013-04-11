@@ -18,12 +18,13 @@ import Curry.ExtendedFlat.Type
 
 -- |Check whether the interfaces of two FlatCurry programs are equal
 eqInterface :: Prog -> Prog -> Bool
-eqInterface (Prog mi1 is1 ts1 fs1 os1) (Prog mi2 is2 ts2 fs2 os2)
+eqInterface (Prog mi1 is1 ts1 fs1 os1 cs1) (Prog mi2 is2 ts2 fs2 os2 cs2)
   =  mi1 == mi2
   && is1 `eqImports`   is2
   && ts1 `eqTypeDecls` ts2
   && fs1 `eqFuncDecls` fs2
   && os1 `eqOpDecls`   os2
+  && cs1 `eqClasses`   cs2
 
 eqImports :: [String] -> [String] -> Bool
 eqImports is1 is2 = sort is1 == sort is2
@@ -107,6 +108,9 @@ eqOpDecls os1 ((Op qname fix2 prec2):os2') =
                 && eqOpDecls os1' os2'
             )
             mo
+
+eqClasses :: ClassExport -> ClassExport -> Bool
+eqClasses c1 c2 = c1 == c2 
 
 --
 isTypeSyn :: QName -> TypeDecl -> Bool
