@@ -89,10 +89,11 @@ ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
 ppDecl (PatternDecl _ t rhs) = ppRule (ppPattern 0 t) equals rhs
 ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
 ppDecl (ClassDecl _ cx c a decls) = 
-  text "class" <+> ppSContext cx <+> ppIdent c <+> ppIdent a $$
+  text "class" <+> ppSContext cx <+> ppIdent c <+> ppIdent a <+> text "where" $$
   vcat (map (indent . ppDecl) decls)
 ppDecl (InstanceDecl _ cx c tc tvars decls) = 
-  text "instance" <+> ppSContext cx <+> ppQIdent c <+> ppInst (tc, tvars) $$
+  text "instance" <+> ppSContext cx <+> ppQIdent c <+> ppInst (tc, tvars) <+> 
+  text "where" $$
   vcat (map (indent . ppDecl) decls) 
 
 ppPrec :: Infix -> Integer -> Doc
