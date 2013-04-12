@@ -15,7 +15,7 @@
 -}
 module Curry.Syntax.Utils
   ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
-  , isInstanceDecl, isRecordDecl, patchModuleId
+  , isInstanceDecl, isRecordDecl, isFunctionDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
@@ -69,12 +69,19 @@ isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
 isRecordDecl _                                 = False
 
 -- |Is the declaration a class declaration?
+isClassDecl :: Decl -> Bool
 isClassDecl (ClassDecl _ _ _ _ _) = True
 isClassDecl _ = False
 
 -- |Is the declaration an instance declaration?
+isInstanceDecl :: Decl -> Bool
 isInstanceDecl (InstanceDecl _ _ _ _ _ _) = True
 isInstanceDecl _ = False
+
+-- |Is the declaraion a
+isFunctionDecl :: Decl -> Bool
+isFunctionDecl (FunctionDecl _ _ _) = True
+isFunctionDecl _ = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
