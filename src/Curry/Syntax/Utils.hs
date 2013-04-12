@@ -14,8 +14,8 @@
     abstract syntax tree of Curry.
 -}
 module Curry.Syntax.Utils
-  ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl, patchModuleId
+  ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
+  , isInstanceDecl, isRecordDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
@@ -67,6 +67,14 @@ isValueDecl _ = False
 isRecordDecl :: Decl -> Bool
 isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
 isRecordDecl _                                 = False
+
+-- |Is the declaration a class declaration?
+isClassDecl (ClassDecl _ _ _ _ _) = True
+isClassDecl _ = False
+
+-- |Is the declaration an instance declaration?
+isInstanceDecl (InstanceDecl _ _ _ _ _ _) = True
+isInstanceDecl _ = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
