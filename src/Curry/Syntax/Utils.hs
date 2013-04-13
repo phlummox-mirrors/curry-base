@@ -17,6 +17,7 @@ module Curry.Syntax.Utils
   ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
   , isInstanceDecl, isRecordDecl, isFunctionDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
+  , typeVarsInTypeExpr, typeVarsInContext
   , addSrcRefs
   ) where
 
@@ -115,6 +116,22 @@ field2Tuple (Field _ l t) = (l, t)
 opName :: InfixOp -> QualIdent
 opName (InfixOp    op) = op
 opName (InfixConstr c) = c
+
+-- |Extract all type variables from the type expression
+typeVarsInTypeExpr :: TypeExpr -> [Ident]
+typeVarsInTypeExpr (ConstructorType _ ts) = concatMap typeVarsInTypeExpr ts
+typeVarsInTypeExpr (SpecialConstructorType _ ts) = concatMap typeVarsInTypeExpr ts
+typeVarsInTypeExpr (VariableType t) = [t]
+typeVarsInTypeExpr (TupleType ts) = concatMap typeVarsInTypeExpr ts
+typeVarsInTypeExpr (ListType t) = typeVarsInTypeExpr t
+typeVarsInTypeExpr (ArrowType t1 t2) = typeVarsInTypeExpr t1 ++ typeVarsInTypeExpr t2
+typeVarsInTypeExpr (RecordType _ _ ) = error "typeVarsInTypeExpr"
+
+-- |Extract all type variables from a context
+typeVarsInContext :: Context -> [Ident]
+typeVarsInContext (Context elems) 
+  = concatMap (\(ContextElem _qid id0 texp) -> 
+               id0 : concatMap typeVarsInTypeExpr texp) elems 
 
 ---------------------------
 -- add source references
