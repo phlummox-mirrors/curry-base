@@ -16,7 +16,7 @@
 -}
 module Curry.Syntax.Pretty
   ( ppModule, ppInterface, ppIDecl, ppDecl, ppIdent, ppPattern, ppFieldPatt
-  , ppExpr, ppOp, ppStmt, ppFieldExpr, ppTypeExpr, ppAlt, ppContext
+  , ppExpr, ppOp, ppStmt, ppFieldExpr, ppTypeExpr, ppAlt, ppContext, ppQIdent
   ) where
 
 import Text.PrettyPrint
