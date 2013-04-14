@@ -329,7 +329,14 @@ data TypeConstructor = QualTC QualIdent
                      | TupleTC Int
                      | ListTC
                      | ArrowTC
-  deriving (Eq, Read, Show, Data, Typeable)
+  deriving (Eq, Read, Data, Typeable)
+  
+instance Show TypeConstructor where
+  show (QualTC qid) = show qid
+  show UnitTC = "()"
+  show (TupleTC n) = "(" ++ replicate (n-1) ',' ++ ")"
+  show ListTC = "[]"
+  show ArrowTC = "(->)"
   
 data Context = Context [ContextElem]
   deriving (Eq, Read, Show, Data, Typeable)
