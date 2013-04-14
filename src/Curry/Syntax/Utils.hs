@@ -18,7 +18,7 @@ module Curry.Syntax.Utils
   , isInstanceDecl, isRecordDecl, isFunctionDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , typeVarsInTypeExpr, typeVarsInContext
-  , addSrcRefs
+  , addSrcRefs, simpleContextToContext
   ) where
 
 import Control.Monad.State
@@ -132,6 +132,10 @@ typeVarsInContext :: Context -> [Ident]
 typeVarsInContext (Context elems) 
   = concatMap (\(ContextElem _qid id0 texp) -> 
                id0 : concatMap typeVarsInTypeExpr texp) elems 
+
+simpleContextToContext :: SContext -> Context
+simpleContextToContext (SContext list) 
+  = Context $ map (\(qid, id) -> ContextElem qid id []) list
 
 ---------------------------
 -- add source references
