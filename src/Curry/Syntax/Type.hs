@@ -32,6 +32,7 @@ module Curry.Syntax.Type
   , Goal (..)
     -- * Type classes
   , SContext (..), TypeConstructor (..), Context (..), ContextElem (..)
+  , emptyContext
   ) where
 
 import Data.Generics (Data (..), Typeable (..))
@@ -344,6 +345,7 @@ data Context = Context [ContextElem]
 data ContextElem = ContextElem QualIdent Ident [TypeExpr]
   deriving (Eq, Read, Show, Data, Typeable)
 
-
+emptyContext :: Context
+emptyContext = Context []
 
 
