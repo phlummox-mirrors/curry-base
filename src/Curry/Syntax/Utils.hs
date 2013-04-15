@@ -135,7 +135,7 @@ typeVarsInContext (Context elems)
 
 simpleContextToContext :: SContext -> Context
 simpleContextToContext (SContext list) 
-  = Context $ map (\(qid, id) -> ContextElem qid id []) list
+  = Context $ map (\(qid, id0) -> ContextElem qid id0 []) list
 
 ---------------------------
 -- add source references
