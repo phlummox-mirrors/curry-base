@@ -367,16 +367,16 @@ ppContextElem (ContextElem cls tyvar ts) =
 
 -- |Pretty print an identifier
 ppIdent :: Ident -> Doc
-ppIdent x = parenExp (isInfixOp x) (text (idName x))
+ppIdent x = parenExp (isInfixOp x) (text (show x))
 
 ppQIdent :: QualIdent -> Doc
-ppQIdent x = parenExp (isQInfixOp x) (text (qualName x))
+ppQIdent x = parenExp (isQInfixOp x) (text (show x))
 
 ppInfixOp :: Ident -> Doc
-ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (idName x))
+ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (show x))
 
 ppQInfixOp :: QualIdent -> Doc
-ppQInfixOp x = backQuoteExp (not (isQInfixOp x)) (text (qualName x))
+ppQInfixOp x = backQuoteExp (not (isQInfixOp x)) (text (show x))
 
 ppMIdent :: ModuleIdent -> Doc
 ppMIdent m = text (moduleName m)
