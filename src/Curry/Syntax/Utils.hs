@@ -15,7 +15,7 @@
 -}
 module Curry.Syntax.Utils
   ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
-  , isInstanceDecl, isRecordDecl, isFunctionDecl, patchModuleId
+  , isInstanceDecl, isRecordDecl, isFunctionDecl, isPatternDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , typeVarsInTypeExpr, typeVarsInContext
   , addSrcRefs, simpleContextToContext
@@ -79,10 +79,15 @@ isInstanceDecl :: Decl -> Bool
 isInstanceDecl (InstanceDecl _ _ _ _ _ _) = True
 isInstanceDecl _ = False
 
--- |Is the declaraion a function declaration
+-- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool
 isFunctionDecl (FunctionDecl _ _ _) = True
 isFunctionDecl _ = False
+
+-- |Is the declaration a pattern declaration?
+isPatternDecl :: Decl -> Bool
+isPatternDecl (PatternDecl _ _ _) = True
+isPatternDecl _ = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
