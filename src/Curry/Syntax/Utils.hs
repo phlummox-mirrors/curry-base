@@ -79,7 +79,7 @@ isInstanceDecl :: Decl -> Bool
 isInstanceDecl (InstanceDecl _ _ _ _ _ _) = True
 isInstanceDecl _ = False
 
--- |Is the declaraion a
+-- |Is the declaraion a function declaration
 isFunctionDecl :: Decl -> Bool
 isFunctionDecl (FunctionDecl _ _ _) = True
 isFunctionDecl _ = False
