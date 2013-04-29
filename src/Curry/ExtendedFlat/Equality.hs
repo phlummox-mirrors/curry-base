@@ -17,13 +17,17 @@ import Data.List hiding (concat, zip, zipWith)
 
 import Curry.ExtendedFlat.Type
 
-progsEqual :: Prog -> Prog -> Bool
+progsEqual :: Prog -> Prog -> (Bool, String)
 progsEqual p1 p2 = case eqProg p1 p2 of
-  Nothing -> False
+  Nothing -> (False, "structure")
   Just (tvarm, pvarm) -> 
     let tvarm' = nub tvarm
         pvarm' = nub pvarm
-    in bijective tvarm' && bijective pvarm'
+    in if bijective tvarm' then 
+          if bijective pvarm' 
+          then (True, "")
+          else (False, "program variables")
+       else (False, "type variables")
     
   where
   bijective :: Eq a => [(a, a)] -> Bool
