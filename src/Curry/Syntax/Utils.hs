@@ -19,6 +19,7 @@ module Curry.Syntax.Utils
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , typeVarsInTypeExpr, typeVarsInContext
   , addSrcRefs, simpleContextToContext
+  , isDataDecl, isNewtypeDecl
   ) where
 
 import Control.Monad.State
@@ -88,6 +89,16 @@ isFunctionDecl _ = False
 isPatternDecl :: Decl -> Bool
 isPatternDecl (PatternDecl _ _ _) = True
 isPatternDecl _ = False
+
+-- |Is the declaration a data declaration?
+isDataDecl :: Decl -> Bool
+isDataDecl (DataDecl _ _ _ _) = True
+isDataDecl _ = False
+
+-- |Is the declaration a newtype declaration?
+isNewtypeDecl :: Decl -> Bool
+isNewtypeDecl (NewtypeDecl _ _ _ _) = True
+isNewtypeDecl _ = False 
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
