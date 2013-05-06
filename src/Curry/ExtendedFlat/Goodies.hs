@@ -38,31 +38,31 @@ type Update a b = (b -> b) -> a -> a
 -- Prog ----------------------------------------------------------------------
 
 -- |transform program
-trProg :: (String -> [String] -> [TypeDecl] -> [FuncDecl] -> [OpDecl] -> ClassExport -> a)
+trProg :: (String -> [String] -> [TypeDecl] -> [FuncDecl] -> [OpDecl] -> {-ClassExport -> -}a)
           -> Prog -> a
-trProg prog (Prog name imps types funcs ops cex) = prog name imps types funcs ops cex
+trProg prog (Prog name imps types funcs ops {-cex-}) = prog name imps types funcs ops {-cex-}
 
 -- Selectors
 
 -- |get name from program
 progName :: Prog -> String
-progName = trProg (\name _ _ _ _ _ -> name)
+progName = trProg (\name _ _ _ _ -> name)
 
 -- |get imports from program
 progImports :: Prog -> [String]
-progImports = trProg (\_ imps _ _ _ _ -> imps)
+progImports = trProg (\_ imps _ _ _ -> imps)
 
 -- |get type declarations from program
 progTypes :: Prog -> [TypeDecl]
-progTypes = trProg (\_ _ types _ _ _ -> types)
+progTypes = trProg (\_ _ types _ _ -> types)
 
 -- |get functions from program
 progFuncs :: Prog -> [FuncDecl]
-progFuncs = trProg (\_ _ _ funcs _ _ -> funcs)
+progFuncs = trProg (\_ _ _ funcs _ -> funcs)
 
 -- |get infix operators from program
 progOps :: Prog -> [OpDecl]
-progOps = trProg (\_ _ _ _ ops _ -> ops)
+progOps = trProg (\_ _ _ _ ops -> ops)
 
 -- Update Operations
 

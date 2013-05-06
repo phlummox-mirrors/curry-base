@@ -39,15 +39,15 @@ progsEqual p1 p2 = case eqProg p1 p2 of
 type Mapping = ([(TVarIndex, TVarIndex)], [(VarIndex, VarIndex)])
 
 eqProg :: Prog -> Prog -> Maybe Mapping
-eqProg (Prog s1 ss1 tds1 fds1 opds1 Nothing)
-       (Prog s2 ss2 tds2 fds2 opds2 Nothing)
+eqProg (Prog s1 ss1 tds1 fds1 opds1 {-Nothing-})
+       (Prog s2 ss2 tds2 fds2 opds2 {-Nothing-})
   | s1 == s2 && ss1 == ss2 = do
     m1 <- zipWith'' eqTypeDecl tds1 tds2
     m2 <- zipWith'' eqFuncDecl fds1 fds2
     m3 <- zipWith'' eqOpDecl opds1 opds2
     return (m1 `concat` m2 `concat` m3) 
   | otherwise = Nothing
-eqProg _ _ = Nothing
+-- eqProg _ _ = Nothing
 
 
   

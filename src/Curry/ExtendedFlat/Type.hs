@@ -156,7 +156,7 @@ data Visibility
 -- [@funcdecls@] Function declarations
 -- [@ opdecls@]  Operator declarations
 -- [@classExp@]  Class declaration and type classes specific exports
-data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl] ClassExport
+data Prog = Prog String [String] [TypeDecl] [FuncDecl] [OpDecl] {-ClassExport-}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Declaration of algebraic data type or type synonym.
