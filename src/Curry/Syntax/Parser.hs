@@ -181,18 +181,23 @@ infixDeclLhs f = f <$> position <*> tokenOps infixKW
   infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
 dataDecl :: Parser Token Decl a
-dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
+dataDecl = typeDeclLhsWithCx DataDecl KW_data <*> constrs
   where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
 newtypeDecl :: Parser Token Decl a
-newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
+newtypeDecl = typeDeclLhsWithCx NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
 typeDecl :: Parser Token Decl a
-typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> (type0 <|> recordDecl)
+typeDecl = typeDeclLhsWithoutCx TypeDecl KW_type <*-> equals <*> (type0 <|> recordDecl)
 
-typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
+typeDeclLhsWithoutCx :: (Position -> Ident -> [Ident] -> a) -> Category
             -> Parser Token a b
-typeDeclLhs f kw = f <$> tokenPos kw <*> tycon <*> many anonOrTyvar
+typeDeclLhsWithoutCx f kw = f <$> tokenPos kw <*> tycon <*> many anonOrTyvar
+
+typeDeclLhsWithCx :: (Position -> Context -> Ident -> [Ident] -> a) -> Category
+            -> Parser Token a b
+typeDeclLhsWithCx f kw = (f <$> tokenPos kw <*> succeed emptyContext <*> tycon <*> many anonOrTyvar)
+  <|?> (f <$> tokenPos kw <*> context <*-> token DoubleArrow <*> tycon <*> many anonOrTyvar)
 
 constrDecl :: Parser Token ConstrDecl a
 constrDecl = position <**> (existVars <**> constr)
@@ -274,7 +279,7 @@ funListDecl =  typeSignature
   
 typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
 typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0)
-  <|?> (typeSig <$-> token DoubleColon <*> succeed (Context []) <*> type0)
+  <|?> (typeSig <$-> token DoubleColon <*> succeed emptyContext <*> type0)
   where typeSig cx ty vs p = TypeSig p vs cx ty
 
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
@@ -544,7 +549,7 @@ condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 -- expr ::= expr0 [ '::' [context =>] type0 ]
 expr :: Parser Token Expression a
 expr = (expr0 <??> 
-   (typed <$-> token DoubleColon <*> succeed (Context []) <*> type0
+   (typed <$-> token DoubleColon <*> succeed emptyContext <*> type0
     <|?> 
     typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0))
  where typed cons ty exp = Typed exp cons ty 
@@ -597,7 +602,7 @@ parenExpr = parens pExpr
               <|> (.) <$> (optType <.> tupleExpr)
   leftSectionOrExp = expr1 <**> (infixApp <$> infixOrTuple')
                 `opt` leftSection
-  optType   = ((typed <$-> token DoubleColon <*> succeed (Context []) <*> type0)
+  optType   = ((typed <$-> token DoubleColon <*> succeed emptyContext <*> type0)
           <|?> (typed <$-> token DoubleColon <*> context <*-> 
                            token DoubleArrow <*> type0)) `opt` id
   typed cons ty exp = Typed exp cons ty

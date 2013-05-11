@@ -115,8 +115,8 @@ data IDecl
 -- |Declaration in a module
 data Decl
   = InfixDecl    Position Infix Integer [Ident]                  -- infixl 5 (op), `fun` -- TODO: Make precedence optional and change to int
-  | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
-  | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
+  | DataDecl     Position Context Ident [Ident] [ConstrDecl]     -- data K a => C a b = C1 a | C2 b
+  | NewtypeDecl  Position Context Ident [Ident] NewConstrDecl    -- newtype K a => C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
   | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
   | FunctionDecl Position Ident [Equation]                       -- f True = 1 ; f False = 0
