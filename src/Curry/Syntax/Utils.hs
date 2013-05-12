@@ -45,10 +45,10 @@ isInfixDecl _                   = False
 
 -- |Is the declaration a type declaration?
 isTypeDecl :: Decl -> Bool
-isTypeDecl (DataDecl    _ _ _ _ _) = True
-isTypeDecl (NewtypeDecl _ _ _ _ _) = True
-isTypeDecl (TypeDecl      _ _ _ _) = True
-isTypeDecl _                       = False
+isTypeDecl (DataDecl    _ _ _ _) = True
+isTypeDecl (NewtypeDecl _ _ _ _) = True
+isTypeDecl (TypeDecl    _ _ _ _) = True
+isTypeDecl _                     = False
 
 -- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
@@ -92,12 +92,12 @@ isPatternDecl _ = False
 
 -- |Is the declaration a data declaration?
 isDataDecl :: Decl -> Bool
-isDataDecl (DataDecl _ _ _ _ _) = True
+isDataDecl (DataDecl _ _ _ _) = True
 isDataDecl _ = False
 
 -- |Is the declaration a newtype declaration?
 isNewtypeDecl :: Decl -> Bool
-isNewtypeDecl (NewtypeDecl _ _ _ _ _) = True
+isNewtypeDecl (NewtypeDecl _ _ _ _) = True
 isNewtypeDecl _ = False 
 
 -- |Convert an infix operator into an expression

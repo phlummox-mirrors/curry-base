@@ -102,18 +102,16 @@ showsDecl (InfixDecl pos infx prec idents)
   . shows prec . space
   . showsList showsIdent idents
   . showsString ")"
-showsDecl (DataDecl pos cx ident idents consdecls)
+showsDecl (DataDecl pos ident idents consdecls)
   = showsString "(DataDecl "
   . showsPosition pos . space
-  . showsContext cx
   . showsIdent ident . space
   . showsList showsIdent idents . space
   . showsList showsConsDecl consdecls
   . showsString ")"
-showsDecl (NewtypeDecl pos cx ident idents newconsdecl)
+showsDecl (NewtypeDecl pos ident idents newconsdecl)
   = showsString "(NewtypeDecl "
   . showsPosition pos . space
-  . showsContext cx
   . showsIdent ident . space
   . showsList showsIdent idents . space
   . showsNewConsDecl newconsdecl

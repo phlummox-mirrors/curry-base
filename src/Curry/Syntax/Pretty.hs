@@ -70,13 +70,13 @@ ppSepBlock = vcat . map (\d -> text "" $+$ ppDecl d)
 -- |Pretty print a declaration
 ppDecl :: Decl -> Doc
 ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
-ppDecl (DataDecl  _ cx tc tvs cs) =
-  sep (ppTypeDeclLhs "data" cx tc tvs :
+ppDecl (DataDecl  _ tc tvs cs) =
+  sep (ppTypeDeclLhs "data" tc tvs :
        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
-ppDecl (NewtypeDecl _ cx tc tvs nc) =
-  sep [ppTypeDeclLhs "newtype" cx tc tvs <+> equals,indent (ppNewConstr nc)]
+ppDecl (NewtypeDecl _ tc tvs nc) =
+  sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 ppDecl (TypeDecl _ tc tvs ty) =
-  sep [ppTypeDeclLhs "type" emptyContext tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
+  sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 ppDecl (TypeSig _ fs cx ty) =
   list (map ppIdent fs) <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty
 ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
@@ -103,9 +103,8 @@ ppPrec fix p = ppAssoc fix <+> ppPrio p
         ppAssoc Infix  = text "infix"
         ppPrio p' = if p' < 0 then empty else integer p'
 
-ppTypeDeclLhs :: String -> Context -> Ident -> [Ident] -> Doc
-ppTypeDeclLhs kw cx tc tvs = 
-  text kw <+> ppContext cx <+> ppIdent tc <+> hsep (map ppIdent tvs)
+ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
+ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)
 
 ppConstr :: ConstrDecl -> Doc
 ppConstr (ConstrDecl     _ tvs c tys) =
