@@ -274,7 +274,7 @@ funListDecl =  typeSignature
   
 typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
 typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0)
-  <|?> (typeSig <$-> token DoubleColon <*> succeed (Context []) <*> type0)
+  <|?> (typeSig <$-> token DoubleColon <*> succeed emptyContext <*> type0)
   where typeSig cx ty vs p = TypeSig p vs cx ty
 
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
@@ -544,7 +544,7 @@ condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 -- expr ::= expr0 [ '::' [context =>] type0 ]
 expr :: Parser Token Expression a
 expr = (expr0 <??> 
-   (typed <$-> token DoubleColon <*> succeed (Context []) <*> type0
+   (typed <$-> token DoubleColon <*> succeed emptyContext <*> type0
     <|?> 
     typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0))
  where typed cons ty exp = Typed exp cons ty 
@@ -597,7 +597,7 @@ parenExpr = parens pExpr
               <|> (.) <$> (optType <.> tupleExpr)
   leftSectionOrExp = expr1 <**> (infixApp <$> infixOrTuple')
                 `opt` leftSection
-  optType   = ((typed <$-> token DoubleColon <*> succeed (Context []) <*> type0)
+  optType   = ((typed <$-> token DoubleColon <*> succeed emptyContext <*> type0)
           <|?> (typed <$-> token DoubleColon <*> context <*-> 
                            token DoubleArrow <*> type0)) `opt` id
   typed cons ty exp = Typed exp cons ty
