@@ -42,7 +42,7 @@ module Curry.Base.Ident
     -- ** Identifiers for modules
   , emptyMIdent, mainMIdent, preludeMIdent
     -- ** Identifiers for types
-  , unitId, boolId, charId, intId, floatId, listId, ioId, successId
+  , unitId, boolId, charId, intId, floatId, listId, ioId, successId, arrowId
     -- ** Identifiers for constructors
   , trueId, falseId, nilId, consId, tupleId, isTupleId, tupleArity
     -- ** Identifiers for values
@@ -51,6 +51,7 @@ module Curry.Base.Ident
     -- * Predefined qualified identifiers
     -- ** Identifiers for types
   , qUnitId, qBoolId, qCharId, qIntId, qFloatId, qListId, qIOId, qSuccessId
+  , qArrowId
     -- ** Identifiers for constructors
   , qTrueId, qFalseId, qNilId, qConsId, qTupleId, isQTupleId, qTupleArity
 
@@ -414,6 +415,10 @@ tupleArity i@(Ident _ x _)
       "Curry.Base.Ident.tupleArity: no tuple identifier: " ++ show i
   where n = length x - 1
 
+-- | 'Ident' for the arrow type
+arrowId :: Ident
+arrowId = mkIdent "(->)"
+
 -- ---------------------------------------------------------------------------
 -- Identifiers for constructors
 -- ---------------------------------------------------------------------------
@@ -497,6 +502,10 @@ qIOId = qPreludeIdent ioId
 -- | 'QualIdent' for the type 'Success'
 qSuccessId :: QualIdent
 qSuccessId = qPreludeIdent successId
+
+-- | 'QualIdent' for the arrow type
+qArrowId :: QualIdent
+qArrowId = qualify arrowId
 
 -- ---------------------------------------------------------------------------
 -- Qualified Identifiers for constructors
