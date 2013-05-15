@@ -17,7 +17,7 @@ module Curry.Syntax.Utils
   ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
   , isInstanceDecl, isRecordDecl, isFunctionDecl, isPatternDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
-  , typeVarsInTypeExpr, typeVarsInContext
+  , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl
   ) where
@@ -152,6 +152,9 @@ typeVarsInContext (Context elems)
 simpleContextToContext :: SContext -> Context
 simpleContextToContext (SContext list) 
   = Context $ map (\(qid, id0) -> ContextElem qid id0 []) list
+  
+typeVarsInSContext :: SContext -> [Ident]
+typeVarsInSContext (SContext cx) = map snd cx
 
 ---------------------------
 -- add source references
