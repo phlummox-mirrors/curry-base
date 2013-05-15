@@ -51,7 +51,7 @@ module Curry.Base.Ident
     -- * Predefined qualified identifiers
     -- ** Identifiers for types
   , qUnitId, qBoolId, qCharId, qIntId, qFloatId, qListId, qIOId, qSuccessId
-  , qArrowId
+  , qArrowId, qUnitIdP, qListIdP, qArrowIdP, qTupleIdP
     -- ** Identifiers for constructors
   , qTrueId, qFalseId, qNilId, qConsId, qTupleId, isQTupleId, qTupleArity
 
@@ -475,6 +475,9 @@ qPreludeIdent = qualifyWith preludeMIdent
 qUnitId :: QualIdent
 qUnitId = qualify unitId
 
+qUnitIdP :: QualIdent
+qUnitIdP = qPreludeIdent unitId
+
 -- | 'QualIdent' for the type 'Bool'
 qBoolId :: QualIdent
 qBoolId = qPreludeIdent boolId
@@ -495,6 +498,9 @@ qFloatId = qPreludeIdent floatId
 qListId :: QualIdent
 qListId = qualify listId
 
+qListIdP :: QualIdent
+qListIdP = qPreludeIdent listId
+
 -- | 'QualIdent' for the type 'IO'
 qIOId :: QualIdent
 qIOId = qPreludeIdent ioId
@@ -506,6 +512,9 @@ qSuccessId = qPreludeIdent successId
 -- | 'QualIdent' for the arrow type
 qArrowId :: QualIdent
 qArrowId = qualify arrowId
+
+qArrowIdP :: QualIdent
+qArrowIdP = qPreludeIdent arrowId
 
 -- ---------------------------------------------------------------------------
 -- Qualified Identifiers for constructors
@@ -530,6 +539,9 @@ qConsId = qualify consId
 -- | 'QualIdent' for the type of n-ary tuples
 qTupleId :: Int -> QualIdent
 qTupleId = qualify . tupleId
+
+qTupleIdP :: Int -> QualIdent
+qTupleIdP = qPreludeIdent . tupleId
 
 -- | Check whether an 'QualIdent' is an identifier for an tuple type
 isQTupleId :: QualIdent -> Bool
