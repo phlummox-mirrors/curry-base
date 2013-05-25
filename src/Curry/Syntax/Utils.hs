@@ -58,10 +58,10 @@ isTypeSig _                       = False
 
 -- |Is the declaration a value declaration?
 isValueDecl :: Decl -> Bool
-isValueDecl (FunctionDecl    _ _ _) = True
+isValueDecl (FunctionDecl  _ _ _ _) = True
 isValueDecl (ForeignDecl _ _ _ _ _) = True
 isValueDecl (ExternalDecl      _ _) = True
-isValueDecl (PatternDecl     _ _ _) = True
+isValueDecl (PatternDecl   _ _ _ _) = True
 isValueDecl (FreeDecl          _ _) = True
 isValueDecl _ = False
 
@@ -82,12 +82,12 @@ isInstanceDecl _ = False
 
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool
-isFunctionDecl (FunctionDecl _ _ _) = True
+isFunctionDecl (FunctionDecl _ _ _ _) = True
 isFunctionDecl _ = False
 
 -- |Is the declaration a pattern declaration?
 isPatternDecl :: Decl -> Bool
-isPatternDecl (PatternDecl _ _ _) = True
+isPatternDecl (PatternDecl _ _ _ _) = True
 isPatternDecl _ = False
 
 -- |Is the declaration a data declaration?
@@ -102,7 +102,7 @@ isNewtypeDecl _ = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
-infixOp (InfixOp     op) = Variable op
+infixOp (InfixOp     op) = Variable Nothing op
 infixOp (InfixConstr op) = Constructor op
 
 -- |flatten the left-hand-side to the identifier and all constructor terms

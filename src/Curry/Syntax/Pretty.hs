@@ -79,14 +79,14 @@ ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 ppDecl (TypeSig _ fs cx ty) =
   list (map ppIdent fs) <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty
-ppDecl (FunctionDecl _ _ eqs) = vcat (map ppEquation eqs)
+ppDecl (FunctionDecl _ _ _ eqs) = vcat (map ppEquation eqs)
 ppDecl (ForeignDecl p cc impent f ty) =
   sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
        indent (ppDecl (TypeSig p [f] (Context []) ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
         ppCallConv CallConvCCall     = text "ccall"
 ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
-ppDecl (PatternDecl _ t rhs) = ppRule (ppPattern 0 t) equals rhs
+ppDecl (PatternDecl _ _ t rhs) = ppRule (ppPattern 0 t) equals rhs
 ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
 ppDecl (ClassDecl _ cx c a decls) = 
   text "class" <+> ppSContext cx <+> ppIdent c <+> ppIdent a <+> text "where" $$
@@ -252,7 +252,7 @@ ppCondExpr eq (CondExpr _ g e) =
 -- |Pretty print an expression
 ppExpr :: Int -> Expression -> Doc
 ppExpr _ (Literal        l) = ppLiteral l
-ppExpr _ (Variable       v) = ppQIdent v
+ppExpr _ (Variable     _ v) = ppQIdent v
 ppExpr _ (Constructor    c) = ppQIdent c
 ppExpr _ (Paren          e) = parens (ppExpr 0 e)
 ppExpr p (Typed    e cx ty) =
@@ -270,7 +270,7 @@ ppExpr _ (EnumFromThenTo e1 e2 e3) =
   brackets (ppExpr 0 e1 <> comma <+> ppExpr 0 e2
               <+> text ".." <+> ppExpr 0 e3)
 ppExpr p (UnaryMinus       op e) = parenExp (p > 1) (ppInfixOp op <> ppExpr 1 e)
-ppExpr p (Apply           e1 e2) =
+ppExpr p (Apply         _ e1 e2) =
   parenExp (p > 1) (sep [ppExpr 1 e1,indent (ppExpr 2 e2)])
 ppExpr p (InfixApply   e1 op e2) =
   parenExp (p > 0) (sep [ppExpr 1 e1 <+> ppQInfixOp (opName op),

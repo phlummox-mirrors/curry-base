@@ -33,6 +33,8 @@ module Curry.Syntax.Type
     -- * Type classes
   , SContext (..), TypeConstructor (..), Context (..), ContextElem (..)
   , emptyContext
+    -- * mirrored types
+  , ConstrType_, Type_ (..), Context_ 
   ) where
 
 import Data.Generics (Data (..), Typeable (..))
@@ -119,10 +121,10 @@ data Decl
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
   | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
-  | FunctionDecl Position Ident [Equation]                       -- f True = 1 ; f False = 0
+  | FunctionDecl Position (Maybe ConstrType_) Ident [Equation]   -- f True = 1 ; f False = 0
   | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
   | ExternalDecl Position [Ident]                                -- f, g external
-  | PatternDecl  Position Pattern Rhs                            -- Just x = ...
+  | PatternDecl  Position (Maybe ConstrType_) Pattern Rhs        -- Just x = ...
   | FreeDecl     Position [Ident]                                -- x, y free
   | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}
   | InstanceDecl Position SContext QualIdent TypeConstructor [Ident] [Decl] -- instance Foo a => Module1.Bar (Module2.TyCon a b c) where {FunctionDecl}
@@ -227,7 +229,7 @@ data Pattern
 -- |Expression
 data Expression
   = Literal         Literal
-  | Variable        QualIdent
+  | Variable        (Maybe ConstrType_) QualIdent
   | Constructor     QualIdent
   | Paren           Expression
   | Typed           Expression Context TypeExpr
@@ -239,7 +241,7 @@ data Expression
   | EnumFromTo      Expression Expression
   | EnumFromThenTo  Expression Expression Expression
   | UnaryMinus      Ident Expression
-  | Apply           Expression Expression
+  | Apply           (Maybe ConstrType_) Expression Expression
   | InfixApply      Expression InfixOp Expression
   | LeftSection     Expression InfixOp
   | RightSection    InfixOp Expression
@@ -348,4 +350,22 @@ data ContextElem = ContextElem QualIdent Ident [TypeExpr]
 emptyContext :: Context
 emptyContext = Context []
 
+-- ---------------------------------------------------------------------------
+-- a mirror of the curry-frontend type Base.Types.Type etc. This is necessary
+-- because cabal doesn't allow recursive depedencies, so we cannot 
+-- refer to a type of curry-frontend in the abstract syntax tree. 
+-- TODO: remove this again in the end (by parametrizing the AST)!!!
+-- ---------------------------------------------------------------------------
 
+type ConstrType_ = (Context_, Type_)
+
+type Context_ = [(QualIdent, Type_)]
+
+data Type_
+  = TypeVariable_ Int
+  | TypeConstructor_ QualIdent [Type_]
+  | TypeArrow_ Type_ Type_
+  | TypeConstrained_ [Type_] Int
+  | TypeSkolem_ Int
+  | TypeRecord_ [(Ident, Type_)] (Maybe Int)
+  deriving (Eq, Read, Show, Data, Typeable)

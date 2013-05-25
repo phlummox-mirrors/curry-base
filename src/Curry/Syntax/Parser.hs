@@ -263,10 +263,10 @@ valueDecl = position <**> decl
   isConstrId c = c == qConsId || isQualified c || isQTupleId c
 
 funDecl :: (Ident,Lhs) -> Rhs -> Position -> Decl
-funDecl (f,lhs) rhs' p = FunctionDecl p f [Equation p lhs rhs']
+funDecl (f,lhs) rhs' p = FunctionDecl p Nothing f [Equation p lhs rhs']
 
 patDecl :: Pattern -> Rhs -> Position -> Decl
-patDecl t rhs' p = PatternDecl p t rhs'
+patDecl t rhs' p = PatternDecl p Nothing t rhs'
 
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 funListDecl =  typeSignature
@@ -565,7 +565,7 @@ expr2 = choice [ lambdaExpr, letExpr, doExpr, ifExpr, caseExpr
   where
   recordSelect = (flip (foldl RecordSelection))
               <$> many1 (checkSelect <-*> labId)
-  application  = (\es e -> foldl1 Apply (e:es)) <$> many expr3
+  application  = (\es e -> foldl1 (Apply Nothing) (e:es)) <$> many expr3
 
 expr3 :: Parser Token Expression a
 expr3 = choice
@@ -575,11 +575,11 @@ constant :: Parser Token Expression a
 constant = Literal <$> literal
 
 anonFreeVariable :: Parser Token Expression a
-anonFreeVariable =  (\ p v -> Variable $ qualify $ addPositionIdent p v)
+anonFreeVariable =  (\ p v -> Variable Nothing $ qualify $ addPositionIdent p v)
                 <$> position <*> anonIdent
 
 variable :: Parser Token Expression a
-variable = Variable <$> qFunId
+variable = Variable Nothing <$> qFunId
 
 parenExpr :: Parser Token Expression a
 parenExpr = parens pExpr
@@ -590,7 +590,7 @@ parenExpr = parens pExpr
       <|> opOrRightSection <\> minus <\> fminus
       `opt` mk Tuple []
   minusOrTuple = flip UnaryMinus <$> expr1 <.> infixOrTuple
-            `opt` Variable . qualify
+            `opt` Variable Nothing . qualify
   leftSectionOrTuple = expr1 <**> infixOrTuple
   infixOrTuple = ($ id) <$> infixOrTuple'
   infixOrTuple' = infixOp <**> leftSectionOrExp
@@ -605,7 +605,7 @@ parenExpr = parens pExpr
   opOrRightSection =  qFunSym <**> optRightSection
                   <|> colon   <**> optCRightSection
                   <|> infixOp <\> colon <\> qFunSym <**> rightSection
-  optRightSection  = (. InfixOp    ) <$> rightSection `opt` Variable
+  optRightSection  = (. InfixOp    ) <$> rightSection `opt` Variable Nothing
   optCRightSection = (. InfixConstr) <$> rightSection `opt` Constructor
   rightSection     = flip RightSection <$> expr0
   infixApp f e2 op g e1 = f (g . InfixApply e1 op) e2

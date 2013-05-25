@@ -130,7 +130,7 @@ showsDecl (TypeSig pos idents cx typ)
   . showsContext cx
   . showsTypeExpr typ
   . showsString ")"
-showsDecl (FunctionDecl pos ident eqs)
+showsDecl (FunctionDecl pos _ ident eqs)
   = showsString "(FunctionDecl "
   . showsPosition pos . space
   . showsIdent ident . space
@@ -149,7 +149,7 @@ showsDecl (ExternalDecl pos idents)
   . showsPosition pos . space
   . showsList showsIdent idents
   . showsString ")"
-showsDecl (PatternDecl pos cons rhs)
+showsDecl (PatternDecl pos _ cons rhs)
   = showsString "(PatternDecl "
   . showsPosition pos . space
   . showsConsTerm cons . space
@@ -368,7 +368,7 @@ showsExpression (Literal lit)
   = showsString "(Literal "
   . showsLiteral lit
   . showsString ")"
-showsExpression (Variable qident)
+showsExpression (Variable _ qident)
   = showsString "(Variable "
   . showsQualIdent qident
   . showsString ")"
@@ -424,7 +424,7 @@ showsExpression (UnaryMinus ident expr)
   . showsIdent ident . space
   . showsExpression expr
   . showsString ")"
-showsExpression (Apply exp1 exp2)
+showsExpression (Apply _mty exp1 exp2)
   = showsString "(Apply "
   . showsExpression exp1 . space
   . showsExpression exp2
