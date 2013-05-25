@@ -565,7 +565,7 @@ expr2 = choice [ lambdaExpr, letExpr, doExpr, ifExpr, caseExpr
   where
   recordSelect = (flip (foldl RecordSelection))
               <$> many1 (checkSelect <-*> labId)
-  application  = (\es e -> foldl1 (Apply Nothing) (e:es)) <$> many expr3
+  application  = (\es e -> foldl1 Apply (e:es)) <$> many expr3
 
 expr3 :: Parser Token Expression a
 expr3 = choice

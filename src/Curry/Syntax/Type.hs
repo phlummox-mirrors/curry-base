@@ -241,7 +241,7 @@ data Expression
   | EnumFromTo      Expression Expression
   | EnumFromThenTo  Expression Expression Expression
   | UnaryMinus      Ident Expression
-  | Apply           (Maybe ConstrType_) Expression Expression
+  | Apply           Expression Expression
   | InfixApply      Expression InfixOp Expression
   | LeftSection     Expression InfixOp
   | RightSection    InfixOp Expression

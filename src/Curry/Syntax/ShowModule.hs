@@ -424,7 +424,7 @@ showsExpression (UnaryMinus ident expr)
   . showsIdent ident . space
   . showsExpression expr
   . showsString ")"
-showsExpression (Apply _mty exp1 exp2)
+showsExpression (Apply exp1 exp2)
   = showsString "(Apply "
   . showsExpression exp1 . space
   . showsExpression exp2
