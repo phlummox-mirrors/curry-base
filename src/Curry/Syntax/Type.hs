@@ -128,7 +128,7 @@ data Decl
   | FreeDecl     Position [Ident]                                -- x, y free
   | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}
   | InstanceDecl Position SContext QualIdent TypeConstructor [Ident] [Decl] -- instance Foo a => Module1.Bar (Module2.TyCon a b c) where {FunctionDecl}
-    deriving (Eq, Read, Show, Data, Typeable)
+    deriving (Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
 -- Infix declaration
@@ -253,7 +253,7 @@ data Expression
   | RecordConstr    [Field Expression]            -- {l1 := e1,...,ln := en}
   | RecordSelection Expression Ident              -- e :> l
   | RecordUpdate    [Field Expression] Expression -- {l1 := e1,...,ln := en | e}
-    deriving (Eq, Read, Show, Data, Typeable)
+    deriving (Read, Show, Data, Typeable)
 
 -- |Infix operation
 data InfixOp
@@ -369,3 +369,65 @@ data Type_
   | TypeSkolem_ Int
   | TypeRecord_ [(Ident, Type_)] (Maybe Int)
   deriving (Eq, Read, Show, Data, Typeable)
+  
+-- ---------------------------------------------------------------------------
+-- Eq instances for elements of the syntax tree (where needed). 
+-- The equality functions should ignore the annotations in the syntax tree. 
+-- ---------------------------------------------------------------------------
+
+instance Eq Expression where
+  (Literal l1) == (Literal l2) = l1 == l2
+  (Variable _ q1) == (Variable _ q2) = q1 == q2
+  (Constructor q1) == (Constructor q2) = q1 == q2
+  (Paren e1) == (Paren e2) = e1 == e2
+  (Typed e1 cx1 t1) == (Typed e2 cx2 t2) = e1 == e2 && cx1 == cx2 && t1 == t2
+  (Tuple _ es1) == (Tuple _ es2) = es1 == es2
+  (List _ es1) == (List _ es2) = es1 == es2
+  (ListCompr _ e1 ss1) == (ListCompr _ e2 ss2) = e1 == e2 && ss1 == ss2
+  (EnumFrom e1) == (EnumFrom e2) = e1 == e2
+  (EnumFromThen e11 e21) == (EnumFromThen e12 e22) = e11 == e12 && e21 == e22
+  (EnumFromTo e11 e21) == (EnumFromTo e12 e22) = e11 == e12 && e21 == e22
+  (EnumFromThenTo e11 e21 e31) == (EnumFromThenTo e12 e22 e32) 
+    = e11 == e12 && e21 == e22 && e31 == e32
+  (UnaryMinus i1 e1) == (UnaryMinus i2 e2) = i1 == i2 && e1 == e2
+  (Apply e11 e21) == (Apply e12 e22) = e11 == e12 && e21 == e22
+  (InfixApply e11 op1 e21) == (InfixApply e12 op2 e22) 
+    =  e11 == e12 && op1 == op2 && e21 == e22
+  (LeftSection e1 op1) == (LeftSection e2 op2) = e1 == e2 && op1 == op2
+  (RightSection op1 e1) == (RightSection op2 e2) = op1 == op2 && e1 == e2
+  (Lambda _ ps1 e1) == (Lambda _ ps2 e2) = ps1 == ps2 && e1 == e2
+  (Let ds1 e1) == (Let ds2 e2) = ds1 == ds2 && e1 == e2
+  (Do ss1 e1) == (Do ss2 e2) = ss1 == ss2 && e1 == e2
+  (IfThenElse _ e11 e21 e31) == (IfThenElse _ e12 e22 e32) 
+    = e11 == e12 && e21 == e22 && e31 == e32
+  (Case _ ct1 e1 as1) == (Case _ ct2 e2 as2) = ct1 == ct2 && e1 == e2 && as1 == as2
+  (RecordConstr fs1) == (RecordConstr fs2) = fs1 == fs2
+  (RecordSelection e1 i1) == (RecordSelection e2 i2) = e1 == e2 && i1 == i2
+  (RecordUpdate fs1 e1) == (RecordUpdate fs2 e2) = fs1 == fs2 && e1 == e2
+  _ == _ = False
+
+instance Eq Decl where
+  (InfixDecl p1 f1 i1 ids1) == (InfixDecl p2 f2 i2 ids2) 
+    = p1 == p2 && f1 == f2 && i1 == i2 && ids1 == ids2
+  (DataDecl p1 i1 ids1 cs1) == (DataDecl p2 i2 ids2 cs2) 
+    = p1 == p2 && i1 == i2 && ids1 == ids2 && cs1 == cs2
+  (NewtypeDecl p1 i1 ids1 n1) == (NewtypeDecl p2 i2 ids2 n2) 
+    = p1 == p2 && i1 == i2 && ids1 == ids2 && n1 == n2
+  (TypeDecl p1 id1 ids1 t1) == (TypeDecl p2 id2 ids2 t2) 
+    = p1 == p2 && id1 == id2 && ids1 == ids2 && t1 == t2
+  (TypeSig p1 ids1 cx1 t1) == (TypeSig p2 ids2 cx2 t2) 
+    = p1 == p2 && ids1 == ids2 && cx1 == cx2 && t1 == t2
+  (FunctionDecl p1 _ id1 es1) == (FunctionDecl p2 _ id2 es2) 
+    = p1 == p2 && id1 == id2 && es1 == es2
+  (ForeignDecl p1 c1 s1 i1 t1) == (ForeignDecl p2 c2 s2 i2 t2) 
+    = p1 == p2 && c1 == c2 && s1 == s2 && i1 == i2 && t1 == t2
+  (ExternalDecl p1 is1) == (ExternalDecl p2 is2) = p1 == p2 && is1 == is2
+  (PatternDecl p1 _ pt1 r1) == (PatternDecl p2 _ pt2 r2) 
+    = p1 == p2 && pt1 == pt2 && r1 == r2
+  (FreeDecl p1 is1) == (FreeDecl p2 is2) = p1 == p2 && is1 == is2
+  (ClassDecl p1 s1 c1 a1 ds1) == (ClassDecl p2 s2 c2 a2 ds2) 
+    = p1 == p2 && s1 == s2 && c1 == c2 && a1 == a2 && ds1 == ds2
+  (InstanceDecl p1 s1 c1 t1 is1 ds1) == (InstanceDecl p2 s2 c2 t2 is2 ds2)
+    = p1 == p2 && s1 == s2 && c1 == c2 && t1 == t2 && is1 == is2 && ds1 == ds2
+  _ == _ = False
+
