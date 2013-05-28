@@ -182,7 +182,7 @@ data Equation = Equation Position Lhs Rhs
 data Lhs
   = FunLhs Ident [Pattern]       -- f x y
   | OpLhs  Pattern Ident Pattern -- x $ y
-  | ApLhs  Lhs [Pattern]         -- ($) x y
+  | ApLhs  Lhs [Pattern]         -- for example "(x $ y) z"
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Right-hand-side of an 'Equation'
