@@ -100,7 +100,7 @@ isNewtypeDecl :: Decl -> Bool
 isNewtypeDecl (NewtypeDecl _ _ _ _) = True
 isNewtypeDecl _ = False 
 
--- |Convert an infix operator into an expression
+-- |Convert an infix operator into an expression, preserving the type annotation!
 infixOp :: InfixOp -> Expression
 infixOp (InfixOp cty op) = Variable cty op
 infixOp (InfixConstr op) = Constructor op
