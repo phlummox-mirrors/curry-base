@@ -102,7 +102,7 @@ isNewtypeDecl _ = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
-infixOp (InfixOp     op) = Variable Nothing op
+infixOp (InfixOp cty op) = Variable cty op
 infixOp (InfixConstr op) = Constructor op
 
 -- |flatten the left-hand-side to the identifier and all constructor terms
@@ -130,7 +130,7 @@ field2Tuple (Field _ l t) = (l, t)
 
 -- |Get the operator name of an infix operator
 opName :: InfixOp -> QualIdent
-opName (InfixOp    op) = op
+opName (InfixOp  _ op) = op
 opName (InfixConstr c) = c
 
 -- |Extract all type variables from the type expression

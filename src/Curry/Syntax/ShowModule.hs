@@ -488,7 +488,7 @@ showsExpression (RecordUpdate efields expr)
   . showsString ")"
 
 showsInfixOp :: InfixOp -> ShowS
-showsInfixOp (InfixOp qident)
+showsInfixOp (InfixOp _ qident)
   = showsString "(InfixOp "
   . showsQualIdent qident
   . showsString ")"

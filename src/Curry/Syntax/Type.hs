@@ -257,9 +257,9 @@ data Expression
 
 -- |Infix operation
 data InfixOp
-  = InfixOp     QualIdent
+  = InfixOp     (Maybe ConstrType_) QualIdent
   | InfixConstr QualIdent
-    deriving (Eq, Read, Show, Data, Typeable)
+    deriving (Read, Show, Data, Typeable)
 
 -- |Statement (used for do-sequence and list comprehensions)
 data Statement
@@ -431,3 +431,8 @@ instance Eq Decl where
     = p1 == p2 && s1 == s2 && c1 == c2 && t1 == t2 && is1 == is2 && ds1 == ds2
   _ == _ = False
 
+instance Eq InfixOp where
+  (InfixOp _ op1) == (InfixOp _ op2) = op1 == op2
+  (InfixConstr op1) == (InfixConstr op2) = op1 == op2
+  _ == _ = False
+  

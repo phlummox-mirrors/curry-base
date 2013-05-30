@@ -605,15 +605,15 @@ parenExpr = parens pExpr
   opOrRightSection =  qFunSym <**> optRightSection
                   <|> colon   <**> optCRightSection
                   <|> infixOp <\> colon <\> qFunSym <**> rightSection
-  optRightSection  = (. InfixOp    ) <$> rightSection `opt` Variable Nothing
-  optCRightSection = (. InfixConstr) <$> rightSection `opt` Constructor
+  optRightSection  = (. InfixOp Nothing) <$> rightSection `opt` Variable Nothing
+  optCRightSection = (. InfixConstr    ) <$> rightSection `opt` Constructor
   rightSection     = flip RightSection <$> expr0
   infixApp f e2 op g e1 = f (g . InfixApply e1 op) e2
   leftSection op f e = LeftSection (f e) op
   tuple es e = mk Tuple (e:es)
 
 infixOp :: Parser Token InfixOp a
-infixOp = InfixOp <$> qfunop <|> InfixConstr <$> colon
+infixOp = InfixOp Nothing <$> qfunop <|> InfixConstr <$> colon
 
 listExpr :: Parser Token Expression a
 listExpr = brackets (elements `opt` mk' List [])

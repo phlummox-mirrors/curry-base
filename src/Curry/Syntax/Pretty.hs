@@ -317,7 +317,7 @@ ppFieldExpr (Field _ l e) = ppIdent l <> recBind <> ppExpr 0 e
 
 -- |Pretty print an operator
 ppOp :: InfixOp -> Doc
-ppOp (InfixOp     op) = ppQInfixOp op
+ppOp (InfixOp   _ op) = ppQInfixOp op
 ppOp (InfixConstr op) = ppQInfixOp op
 
 -- ---------------------------------------------------------------------------
