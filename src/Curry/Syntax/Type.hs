@@ -232,7 +232,7 @@ data Expression
   | Variable        (Maybe ConstrType_) QualIdent
   | Constructor     QualIdent
   | Paren           Expression
-  | Typed           Expression Context TypeExpr
+  | Typed           (Maybe ConstrType_) Expression Context TypeExpr
   | Tuple           SrcRef [Expression]
   | List            [SrcRef] [Expression]
   | ListCompr       SrcRef Expression [Statement] -- the ref corresponds to the main list
@@ -380,7 +380,7 @@ instance Eq Expression where
   (Variable _ q1) == (Variable _ q2) = q1 == q2
   (Constructor q1) == (Constructor q2) = q1 == q2
   (Paren e1) == (Paren e2) = e1 == e2
-  (Typed e1 cx1 t1) == (Typed e2 cx2 t2) = e1 == e2 && cx1 == cx2 && t1 == t2
+  (Typed _ e1 cx1 t1) == (Typed _ e2 cx2 t2) = e1 == e2 && cx1 == cx2 && t1 == t2
   (Tuple _ es1) == (Tuple _ es2) = es1 == es2
   (List _ es1) == (List _ es2) = es1 == es2
   (ListCompr _ e1 ss1) == (ListCompr _ e2 ss2) = e1 == e2 && ss1 == ss2

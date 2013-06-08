@@ -547,7 +547,7 @@ expr = (expr0 <??>
    (typed <$-> token DoubleColon <*> succeed emptyContext <*> type0
     <|?> 
     typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0))
- where typed cons ty exp = Typed exp cons ty 
+ where typed cons ty exp = Typed Nothing exp cons ty 
 
 -- expr0 ::= expr1 { infixOp expr1 }
 expr0 :: Parser Token Expression a
@@ -600,7 +600,7 @@ parenExpr = parens pExpr
   optType   = ((typed <$-> token DoubleColon <*> succeed emptyContext <*> type0)
           <|?> (typed <$-> token DoubleColon <*> context <*-> 
                            token DoubleArrow <*> type0)) `opt` id
-  typed cons ty exp = Typed exp cons ty
+  typed cons ty exp = Typed Nothing exp cons ty
   tupleExpr = tuple <$> many1 (comma <-*> expr) `opt` Paren
   opOrRightSection =  qFunSym <**> optRightSection
                   <|> colon   <**> optCRightSection

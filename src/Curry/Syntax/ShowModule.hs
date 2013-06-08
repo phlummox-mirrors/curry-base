@@ -380,7 +380,7 @@ showsExpression (Paren expr)
   = showsString "(Paren "
   . showsExpression expr
   . showsString ")"
-showsExpression (Typed expr cx typ)
+showsExpression (Typed _ expr cx typ)
   = showsString "(Typed "
   . showsExpression expr . space
   . showsContext cx . space
