@@ -58,11 +58,11 @@ isTypeSig _                       = False
 
 -- |Is the declaration a value declaration?
 isValueDecl :: Decl -> Bool
-isValueDecl (FunctionDecl  _ _ _ _) = True
-isValueDecl (ForeignDecl _ _ _ _ _) = True
-isValueDecl (ExternalDecl      _ _) = True
-isValueDecl (PatternDecl   _ _ _ _) = True
-isValueDecl (FreeDecl          _ _) = True
+isValueDecl (FunctionDecl _ _ _ _ _) = True
+isValueDecl (ForeignDecl  _ _ _ _ _) = True
+isValueDecl (ExternalDecl       _ _) = True
+isValueDecl (PatternDecl  _ _ _ _ _) = True
+isValueDecl (FreeDecl           _ _) = True
 isValueDecl _ = False
 
 -- |Is the declaration a record declaration?
@@ -82,12 +82,12 @@ isInstanceDecl _ = False
 
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool
-isFunctionDecl (FunctionDecl _ _ _ _) = True
+isFunctionDecl (FunctionDecl _ _ _ _ _) = True
 isFunctionDecl _ = False
 
 -- |Is the declaration a pattern declaration?
 isPatternDecl :: Decl -> Bool
-isPatternDecl (PatternDecl _ _ _ _) = True
+isPatternDecl (PatternDecl _ _ _ _ _) = True
 isPatternDecl _ = False
 
 -- |Is the declaration a data declaration?

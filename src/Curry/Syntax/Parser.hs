@@ -263,10 +263,10 @@ valueDecl = position <**> decl
   isConstrId c = c == qConsId || isQualified c || isQTupleId c
 
 funDecl :: (Ident,Lhs) -> Rhs -> Position -> Decl
-funDecl (f,lhs) rhs' p = FunctionDecl p Nothing f [Equation p lhs rhs']
+funDecl (f,lhs) rhs' p = FunctionDecl p Nothing (-1) f [Equation p lhs rhs']
 
 patDecl :: Pattern -> Rhs -> Position -> Decl
-patDecl t rhs' p = PatternDecl p Nothing t rhs'
+patDecl t rhs' p = PatternDecl p Nothing (-1) t rhs'
 
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 funListDecl =  typeSignature

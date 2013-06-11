@@ -79,14 +79,14 @@ ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 ppDecl (TypeSig _ fs cx ty) =
   list (map ppIdent fs) <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty
-ppDecl (FunctionDecl _ _ _ eqs) = vcat (map ppEquation eqs)
+ppDecl (FunctionDecl _ _ _ _ eqs) = vcat (map ppEquation eqs)
 ppDecl (ForeignDecl p cc impent f ty) =
   sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
        indent (ppDecl (TypeSig p [f] (Context []) ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
         ppCallConv CallConvCCall     = text "ccall"
 ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
-ppDecl (PatternDecl _ _ t rhs) = ppRule (ppPattern 0 t) equals rhs
+ppDecl (PatternDecl _ _ _ t rhs) = ppRule (ppPattern 0 t) equals rhs
 ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
 ppDecl (ClassDecl _ cx c a decls) = 
   text "class" <+> ppSContext cx <+> ppIdent c <+> ppIdent a <+> text "where" $$

@@ -130,7 +130,7 @@ showsDecl (TypeSig pos idents cx typ)
   . showsContext cx
   . showsTypeExpr typ
   . showsString ")"
-showsDecl (FunctionDecl pos _ ident eqs)
+showsDecl (FunctionDecl pos _ _ ident eqs)
   = showsString "(FunctionDecl "
   . showsPosition pos . space
   . showsIdent ident . space
@@ -149,7 +149,7 @@ showsDecl (ExternalDecl pos idents)
   . showsPosition pos . space
   . showsList showsIdent idents
   . showsString ")"
-showsDecl (PatternDecl pos _ cons rhs)
+showsDecl (PatternDecl pos _ _ cons rhs)
   = showsString "(PatternDecl "
   . showsPosition pos . space
   . showsConsTerm cons . space

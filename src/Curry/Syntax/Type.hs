@@ -114,6 +114,9 @@ data IDecl
 -- Declarations (local or top-level)
 -- ---------------------------------------------------------------------------
 
+-- |an identifier for pattern/function declarations
+type Id = Int
+
 -- |Declaration in a module
 data Decl
   = InfixDecl    Position Infix Integer [Ident]                  -- infixl 5 (op), `fun` -- TODO: Make precedence optional and change to int
@@ -121,10 +124,10 @@ data Decl
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
   | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
-  | FunctionDecl Position (Maybe ConstrType_) Ident [Equation]   -- f True = 1 ; f False = 0
+  | FunctionDecl Position (Maybe ConstrType_) Id Ident [Equation]-- f True = 1 ; f False = 0
   | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
   | ExternalDecl Position [Ident]                                -- f, g external
-  | PatternDecl  Position (Maybe ConstrType_) Pattern Rhs        -- Just x = ...
+  | PatternDecl  Position (Maybe ConstrType_) Id Pattern Rhs     -- Just x = ...
   | FreeDecl     Position [Ident]                                -- x, y free
   | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}
   | InstanceDecl Position SContext QualIdent TypeConstructor [Ident] [Decl] -- instance Foo a => Module1.Bar (Module2.TyCon a b c) where {FunctionDecl}
@@ -417,12 +420,12 @@ instance Eq Decl where
     = p1 == p2 && id1 == id2 && ids1 == ids2 && t1 == t2
   (TypeSig p1 ids1 cx1 t1) == (TypeSig p2 ids2 cx2 t2) 
     = p1 == p2 && ids1 == ids2 && cx1 == cx2 && t1 == t2
-  (FunctionDecl p1 _ id1 es1) == (FunctionDecl p2 _ id2 es2) 
+  (FunctionDecl p1 _ _ id1 es1) == (FunctionDecl p2 _ _ id2 es2) 
     = p1 == p2 && id1 == id2 && es1 == es2
   (ForeignDecl p1 c1 s1 i1 t1) == (ForeignDecl p2 c2 s2 i2 t2) 
     = p1 == p2 && c1 == c2 && s1 == s2 && i1 == i2 && t1 == t2
   (ExternalDecl p1 is1) == (ExternalDecl p2 is2) = p1 == p2 && is1 == is2
-  (PatternDecl p1 _ pt1 r1) == (PatternDecl p2 _ pt2 r2) 
+  (PatternDecl p1 _ _ pt1 r1) == (PatternDecl p2 _ _ pt2 r2) 
     = p1 == p2 && pt1 == pt2 && r1 == r2
   (FreeDecl p1 is1) == (FreeDecl p2 is2) = p1 == p2 && is1 == is2
   (ClassDecl p1 s1 c1 a1 ds1) == (ClassDecl p2 s2 c2 a2 ds2) 
