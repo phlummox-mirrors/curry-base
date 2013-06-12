@@ -24,6 +24,7 @@ module Curry.Syntax.Utils
 
 import Control.Monad.State
 import Data.Generics
+import Data.Maybe
 
 import Curry.Base.Ident
 import Curry.Base.Position
@@ -141,7 +142,9 @@ typeVarsInTypeExpr (VariableType t) = [t]
 typeVarsInTypeExpr (TupleType ts) = concatMap typeVarsInTypeExpr ts
 typeVarsInTypeExpr (ListType t) = typeVarsInTypeExpr t
 typeVarsInTypeExpr (ArrowType t1 t2) = typeVarsInTypeExpr t1 ++ typeVarsInTypeExpr t2
-typeVarsInTypeExpr (RecordType _ _ ) = error "typeVarsInTypeExpr"
+typeVarsInTypeExpr (RecordType fs mt) = 
+  concatMap (typeVarsInTypeExpr . snd) fs 
+  ++ concatMap typeVarsInTypeExpr (maybeToList mt) 
 
 -- |Extract all type variables from a context
 typeVarsInContext :: Context -> [Ident]
