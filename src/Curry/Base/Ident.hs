@@ -246,6 +246,9 @@ addRefId = addPositionIdent . AST
 isInfixOp :: Ident -> Bool
 isInfixOp (Ident _ ('<' : c : cs) _) =
   last (c : cs) /= '>' || not (isAlphaNum c) && c `notElem` "_(["
+-- constructed values start with '#', followed by an alpha-num character
+isInfixOp (Ident _ (c1 : c2 : _) _) 
+  | c1 == head identPrefix = not (isAlphaNum c2)
 isInfixOp (Ident _ (c : _) _)    = not (isAlphaNum c) && c `notElem` "_(["
 isInfixOp (Ident _ _ _)          = False -- error "Zero-length identifier"
 
@@ -659,3 +662,7 @@ recordExt = "_#Rec:"
 -- | Annotation for record label identifiers
 labelExt :: String
 labelExt = "_#Lab:"
+
+-- | the prefix for constructed identifiers
+identPrefix :: String
+identPrefix = "#"
