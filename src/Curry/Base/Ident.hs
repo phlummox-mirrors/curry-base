@@ -62,6 +62,8 @@ module Curry.Base.Ident
   , recSelectorId, qualRecSelectorId, recUpdateId, qualRecUpdateId
   , recordExtId, labelExtId, isRecordExtId, isLabelExtId, fromRecordExtId
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
+    -- ** Constructed identifiers
+  , identPrefix
   ) where
 
 import Data.Char     (isAlpha, isAlphaNum, isSpace)
