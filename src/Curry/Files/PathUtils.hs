@@ -68,12 +68,13 @@ isCurryFilePath str =  isValid str
 -- - If the file name has no extension, then a source file extension is
 --   assumed.
 lookupCurryFileIn :: [FilePath] -> FilePath -> IO (Maybe (FilePath,FilePath))
-lookupCurryFileIn paths fn = lookupFileIn ("." : paths') exts fn where
+lookupCurryFileIn paths fn = lookupFileIn ("." : paths') exts fn
+  where
   paths' | pathSeparator `elem` fn = []
          | otherwise               = paths
-  exts   | null fnExt = sourceExts
-         | otherwise  = [fnExt]
-  fnExt = takeExtension fn
+  exts   | null fnExt              = sourceExts
+         | otherwise               = [fnExt]
+  fnExt                            = takeExtension fn
 
 -- |Same as 'lookupCurryFileIn', but returns the complete 'FilePath'.
 lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
@@ -96,16 +97,16 @@ lookupCurryModule paths libPaths m = combineM
                                    $ lookupCurryModuleIn paths libPaths m
 
 -- |Search for an interface file in the import search path using the
--- interface extension 'flatIntExt'. Note that the current directory is
+-- interface extension 'icurryExt'. Note that the current directory is
 -- always searched first.
 lookupCurryInterfaceIn :: [FilePath]          -- ^ list of paths to search in
                        -> ModuleIdent         -- ^ module identifier
                        -> IO (Maybe (FilePath, FilePath))
 lookupCurryInterfaceIn paths m =
-  lookupFileIn ("." : paths) [flatIntExt] (moduleNameToFile m)
+  lookupFileIn ("." : paths) [icurryExt] (moduleNameToFile m)
 
 -- |Search for an interface file in the import search path using the
--- interface extension 'flatIntExt'. Note that the current directory is
+-- interface extension 'icurryExt'. Note that the current directory is
 -- always searched first.
 lookupCurryInterface :: [FilePath]          -- ^ list of paths to search in
                      -> ModuleIdent         -- ^ module identifier
