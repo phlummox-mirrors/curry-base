@@ -1,7 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  File names for several intermediate file formats.
-    Copyright   :  (c) Holger Siegel 2009
+    Copyright   :  (c) Holger Siegel   2009
+                       Björn Peemöller 2013
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -27,13 +28,12 @@ module Curry.Files.Filenames
   , acyExt, uacyExt
 
     -- ** Source and object files
-  , sourceRepExt, oExt, debugExt
-  , sourceExts, moduleExts, objectExts
+  , sourceRepExt, sourceExts, moduleExts
 
     -- * Functions for computing file names
   , interfName, flatName, extFlatName, flatIntName, xmlName
   , acyName, uacyName
-  , sourceRepName, objectName
+  , sourceRepName
   ) where
 
 import System.FilePath (takeBaseName, replaceBaseName, replaceExtension)
@@ -103,18 +103,6 @@ uacyExt = ".uacy"
 sourceRepExt :: String
 sourceRepExt = ".cy"
 
--- |Filename extension for object files
-oExt :: String
-oExt = ".o"
-
--- |Filename extension for debug object files
-debugExt :: String
-debugExt = ".d.o"
-
--- |Filename extension for object files
-objectExts :: [String]
-objectExts = [oExt]
-
 -- ---------------------------------------------------------------------------
 -- Computation of file names for a given source file
 -- ---------------------------------------------------------------------------
@@ -151,12 +139,6 @@ uacyName = replaceExtensionWith uacyExt
 -- |Compute the filename of the source representation file for a source file
 sourceRepName :: FilePath -> FilePath
 sourceRepName = replaceExtensionWith sourceRepExt
-
--- |Compute the filename of the object file for a source file.
---
---  If the first parameter is 'True', the debug object file name is returned.
-objectName :: Bool -> FilePath -> FilePath
-objectName debug = replaceExtensionWith (if debug then debugExt else oExt)
 
 -- |Replace a filename extension with a new extension
 replaceExtensionWith :: String -> FilePath -> FilePath
