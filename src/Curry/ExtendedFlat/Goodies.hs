@@ -38,9 +38,9 @@ type Update a b = (b -> b) -> a -> a
 -- Prog ----------------------------------------------------------------------
 
 -- |transform program
-trProg :: (String -> [String] -> [TypeDecl] -> [FuncDecl] -> [OpDecl] -> {-ClassExport -> -}a)
+trProg :: (String -> [String] -> [TypeDecl] -> [FuncDecl] -> [OpDecl] -> a)
           -> Prog -> a
-trProg prog (Prog name imps types funcs ops {-cex-}) = prog name imps types funcs ops {-cex-}
+trProg prog (Prog name imps types funcs ops) = prog name imps types funcs ops
 
 -- Selectors
 
