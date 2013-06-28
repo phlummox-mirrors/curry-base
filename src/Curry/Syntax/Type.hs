@@ -114,7 +114,7 @@ data IDecl
 -- Declarations (local or top-level)
 -- ---------------------------------------------------------------------------
 
--- |an identifier for pattern/function declarations
+-- |an identifier for pattern/function declarations (needed for the type check)
 type Id = Int
 
 -- |Declaration in a module
