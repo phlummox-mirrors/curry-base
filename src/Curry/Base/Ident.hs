@@ -70,6 +70,7 @@ import Data.List           (intercalate, isInfixOf, isPrefixOf)
 import Data.Maybe          (isJust, fromMaybe)
 
 import Curry.Base.Position
+import Curry.Base.Pretty
 
 -- ---------------------------------------------------------------------------
 -- Module identifier
@@ -103,6 +104,9 @@ instance Show ModuleIdent where
 instance HasPosition ModuleIdent where
   getPosition = midPosition
   setPosition = addPositionModuleIdent
+
+instance Pretty ModuleIdent where
+  pPrint = hcat . punctuate dot . map text . midQualifiers
 
 instance SrcRefOf ModuleIdent where
   srcRefOf = srcRefOf . getPosition
@@ -189,6 +193,10 @@ instance HasPosition Ident where
   getPosition = idPosition
   setPosition = addPositionIdent
 
+instance Pretty Ident where
+  pPrint (Ident _ x n) | n == globalScope = text x
+                       | otherwise        = text x <> dot <> integer n
+
 instance SrcRefOf Ident where
   srcRefOf = srcRefOf . getPosition
 
@@ -274,6 +282,9 @@ instance Show QualIdent where
 instance HasPosition QualIdent where
   getPosition     = getPosition . qidIdent
   setPosition p q = q { qidIdent = setPosition p $ qidIdent q }
+
+instance Pretty QualIdent where
+  pPrint = text . show
 
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify

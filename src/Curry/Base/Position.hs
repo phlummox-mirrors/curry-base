@@ -30,9 +30,10 @@ module Curry.Base.Position
   , SrcRef (..), SrcRefOf (..), srcRef, noRef, mk, mk', incSrcRef
   ) where
 
-import Data.Generics    (Data(..), Typeable (..))
+import Data.Generics     (Data(..), Typeable (..))
 import System.FilePath
-import Text.PrettyPrint
+
+import Curry.Base.Pretty
 
 -- |Type class for entities which have a source code 'Position'
 class HasPosition a where
@@ -75,6 +76,9 @@ instance HasPosition Position where
 instance SrcRefOf Position where
   srcRefOf NoPos = noRef
   srcRefOf x     = astRef x
+
+instance Pretty Position where
+  pPrint = ppPosition
 
 -- |Pretty print a 'Position'
 ppPosition :: Position -> Doc
@@ -148,6 +152,10 @@ instance Read SrcRef where
 instance Show SrcRef where
   show _ = ""
 
+instance Pretty SrcRef where
+  pPrint     _ = empty
+  pPrintList _ = empty
+
 -- |Type class for data types containing source code references
 class SrcRefOf a where
   -- |Retrieve all 'SrcRef's
@@ -177,6 +185,5 @@ mk' = ($ [])
 -- |Increment a source code reference by a given number
 incSrcRef :: SrcRef -> Int -> SrcRef
 incSrcRef (SrcRef [i]) j = SrcRef [i + j]
-incSrcRef (SrcRef is ) _ = error $ "Curry.Base.Position.incSrcRef: SrcRef "
-                                   ++ show is
-
+incSrcRef (SrcRef is ) _ = error $
+  "Curry.Base.Position.incSrcRef: SrcRef " ++ show is
