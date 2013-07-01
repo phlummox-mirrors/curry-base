@@ -50,6 +50,7 @@ Library
   ghc-options: -Wall
   Exposed-Modules:
     Curry.AbstractCurry
+    Curry.Base.Equiv
     Curry.Base.Ident
     Curry.Base.LexComb
     Curry.Base.LLParseComb
