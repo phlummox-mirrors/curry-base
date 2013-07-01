@@ -3,7 +3,7 @@
     Description :  A Parser for Curry
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2012 Björn Peemöller
+                       2011 - 2013 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -129,7 +129,7 @@ iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
 iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
   where
-  hDataDecl = hiddenData <$-> token KW_data     <*> tycon <*> many tyvar
+  hDataDecl = hiddenData <$-> token KW_data     <*> qtycon <*> many tyvar
   hFuncDecl = hidingFunc <$-> token DoubleColon <*> type0
   hiddenData tc tvs p = HidingDataDecl p tc tvs
   -- TODO: 0 was inserted to type check, but what is the meaning of this field?
@@ -137,26 +137,29 @@ iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
 
 -- |Parser for an interface data declaration
 iDataDecl :: Parser Token IDecl a
-iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> (iConstrDecl `sepBy` bar)
-  where iConstrDecl =  Just    <$>  constrDecl <\> token Underscore
+iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs
+  where constrs = equals <-*> iConstrDecl `sepBy1` bar `opt` []
+        iConstrDecl =  Just    <$>  constrDecl <\> token Underscore
                    <|> Nothing <$-> token Underscore
 
 -- |Parser for an interface newtype declaration
 iNewtypeDecl :: Parser Token IDecl a
-iNewtypeDecl =  iTypeDeclLhs INewtypeDecl KW_newtype  <*> newConstrDecl
+iNewtypeDecl = iTypeDeclLhs INewtypeDecl KW_newtype
+               <*-> equals <*> newConstrDecl
 
 -- |Parser for an interface type synonym declaration
 iTypeDecl :: Parser Token IDecl a
-iTypeDecl = iTypeDeclLhs ITypeDecl KW_type <*> type0
+iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
+            <*-> equals <*> (type0 <|> recordDecl)
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
 iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
-             <*> succeed 0 <*> type0
+             <*> succeed 0 <*> (type0 <|> recordDecl)
 
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
-iTypeDeclLhs f kw = f <$> tokenPos kw <*> qtycon <*> many tyvar <*-> equals
+iTypeDeclLhs f kw = f <$> tokenPos kw <*> qtycon <*> many tyvar
 
 -- ---------------------------------------------------------------------------
 -- Top-Level Declarations
@@ -166,8 +169,8 @@ topDecls :: Parser Token [Decl] a
 topDecls = topDecl `sepBy` semicolon
 
 topDecl :: Parser Token Decl a
-topDecl = choice [ dataDecl, newtypeDecl, typeDecl, foreignDecl
-                 , infixDecl, functionDecl ]
+topDecl = choice [ infixDecl, dataDecl, newtypeDecl, typeDecl
+                 , foreignDecl, functionDecl ]
 
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
@@ -665,7 +668,7 @@ tycon :: Parser Token Ident a
 tycon = conId
 
 anonOrTyvar :: Parser Token Ident a
-anonOrTyvar = anonIdent <|> tyvar 
+anonOrTyvar = anonIdent <|> tyvar
 
 tyvar :: Parser Token Ident a
 tyvar = varId
