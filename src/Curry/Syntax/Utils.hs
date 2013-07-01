@@ -19,7 +19,7 @@ module Curry.Syntax.Utils
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
-  , isDataDecl, isNewtypeDecl
+  , isDataDecl, isNewtypeDecl, arrowArityTyExpr
   ) where
 
 import Control.Monad.State
@@ -158,6 +158,12 @@ simpleContextToContext (SContext list)
   
 typeVarsInSContext :: SContext -> [Ident]
 typeVarsInSContext (SContext cx) = map snd cx
+
+-- |calculates the arity of a given type signature
+arrowArityTyExpr :: TypeExpr -> Int
+arrowArityTyExpr (ArrowType _ ty) = 1 + arrowArityTyExpr ty
+arrowArityTyExpr (SpecialConstructorType ArrowTC [_, ty]) = 1 + arrowArityTyExpr ty
+arrowArityTyExpr _                = 0
 
 ---------------------------
 -- add source references
