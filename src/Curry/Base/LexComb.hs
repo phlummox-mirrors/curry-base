@@ -34,7 +34,7 @@ module Curry.Base.LexComb
   , convertIntegral, convertFloating
   ) where
 
-import Data.Char (isDigit, isUpper, ord)
+import Data.Char           (isDigit, isUpper, ord)
 
 import Curry.Base.Message  (MessageM, failWithAt)
 import Curry.Base.Position (Position, first)
@@ -54,12 +54,12 @@ type Indent = Int
 type Context = [Indent]
 
 -- |Basic lexer function
-type P a = Position     -- ^ Current source code position
-         -> String      -- ^ 'String' to be parsed
-         -> Bool        -- ^ Flag whether the beginning of a line should be
-                        --   parsed, which requires layout checking
-         -> Context     -- ^ context as a stack of 'Indent's
-         -> MessageM a
+type P a = Position   -- ^ Current source code position
+        -> String     -- ^ 'String' to be parsed
+        -> Bool       -- ^ Flag whether the beginning of a line should be
+                      --   parsed, which requires layout checking
+        -> Context    -- ^ context as a stack of 'Indent's
+        -> MessageM a
 
 -- |Apply a lexer on a 'String' to lex the content. The second parameter
 -- requires a 'FilePath' to use in the 'Position'
