@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Identifiers
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       2011, Björn Peemöller (bjp@informatik.uni-kiel.de)
+    Copyright   :  (c) 1999 - 2004, Wolfgang Lux
+                       2011 - 2013, Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -30,7 +30,7 @@ module Curry.Base.Ident
 
     -- * Local identifiers
   , Ident (..), mkIdent, showIdent, escName, identSupply
-  , globalScope, hasGlobalScope, renameIdent, unRenameIdent
+  , globalScope, hasGlobalScope, isRenamed, renameIdent, unRenameIdent
   , updIdentName, addPositionIdent, addRefId, isInfixOp
 
     -- * Qualified identifiers
@@ -63,11 +63,11 @@ module Curry.Base.Ident
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
   ) where
 
-import Data.Char     (isAlpha, isAlphaNum, isSpace)
-import Data.Function (on)
-import Data.Generics (Data(..), Typeable(..))
-import Data.List     (intercalate, isInfixOf, isPrefixOf)
-import Data.Maybe    (isJust, fromMaybe)
+import Data.Char           (isAlpha, isAlphaNum, isSpace)
+import Data.Function       (on)
+import Data.Generics       (Data(..), Typeable(..))
+import Data.List           (intercalate, isInfixOf, isPrefixOf)
+import Data.Maybe          (isJust, fromMaybe)
 
 import Curry.Base.Position
 
@@ -218,6 +218,10 @@ escName i = '`' : idName i ++ "'"
 -- |Has the identifier global scope?
 hasGlobalScope :: Ident -> Bool
 hasGlobalScope = (== globalScope) . idUnique
+
+-- |Is the 'Ident' renamed?
+isRenamed :: Ident -> Bool
+isRenamed = (/= globalScope) . idUnique
 
 -- |Rename an 'Ident' by changing its unique number
 renameIdent :: Ident -> Integer -> Ident
@@ -476,6 +480,10 @@ qPreludeIdent = qualifyWith preludeMIdent
 qUnitId :: QualIdent
 qUnitId = qualify unitId
 
+-- | 'QualIdent' for the type '[]'
+qListId :: QualIdent
+qListId = qualify listId
+
 -- | 'QualIdent' for the type 'Bool'
 qBoolId :: QualIdent
 qBoolId = qPreludeIdent boolId
@@ -491,10 +499,6 @@ qIntId = qPreludeIdent intId
 -- | 'QualIdent' for the type 'Float'
 qFloatId :: QualIdent
 qFloatId = qPreludeIdent floatId
-
--- | 'QualIdent' for the type '[]'
-qListId :: QualIdent
-qListId = qualify listId
 
 -- | 'QualIdent' for the type 'IO'
 qIOId :: QualIdent
