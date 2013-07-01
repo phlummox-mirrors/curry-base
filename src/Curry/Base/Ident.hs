@@ -35,7 +35,7 @@ module Curry.Base.Ident
 
     -- * Qualified identifiers
   , QualIdent (..), qualName, qidPosition, isQInfixOp, qualify
-  , qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
+  , qualifyWith, qualQualify, qualifyLike, isQualified, unqualify, qualUnqualify
   , localIdent, updQualIdent, addRef
 
     -- * Predefined simple identifiers
@@ -307,6 +307,12 @@ qualifyWith = QualIdent . Just
 qualQualify :: ModuleIdent -> QualIdent -> QualIdent
 qualQualify m (QualIdent Nothing x) = QualIdent (Just m) x
 qualQualify _ x = x
+
+-- |Qualify an 'Ident' with the 'ModuleIdent' of the given 'QualIdent',
+-- if present.
+qualifyLike :: QualIdent -> Ident -> QualIdent
+qualifyLike (QualIdent Nothing  _) x = qualify x
+qualifyLike (QualIdent (Just m) _) x = qualifyWith m x
 
 -- | Check whether a 'QualIdent' contains a 'ModuleIdent'
 isQualified :: QualIdent -> Bool
