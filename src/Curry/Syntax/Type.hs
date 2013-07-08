@@ -102,8 +102,8 @@ data IImportDecl = IImportDecl Position ModuleIdent
 
 -- |Interface declaration
 data IDecl
-  = IInfixDecl     Position Infix Integer QualIdent -- TODO: change to int?
-  | HidingDataDecl Position Ident [Ident]           -- TODO: change to QualIdent?
+  = IInfixDecl     Position Infix Integer QualIdent
+  | HidingDataDecl Position QualIdent [Ident]
   | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr

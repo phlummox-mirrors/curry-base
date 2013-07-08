@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Identifiers
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       2011, Björn Peemöller (bjp@informatik.uni-kiel.de)
+    Copyright   :  (c) 1999 - 2004, Wolfgang Lux
+                       2011 - 2013, Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -30,12 +30,12 @@ module Curry.Base.Ident
 
     -- * Local identifiers
   , Ident (..), mkIdent, showIdent, escName, identSupply
-  , globalScope, hasGlobalScope, renameIdent, unRenameIdent
+  , globalScope, hasGlobalScope, isRenamed, renameIdent, unRenameIdent
   , updIdentName, addPositionIdent, addRefId, isInfixOp
 
     -- * Qualified identifiers
   , QualIdent (..), qualName, qidPosition, isQInfixOp, qualify
-  , qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
+  , qualifyWith, qualQualify, qualifyLike, isQualified, unqualify, qualUnqualify
   , localIdent, updQualIdent, addRef
 
     -- * Predefined simple identifiers
@@ -66,13 +66,14 @@ module Curry.Base.Ident
   , identPrefix
   ) where
 
-import Data.Char     (isAlpha, isAlphaNum, isSpace)
-import Data.Function (on)
-import Data.Generics (Data(..), Typeable(..))
-import Data.List     (intercalate, isInfixOf, isPrefixOf)
-import Data.Maybe    (isJust, fromMaybe)
+import Data.Char           (isAlpha, isAlphaNum, isSpace)
+import Data.Function       (on)
+import Data.Generics       (Data(..), Typeable(..))
+import Data.List           (intercalate, isInfixOf, isPrefixOf)
+import Data.Maybe          (isJust, fromMaybe)
 
 import Curry.Base.Position
+import Curry.Base.Pretty
 
 -- ---------------------------------------------------------------------------
 -- Module identifier
@@ -106,6 +107,9 @@ instance Show ModuleIdent where
 instance HasPosition ModuleIdent where
   getPosition = midPosition
   setPosition = addPositionModuleIdent
+
+instance Pretty ModuleIdent where
+  pPrint = hcat . punctuate dot . map text . midQualifiers
 
 instance SrcRefOf ModuleIdent where
   srcRefOf = srcRefOf . getPosition
@@ -192,6 +196,10 @@ instance HasPosition Ident where
   getPosition = idPosition
   setPosition = addPositionIdent
 
+instance Pretty Ident where
+  pPrint (Ident _ x n) | n == globalScope = text x
+                       | otherwise        = text x <> dot <> integer n
+
 instance SrcRefOf Ident where
   srcRefOf = srcRefOf . getPosition
 
@@ -221,6 +229,10 @@ escName i = '`' : idName i ++ "'"
 -- |Has the identifier global scope?
 hasGlobalScope :: Ident -> Bool
 hasGlobalScope = (== globalScope) . idUnique
+
+-- |Is the 'Ident' renamed?
+isRenamed :: Ident -> Bool
+isRenamed = (/= globalScope) . idUnique
 
 -- |Rename an 'Ident' by changing its unique number
 renameIdent :: Ident -> Integer -> Ident
@@ -277,6 +289,9 @@ instance HasPosition QualIdent where
   getPosition     = getPosition . qidIdent
   setPosition p q = q { qidIdent = setPosition p $ qidIdent q }
 
+instance Pretty QualIdent where
+  pPrint = text . show
+
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify
 
@@ -313,6 +328,12 @@ qualifyWith = QualIdent . Just
 qualQualify :: ModuleIdent -> QualIdent -> QualIdent
 qualQualify m (QualIdent Nothing x) = QualIdent (Just m) x
 qualQualify _ x = x
+
+-- |Qualify an 'Ident' with the 'ModuleIdent' of the given 'QualIdent',
+-- if present.
+qualifyLike :: QualIdent -> Ident -> QualIdent
+qualifyLike (QualIdent Nothing  _) x = qualify x
+qualifyLike (QualIdent (Just m) _) x = qualifyWith m x
 
 -- | Check whether a 'QualIdent' contains a 'ModuleIdent'
 isQualified :: QualIdent -> Bool

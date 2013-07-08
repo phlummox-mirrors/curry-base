@@ -158,10 +158,10 @@ ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
 -- |Pretty print an interface declaration
 ppIDecl :: IDecl -> Doc
-ppIDecl (IInfixDecl _ fix p op) = ppPrec fix p <+> ppQInfixOp op
+ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix p <+> ppQInfixOp op
 ppIDecl (HidingDataDecl _ tc tvs) =
-  text "hiding" <+> ppITypeDeclLhs "data" (qualify tc) tvs
-ppIDecl (IDataDecl _ tc tvs cs) =
+  text "hiding" <+> ppITypeDeclLhs "data" tc tvs
+ppIDecl (IDataDecl   _ tc tvs cs) =
   sep (ppITypeDeclLhs "data" tc tvs :
        map indent (zipWith (<+>) (equals : repeat vbar) (map ppIConstr cs)))
   where ppIConstr = maybe (char '_') ppConstr
