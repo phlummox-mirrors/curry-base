@@ -181,11 +181,13 @@ infixDeclLhs f = f <$> position <*> tokenOps infixKW
   infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
 dataDecl :: Parser Token Decl a
-dataDecl = typeDeclLhs DataDecl KW_data <*> constrs
+dataDecl = typeDeclLhsWithDeriving DataDecl KW_data <*> constrs 
+  <*> optionMaybe deriving0
   where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
 newtypeDecl :: Parser Token Decl a
-newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
+newtypeDecl = typeDeclLhsWithDeriving NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl 
+  <*> optionMaybe deriving0
 
 typeDecl :: Parser Token Decl a
 typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> (type0 <|> recordDecl)
@@ -193,6 +195,14 @@ typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> (type0 <|> recordDecl)
 typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
             -> Parser Token a b
 typeDeclLhs f kw = f <$> tokenPos kw <*> tycon <*> many anonOrTyvar
+
+typeDeclLhsWithDeriving :: (Position -> Ident -> [Ident] -> a -> Maybe Deriving -> Decl)
+                        -> Category -> Parser Token (a -> Maybe Deriving -> Decl) b
+typeDeclLhsWithDeriving f kw = f <$> tokenPos kw <*> tycon <*> many anonOrTyvar
+
+deriving0 :: Parser Token Deriving a
+deriving0 = Deriving <$> 
+  (token KW_deriving <-*> (parens (qIdent `sepBy` comma) <|> (:[]) <$> qIdent))
 
 constrDecl :: Parser Token ConstrDecl a
 constrDecl = position <**> (existVars <**> constr)

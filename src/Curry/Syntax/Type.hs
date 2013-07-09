@@ -23,7 +23,7 @@ module Curry.Syntax.Type
     -- * Interface
   , Interface (..), IImportDecl (..), IDecl (..)
     -- * Declarations
-  , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..)
+  , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..), Deriving (..)
   , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), Pattern (..), Expression (..), InfixOp (..)
@@ -120,8 +120,8 @@ type Id = Int
 -- |Declaration in a module
 data Decl
   = InfixDecl    Position Infix Integer [Ident]                  -- infixl 5 (op), `fun` -- TODO: Make precedence optional and change to int
-  | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
-  | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
+  | DataDecl     Position Ident [Ident] [ConstrDecl] (Maybe Deriving)  -- data C a b = C1 a | C2 b [deriving Eq]
+  | NewtypeDecl  Position Ident [Ident] NewConstrDecl (Maybe Deriving) -- newtype C a b = C a b [deriving Eq]
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
   | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
   | FunctionDecl Position (Maybe ConstrType_) Id Ident [Equation]-- f True = 1 ; f False = 0
@@ -132,6 +132,10 @@ data Decl
   | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}
   | InstanceDecl Position SContext QualIdent TypeConstructor [Ident] [Decl] -- instance Foo a => Module1.Bar (Module2.TyCon a b c) where {FunctionDecl}
     deriving (Read, Show, Data, Typeable)
+
+-- | deriving declaration for data/newtype declarations
+data Deriving = Deriving [QualIdent]
+  deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
 -- Infix declaration
@@ -412,10 +416,10 @@ instance Eq Expression where
 instance Eq Decl where
   (InfixDecl p1 f1 i1 ids1) == (InfixDecl p2 f2 i2 ids2) 
     = p1 == p2 && f1 == f2 && i1 == i2 && ids1 == ids2
-  (DataDecl p1 i1 ids1 cs1) == (DataDecl p2 i2 ids2 cs2) 
-    = p1 == p2 && i1 == i2 && ids1 == ids2 && cs1 == cs2
-  (NewtypeDecl p1 i1 ids1 n1) == (NewtypeDecl p2 i2 ids2 n2) 
-    = p1 == p2 && i1 == i2 && ids1 == ids2 && n1 == n2
+  (DataDecl p1 i1 ids1 cs1 d1) == (DataDecl p2 i2 ids2 cs2 d2) 
+    = p1 == p2 && i1 == i2 && ids1 == ids2 && cs1 == cs2 && d1 == d2
+  (NewtypeDecl p1 i1 ids1 n1 d1) == (NewtypeDecl p2 i2 ids2 n2 d2) 
+    = p1 == p2 && i1 == i2 && ids1 == ids2 && n1 == n2 && d1 == d2
   (TypeDecl p1 id1 ids1 t1) == (TypeDecl p2 id2 ids2 t2) 
     = p1 == p2 && id1 == id2 && ids1 == ids2 && t1 == t2
   (TypeSig p1 ids1 cx1 t1) == (TypeSig p2 ids2 cx2 t2) 

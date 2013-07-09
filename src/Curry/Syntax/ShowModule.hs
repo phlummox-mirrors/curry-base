@@ -102,19 +102,21 @@ showsDecl (InfixDecl pos infx prec idents)
   . shows prec . space
   . showsList showsIdent idents
   . showsString ")"
-showsDecl (DataDecl pos ident idents consdecls)
+showsDecl (DataDecl pos ident idents consdecls der)
   = showsString "(DataDecl "
   . showsPosition pos . space
   . showsIdent ident . space
   . showsList showsIdent idents . space
   . showsList showsConsDecl consdecls
+  . showsDeriving der
   . showsString ")"
-showsDecl (NewtypeDecl pos ident idents newconsdecl)
+showsDecl (NewtypeDecl pos ident idents newconsdecl der)
   = showsString "(NewtypeDecl "
   . showsPosition pos . space
   . showsIdent ident . space
   . showsList showsIdent idents . space
   . showsNewConsDecl newconsdecl
+  . showsDeriving der
   . showsString ")"
 showsDecl (TypeDecl pos ident idents typ)
   = showsString "(TypeDecl "
@@ -199,6 +201,13 @@ showsNewConsDecl (NewConstrDecl pos idents ident typ)
   . showsIdent ident . space
   . showsTypeExpr typ
   . showsString ")"
+
+showsDeriving :: Maybe Deriving -> ShowS
+showsDeriving (Just (Deriving clss)) 
+  = showsString "(Just (Deriving " 
+  . showsList showsQualIdent clss 
+  . showsString "))"
+showsDeriving (Nothing) = showsString "Nothing"
 
 showsTypeExpr :: TypeExpr -> ShowS
 showsTypeExpr (ConstructorType qident types)
