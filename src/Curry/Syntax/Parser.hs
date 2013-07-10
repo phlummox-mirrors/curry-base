@@ -132,7 +132,7 @@ iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
   where
   hDataDecl = hiddenData <$-> token KW_data     <*> qtycon <*> many tyvar
-  hFuncDecl = hidingFunc <$-> token DoubleColon <*> type0
+  hFuncDecl = hidingFunc <$-> token DoubleColon <*> type0 True
   hiddenData tc tvs p = HidingDataDecl p tc tvs
   -- TODO: 0 was inserted to type check, but what is the meaning of this field?
   hidingFunc ty p = IFunctionDecl p (qualify (mkIdent "hiding")) 0 ty
@@ -152,12 +152,12 @@ iNewtypeDecl = iTypeDeclLhs INewtypeDecl KW_newtype
 -- |Parser for an interface type synonym declaration
 iTypeDecl :: Parser Token IDecl a
 iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
-            <*-> equals <*> (type0 <|> recordDecl)
+            <*-> equals <*> type0 True
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
 iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
-             <*> succeed 0 <*> (type0 <|> recordDecl)
+             <*> succeed 0 <*> type0 True
 
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
@@ -191,7 +191,7 @@ newtypeDecl :: Parser Token Decl a
 newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
 typeDecl :: Parser Token Decl a
-typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> (type0 <|> recordDecl)
+typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> type0 True
 
 typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
             -> Parser Token a b
@@ -202,26 +202,19 @@ constrDecl = position <**> (existVars <**> constr)
   where
   constr =  conId     <**> identDecl
         <|> leftParen <-*> parenDecl
-        <|> type1 <\> conId <\> leftParen <**> opDecl
-  identDecl = many type2 <**> (conType <$> opDecl `opt` conDecl)
+        <|> type1 False <\> conId <\> leftParen <**> opDecl
+  identDecl = many (type2 False) <**> (conType <$> opDecl `opt` conDecl)
   parenDecl =  conOpDeclPrefix
-           <$> conSym    <*-> rightParen <*> type2 <*> type2
-           <|> tupleType <*-> rightParen <**> opDecl
-  opDecl = conOpDecl <$> conop <*> type1
+           <$> conSym    <*-> rightParen <*> type2 False <*> type2 False
+           <|> tupleType False <*-> rightParen <**> opDecl
+  opDecl = conOpDecl <$> conop <*> type1 False
   conType f tys c                  = f $ ConstructorType (qualify c) tys
   conDecl tys c tvs p              = ConstrDecl p tvs c tys
   conOpDecl op ty2 ty1 tvs p       = ConOpDecl p tvs ty1 op ty2
   conOpDeclPrefix op ty1 ty2 tvs p = ConOpDecl p tvs ty1 op ty2
 
 newConstrDecl :: Parser Token NewConstrDecl a
-newConstrDecl = NewConstrDecl <$> position <*> existVars <*> con <*> type2
-
-recordDecl :: Parser Token TypeExpr a
-recordDecl =  flip RecordType Nothing
-          <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
-
-labelDecls :: Parser Token ([Ident], TypeExpr) a
-labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0
+newConstrDecl = NewConstrDecl <$> position <*> existVars <*> con <*> type2 False
 
 valueDecls :: Parser Token [Decl] a
 valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
@@ -276,8 +269,8 @@ funListDecl =  typeSignature
            <|> externalDecl
   
 typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
-typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0)
-  <|?> (typeSig <$-> token DoubleColon <*> succeed emptyContext <*> type0)
+typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0 False)
+  <|?> (typeSig <$-> token DoubleColon <*> succeed emptyContext <*> type0 False)
   where typeSig cx ty vs p = TypeSig p vs cx ty
 
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
@@ -320,7 +313,7 @@ foreignDecl :: Parser Token Decl a
 foreignDecl = ForeignDecl
           <$> tokenPos KW_foreign
           <*> callConv <*> (optionMaybe string)
-          <*> fun <*-> token DoubleColon <*> type0
+          <*> fun <*-> token DoubleColon <*> type0 False
   where callConv =  CallConvPrimitive <$-> token Id_primitive
                 <|> CallConvCCall     <$-> token Id_ccall
                 <?> "Unsupported calling convention"
@@ -377,46 +370,67 @@ instanceDecl =
 -- ---------------------------------------------------------------------------
 
 -- type0 ::= type1 ['->' type0]
-type0 :: Parser Token TypeExpr a
-type0 = type1 `chainr1` (ArrowType <$-> token RightArrow)
+type0 :: Bool -> Parser Token TypeExpr a
+type0 withRecordType = type1 withRecordType `chainr1`
+                       (ArrowType <$-> token RightArrow)
 
 -- type1 ::= QTyCon { type2 } | type2
-type1 :: Parser Token TypeExpr a
-type1 = ConstructorType <$> qtycon <*> many type2
-    <|> type2 <\> qtycon
+type1 :: Bool -> Parser Token TypeExpr a
+type1 withRecordType = ConstructorType <$> qtycon <*> many type2'
+    <|> type2' <\> qtycon
+  where type2' = type2 withRecordType
 
--- type2 ::= '_' | identType | parenType | listType | [] | (->) | (,{,})
+-- type2 ::= anonType | identType | parenType | listType | [] | (->) | (,{,})
 -- allow also "[]", "(->)" and "(,{,})"!
-type2 :: Parser Token TypeExpr a
-type2 = (anonType <|> identType <|> parenType <|> listType) <|?> gtycon'
+type2 :: Bool -> Parser Token TypeExpr a
+type2 withRecordType
+  | withRecordType = (anonType <|> identType <|> parenType True
+                  <|> listType True <|> recordType) <|?> gtycon'
+  | otherwise      = (anonType <|> identType <|> parenType False
+                  <|> listType False) <|?> gtycon'
 
+-- anonType ::= '_'
 anonType :: Parser Token TypeExpr a
 anonType = VariableType <$> anonIdent
 
+-- identType ::= <identifier>
 identType :: Parser Token TypeExpr a
 identType = VariableType <$> tyvar
         <|> flip ConstructorType [] <$> qtycon <\> tyvar
 
 -- parenType ::= '(' tupleType ')'
-parenType :: Parser Token TypeExpr a
-parenType = parens tupleType
+parenType :: Bool -> Parser Token TypeExpr a
+parenType withRecordType = parens (tupleType withRecordType)
 
 -- tupleType ::= type0                         (parenthesized type)
 --            |  type0 ',' type0 { ',' type0 } (tuple type)
 --            |                                (unit type)
-tupleType :: Parser Token TypeExpr a
-tupleType = type0 <??> (tuple <$> many1 (comma <-*> type0))
-            `opt` TupleType []
+tupleType :: Bool -> Parser Token TypeExpr a
+tupleType withRecordType = type0 withRecordType <??>
+                           (tuple <$> many1 (comma <-*> type0 withRecordType))
+                           `opt` TupleType []
   where tuple tys ty = TupleType (ty : tys)
 
 -- listType ::= '[' type0 ']'
-listType :: Parser Token TypeExpr a
-listType = ListType <$> brackets type0
+listType :: Bool -> Parser Token TypeExpr a
+listType withRecordType = ListType <$> brackets (type0 withRecordType)
+
+-- listType ::= '{' labelDecls '}'
+recordType :: Parser Token TypeExpr a
+recordType =  flip RecordType Nothing
+          <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
+
+-- labelDecls ::= labId '::' type0 [',' labelDecls]
+labelDecls :: Parser Token ([Ident], TypeExpr) a
+labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0 True
 
 -- ---------------------------------------------------------------------------
 -- Literals
 -- ---------------------------------------------------------------------------
 
+-- literal ::= '\'' <escaped character> '\''
+--          |  <integer>
+--          |  '"' <escaped string> '"'
 literal :: Parser Token Literal a
 literal = mk Char   <$> char
       <|> mkInt     <$> int
@@ -547,9 +561,9 @@ condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 -- expr ::= expr0 [ '::' [context =>] type0 ]
 expr :: Parser Token Expression a
 expr = (expr0 <??> 
-   (typed <$-> token DoubleColon <*> succeed emptyContext <*> type0
+   (typed <$-> token DoubleColon <*> succeed emptyContext <*> type0 False
     <|?> 
-    typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0))
+    typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0 False))
  where typed cons ty exp = Typed Nothing exp cons ty 
 
 -- expr0 ::= expr1 { infixOp expr1 }
@@ -600,9 +614,9 @@ parenExpr = parens pExpr
               <|> (.) <$> (optType <.> tupleExpr)
   leftSectionOrExp = expr1 <**> (infixApp <$> infixOrTuple')
                 `opt` leftSection
-  optType   = ((typed <$-> token DoubleColon <*> succeed emptyContext <*> type0)
+  optType   = ((typed <$-> token DoubleColon <*> succeed emptyContext <*> type0 False)
           <|?> (typed <$-> token DoubleColon <*> context <*-> 
-                           token DoubleArrow <*> type0)) `opt` id
+                           token DoubleArrow <*> type0 False)) `opt` id
   typed cons ty exp = Typed Nothing exp cons ty
   tupleExpr = tuple <$> many1 (comma <-*> expr) `opt` Paren
   opOrRightSection =  qFunSym <**> optRightSection
@@ -1028,7 +1042,7 @@ contextElem = (\tcon (tvar, types) -> ContextElem tcon tvar types)
   ((,) <$> tyvar <*> succeed [] <|> parens ((,) <$> tyvar <*> many1 atype))
 
 atype :: Parser Token TypeExpr a
-atype = gtycon' <|?> identType <|?> parenType <|?> listType 
+atype = gtycon' <|?> identType <|?> parenType False <|?> listType False
 
 
 gtycon' :: Parser Token TypeExpr a
