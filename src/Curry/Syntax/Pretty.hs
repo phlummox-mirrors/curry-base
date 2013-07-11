@@ -155,7 +155,6 @@ ppInterface (Interface m is ds)
 ppIImportDecl :: IImportDecl -> Doc
 ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
-
 -- |Pretty print an interface declaration
 ppIDecl :: IDecl -> Doc
 ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix p <+> ppQInfixOp op
@@ -169,7 +168,8 @@ ppIDecl (INewtypeDecl _ tc tvs nc) =
   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 ppIDecl (ITypeDecl _ tc tvs ty) =
   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppIDecl (IFunctionDecl _ f _ ty) = ppQIdent f <+> text "::" <+> ppTypeExpr 0 ty
+ppIDecl (IFunctionDecl _ f a ty) = ppQIdent f <+> int a
+                               <+> text "::" <+> ppTypeExpr 0 ty
 
 ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
