@@ -129,11 +129,11 @@ iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
 iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
   where
-  hDataDecl = hiddenData <$-> token KW_data     <*> qtycon <*> many tyvar
-  hFuncDecl = hidingFunc <$-> token DoubleColon <*> type0 True
+  hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
+  hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> type0 True
   hiddenData tc tvs p = HidingDataDecl p tc tvs
   -- TODO: 0 was inserted to type check, but what is the meaning of this field?
-  hidingFunc ty p = IFunctionDecl p (qualify (mkIdent "hiding")) 0 ty
+  hidingFunc a ty p = IFunctionDecl p (qualify (mkIdent "hiding")) a ty
 
 -- |Parser for an interface data declaration
 iDataDecl :: Parser Token IDecl a
@@ -154,8 +154,12 @@ iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
-iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*-> token DoubleColon
-             <*> succeed 0 <*> type0 True
+iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*> arity
+            <*-> token DoubleColon <*> type0 True
+
+-- |Parser for function's arity
+arity :: Parser Token Int a
+arity = int `opt` 0
 
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
@@ -177,7 +181,7 @@ infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
 
 infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
 infixDeclLhs f = f <$> position <*> tokenOps infixKW
-                   <*> (int <?> "precedence level expected")
+                   <*> (integer <?> "precedence level expected") -- TODO: change to int?
   where
   infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
@@ -372,7 +376,7 @@ labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0 True
 --          |  '"' <escaped string> '"'
 literal :: Parser Token Literal a
 literal = mk Char   <$> char
-      <|> mkInt     <$> int
+      <|> mkInt     <$> integer
       <|> mk Float  <$> float
       <|> mk String <$> string
 
@@ -461,11 +465,11 @@ gconId :: Parser Token QualIdent a
 gconId = colon <|> tupleCommas
 
 negNum :: Parser Token (Ident -> Pattern) a
-negNum = flip NegativePattern <$> (mkInt <$> int <|> mk Float <$> float)
+negNum = flip NegativePattern <$> (mkInt <$> integer <|> mk Float <$> float)
 
 negFloat :: Parser Token (Ident -> Pattern) a
 negFloat = flip NegativePattern . mk Float
-           <$> (fromIntegral <$> int <|> float)
+           <$> (fromIntegral <$> integer <|> float)
 
 optAsPattern :: Parser Token (Ident -> Pattern) a
 optAsPattern = flip AsPattern <$-> token At <*> pattern2
@@ -672,8 +676,11 @@ char = cval <$> token CharTok
 float :: Parser Token Double a
 float = fval <$> token FloatTok
 
-int :: Parser Token Integer a
-int = ival <$> token IntTok
+int :: Parser Token Int a
+int = fromInteger <$> integer
+
+integer :: Parser Token Integer a
+integer = ival <$> token IntTok
 
 string :: Parser Token String a
 string = sval <$> token StringTok
