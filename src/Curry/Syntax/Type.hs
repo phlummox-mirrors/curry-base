@@ -108,6 +108,7 @@ data IDecl
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
   | IFunctionDecl  Position QualIdent Int TypeExpr
+  | IClassDecl     Position [QualIdent] QualIdent Ident [IDecl] 
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
