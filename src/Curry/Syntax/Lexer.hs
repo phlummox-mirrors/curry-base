@@ -126,6 +126,7 @@ data Category
   | Id_forall
   | Id_hiding
   | Id_interface
+  | Id_interfaceTypeClasses
   | Id_primitive
   | Id_qualified
 
@@ -258,6 +259,7 @@ instance Show Token where
   showsPrec _ (Token Id_forall          _) = showsSpecialIdent "forall"
   showsPrec _ (Token Id_hiding          _) = showsSpecialIdent "hiding"
   showsPrec _ (Token Id_interface       _) = showsSpecialIdent "interface"
+  showsPrec _ (Token Id_interfaceTypeClasses _) = showsSpecialIdent "interfaceTypeClasses"
   showsPrec _ (Token Id_primitive       _) = showsSpecialIdent "primitive"
   showsPrec _ (Token Id_qualified       _) = showsSpecialIdent "qualified"
   showsPrec _ (Token LineComment        a) = shows a
@@ -373,6 +375,7 @@ keywordsSpecialIds = Map.union keywords $ Map.fromList
   , ("forall"   , Id_forall   )
   , ("hiding"   , Id_hiding   )
   , ("interface", Id_interface)
+  , ("interfaceTypeClasses", Id_interfaceTypeClasses)
   , ("primitive", Id_primitive)
   , ("qualified", Id_qualified)
   ]

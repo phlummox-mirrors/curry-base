@@ -151,6 +151,8 @@ ppInterface (Interface m is ds)
   $$ vcat (punctuate semi $ map ppIImportDecl is)
   $$ vcat (punctuate semi $ map ppIDecl ds)
   $$ rbrace
+  $$ text "interfaceTypeClasses" <+> ppMIdent m <+> text "where" <+> lbrace
+  $$ rbrace
 
 ppIImportDecl :: IImportDecl -> Doc
 ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m

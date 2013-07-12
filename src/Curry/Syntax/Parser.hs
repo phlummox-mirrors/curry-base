@@ -105,6 +105,9 @@ interface =   Interface
          <*-> checkWhere         <*-> leftBrace
          <*>  iImportDecls
          <*>  intfDecls          <*-> rightBrace
+         <*-> token Id_interfaceTypeClasses <*-> modIdent
+         <*-> checkWhere         <*-> leftBrace
+         <*-> rightBrace
 
 -- |Parser for interface import declarations
 iImportDecls :: Parser Token [IImportDecl] a
