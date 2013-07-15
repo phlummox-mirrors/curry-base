@@ -39,8 +39,8 @@ parseHeader :: FilePath -> String -> MessageM Module
 parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
 
 -- |Parse an 'Interface'
-parseInterface :: FilePath -> String -> MessageM Interface
-parseInterface = fullParser interface lexer
+parseInterface :: FilePath -> String -> MessageM [Interface]
+parseInterface = fullParser interfaces lexer
 
 -- |Parse a 'Goal'
 parseGoal :: String -> MessageM Goal
@@ -98,16 +98,19 @@ importSpec =   position
 -- Interfaces
 -- ---------------------------------------------------------------------------
 
+-- |Parser for all interfaces (type class specific as well as non type class
+-- specific)
+interfaces :: Parser Token [Interface] a
+interfaces = (\i1 i2 -> i1 : [i2]) <$> 
+  interface Id_interface <*> interface Id_interfaceTypeClasses
+
 -- |Parser for an interface
-interface :: Parser Token Interface a
-interface =   Interface
-         <$-> token Id_interface <*>  modIdent
+interface :: Category -> Parser Token Interface a
+interface tk = Interface
+         <$-> token tk           <*>  modIdent
          <*-> checkWhere         <*-> leftBrace
          <*>  iImportDecls
          <*>  intfDecls          <*-> rightBrace
-         <*-> token Id_interfaceTypeClasses <*-> modIdent
-         <*-> checkWhere         <*-> leftBrace
-         <*-> rightBrace
 
 -- |Parser for interface import declarations
 iImportDecls :: Parser Token [IImportDecl] a

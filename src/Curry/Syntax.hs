@@ -36,7 +36,7 @@ lexSource :: FilePath -> String -> MessageM [(Position, L.Token)]
 lexSource fn src = unlit fn src >>= L.lexSource fn
 
 -- |Parse a Curry 'Interface'
-parseInterface :: FilePath -> String -> MessageM Interface
+parseInterface :: FilePath -> String -> MessageM [Interface]
 parseInterface = P.parseInterface
 
 -- |Parse a Curry 'Module' header
