@@ -25,8 +25,6 @@ import Curry.Base.Ident
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (opName)
 
-import Data.List
-
 -- |Pretty print a module
 ppModule :: Module -> Doc
 ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppSepBlock ds
@@ -147,19 +145,12 @@ ppLocalDefs ds
 -- ---------------------------------------------------------------------------
 
 -- |Pretty print an interface
-ppInterface :: Interface -> Doc
-ppInterface (Interface m is ds)
-  =  text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
+ppInterface :: String -> Interface -> Doc
+ppInterface which (Interface m is ds)
+  =  text which <+> ppMIdent m <+> text "where" <+> lbrace
   $$ vcat (punctuate semi $ map ppIImportDecl is)
-  $$ vcat (punctuate semi $ map ppIDecl nonTypeClassDs)
+  $$ vcat (punctuate semi $ map ppIDecl ds)
   $$ rbrace
-  $$ text "interfaceTypeClasses" <+> ppMIdent m <+> text "where" <+> lbrace
-  $$ vcat (punctuate semi $ map ppIDecl typeClassDs)
-  $$ rbrace
-  where 
-  (typeClassDs, nonTypeClassDs) = partition isTypeClassElem ds
-  isTypeClassElem (IClassDecl _ _ _ _ _) = True
-  isTypeClassElem _ = False
 
 ppIImportDecl :: IImportDecl -> Doc
 ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
