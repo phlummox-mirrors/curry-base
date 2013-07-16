@@ -127,7 +127,8 @@ intfDecls = intfDecl `sepBy` semicolon
 -- |Parser for a single interface declaration
 intfDecl :: Parser Token IDecl a
 intfDecl = choice [ iInfixDecl, iHidingDecl, iDataDecl, iNewtypeDecl
-                  , iTypeDecl , iFunctionDecl <\> token Id_hiding ]
+                  , iTypeDecl , iFunctionDecl <\> token Id_hiding
+                  , iClassDecl ]
 
 -- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
@@ -172,6 +173,29 @@ arity = int `opt` 0
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
 iTypeDeclLhs f kw = f <$> tokenPos kw <*> qtycon <*> many tyvar
+
+-- ----------------------------------------------------------------------------
+-- type classes specific interface parsers
+-- ----------------------------------------------------------------------------
+
+-- |Parser for a interface class declaration of the following form:
+-- @
+-- class [K, K2] L a where {
+-- funL 1 :: a -> a
+-- }
+-- @
+iClassDecl :: Parser Token IDecl a
+iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
+  <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
+  <*> classTySigs <*-> rightBrace
+
+-- |Parser that parses all type signatures of a class declaration
+classTySigs :: Parser Token [IDecl] a
+classTySigs = classTySig `sepBy` semicolon
+
+-- |Parser that parses one type signature of a class declaration
+classTySig :: Parser Token IDecl a
+classTySig = iFunctionDecl
 
 -- ---------------------------------------------------------------------------
 -- Top-Level Declarations
