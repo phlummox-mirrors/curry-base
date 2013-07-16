@@ -168,8 +168,9 @@ ppIDecl (INewtypeDecl _ tc tvs nc) =
   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 ppIDecl (ITypeDecl _ tc tvs ty) =
   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppIDecl (IFunctionDecl _ f a ty) = ppQIdent f <+> int a
-                               <+> text "::" <+> ppTypeExpr 0 ty
+ppIDecl (IFunctionDecl _ f a (Context cx) ty) = ppQIdent f <+> int a
+  <+> text "::" <+> parens (hsep $ punctuate comma (map ppContextElem cx)) 
+  <+> text "=>" <+> ppTypeExpr 0 ty
 ppIDecl (IClassDecl _ scls cls clsvar tysigs) = 
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 

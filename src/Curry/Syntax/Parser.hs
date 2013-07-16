@@ -139,10 +139,12 @@ iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
   where
   hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
-  hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> type0 True
+  hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> 
+    (Context <$> (parens $ (contextElem `sepBy` comma))) <*-> token DoubleArrow
+     <*> type0 True
   hiddenData tc tvs p = HidingDataDecl p tc tvs
   -- TODO: 0 was inserted to type check, but what is the meaning of this field?
-  hidingFunc a ty p = IFunctionDecl p (qualify (mkIdent "hiding")) a ty
+  hidingFunc a cx ty p = IFunctionDecl p (qualify (mkIdent "hiding")) a cx ty
 
 -- |Parser for an interface data declaration
 iDataDecl :: Parser Token IDecl a
@@ -164,7 +166,10 @@ iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
 iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*> arity
-            <*-> token DoubleColon <*> type0 True
+            <*-> token DoubleColon 
+            <*> (Context <$> (parens $ (contextElem `sepBy` comma)))
+            <*-> token DoubleArrow
+            <*> type0 True
 
 -- |Parser for function's arity
 arity :: Parser Token Int a
