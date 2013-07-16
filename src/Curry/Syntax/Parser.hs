@@ -867,14 +867,14 @@ anonIdent = (\ p -> addPositionIdent p anonId) <$> tokenPos Underscore
 mIdent :: Parser Token ModuleIdent a
 mIdent = mIdent' <$> position <*>
      tokens [Id,QId,Id_as,Id_ccall,Id_forall,Id_hiding,
-             Id_interface,Id_primitive,Id_qualified]
+             Id_interface,Id_interfaceTypeClasses,Id_primitive,Id_qualified]
   where mIdent' p a = addPositionModuleIdent p $
                       mkMIdent (modulVal a ++ [sval a])
 
 ident :: Parser Token Ident a
 ident = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
        tokens [Id,Id_as,Id_ccall,Id_forall,Id_hiding,
-               Id_interface,Id_primitive,Id_qualified]
+               Id_interface,Id_interfaceTypeClasses,Id_primitive,Id_qualified]
 
 qIdent :: Parser Token QualIdent a
 qIdent =  qualify  <$> ident
