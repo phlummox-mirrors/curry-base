@@ -20,6 +20,7 @@ module Curry.Syntax.Utils
   , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
+  , specialConsToTyExpr
   ) where
 
 import Control.Monad.State
@@ -164,6 +165,19 @@ arrowArityTyExpr :: TypeExpr -> Int
 arrowArityTyExpr (ArrowType _ ty) = 1 + arrowArityTyExpr ty
 arrowArityTyExpr (SpecialConstructorType ArrowTC [_, ty]) = 1 + arrowArityTyExpr ty
 arrowArityTyExpr _                = 0
+
+-- |transforms a "SpecialConstructorType" into the other data constructors
+-- of "TypeExpr". Throws an error if kinds are incorrect. 
+specialConsToTyExpr :: TypeExpr -> TypeExpr
+specialConsToTyExpr (SpecialConstructorType (QualTC qid) tys) 
+  = ConstructorType qid tys
+specialConsToTyExpr (SpecialConstructorType UnitTC []) = TupleType []
+specialConsToTyExpr (SpecialConstructorType (TupleTC n) tys) 
+  | n == length tys = TupleType tys 
+specialConsToTyExpr (SpecialConstructorType ListTC [ty]) = ListType ty
+specialConsToTyExpr (SpecialConstructorType ArrowTC (t1:t2:[])) = ArrowType t1 t2 
+specialConsToTyExpr (SpecialConstructorType _ _) = error "specialConsToTyExpr"
+specialConsToTyExpr t = t 
 
 ---------------------------
 -- add source references
