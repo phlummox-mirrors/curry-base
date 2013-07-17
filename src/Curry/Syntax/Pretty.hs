@@ -182,10 +182,8 @@ ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+>
     punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
   <+> text "=>" <+> ppQIdent cls 
   <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
-  
--- |if in an instance declaration, we encounter a type constructor with 
--- a special syntax (i.e., unit, tuple, list, arrow), we have to strip
--- the qualification (usually "Prelude")
+
+-- |Pretty print an instance type  
 ppInstanceType :: TypeConstructor -> Doc
 ppInstanceType (QualTC qid) = ppQIdent qid
 ppInstanceType UnitTC = ppIdent unitId
