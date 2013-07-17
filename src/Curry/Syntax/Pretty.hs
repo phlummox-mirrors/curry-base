@@ -177,6 +177,11 @@ ppIDecl (IClassDecl _ scls cls clsvar tysigs) =
   <+> lbrace
   $$ vcat (punctuate semi $ map ppIDecl tysigs) 
   $$ rbrace
+ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+> 
+  (parens $ hsep $ 
+    punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
+  <+> text "=>" <+> ppQIdent cls <+> parens (ppQIdent ty <+> hsep (map ppIdent tyvars))
+  
 
 ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
