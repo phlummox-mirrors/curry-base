@@ -187,12 +187,8 @@ ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+>
 -- a special syntax (i.e., unit, tuple, list, arrow), we have to strip
 -- the qualification (usually "Prelude")
 ppInstanceType :: QualIdent -> Doc
-ppInstanceType ty = if isSpecial then ppIdent (unqualify ty) else ppQIdent ty
-  where
-  isSpecial = ty == qUnitId || ty == qUnitIdP
-    || ty == qListId || ty == qListIdP
-    || isQTupleId ty 
-    || ty == qArrowId || ty == qArrowIdP
+ppInstanceType ty = if hasSpecialSyntax ty 
+  then ppIdent (unqualify ty) else ppQIdent ty
 
 ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
