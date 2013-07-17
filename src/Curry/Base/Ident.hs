@@ -52,8 +52,11 @@ module Curry.Base.Ident
     -- ** Identifiers for types
   , qUnitId, qBoolId, qCharId, qIntId, qFloatId, qListId, qIOId, qSuccessId
   , qArrowId, qUnitIdP, qListIdP, qArrowIdP, qTupleIdP
+    -- ** Helper functions for qualified type constructors
+  , hasSpecialSyntax
     -- ** Identifiers for constructors
   , qTrueId, qFalseId, qNilId, qConsId, qTupleId, isQTupleId, qTupleArity
+    
 
     -- * Extended functionality
     -- ** Function pattern
@@ -576,6 +579,13 @@ isQTupleId = isTupleId . unqualify
 -- | Compute the arity of an qualified tuple identifier
 qTupleArity :: QualIdent -> Int
 qTupleArity = tupleArity . unqualify
+
+-- |returns whether the given type constructor has special syntax
+hasSpecialSyntax :: QualIdent -> Bool
+hasSpecialSyntax qid = qid == qUnitId || qid == qUnitIdP
+    || qid == qListId || qid == qListIdP
+    || isQTupleId qid 
+    || qid == qArrowId || qid == qArrowIdP
 
 -- ---------------------------------------------------------------------------
 -- Micellaneous functions for generating and testing extended identifiers
