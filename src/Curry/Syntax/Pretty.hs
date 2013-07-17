@@ -180,8 +180,19 @@ ppIDecl (IClassDecl _ scls cls clsvar tysigs) =
 ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+> 
   (parens $ hsep $ 
     punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
-  <+> text "=>" <+> ppQIdent cls <+> parens (ppQIdent ty <+> hsep (map ppIdent tyvars))
+  <+> text "=>" <+> ppQIdent cls 
+  <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
   
+-- |if in an instance declaration, we encounter a type constructor with 
+-- a special syntax (i.e., unit, tuple, list, arrow), we have to strip
+-- the qualification (usually "Prelude")
+ppInstanceType :: QualIdent -> Doc
+ppInstanceType ty = if isSpecial then ppIdent (unqualify ty) else ppQIdent ty
+  where
+  isSpecial = ty == qUnitId || ty == qUnitIdP
+    || ty == qListId || ty == qListIdP
+    || isQTupleId ty 
+    || ty == qArrowId || ty == qArrowIdP
 
 ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
