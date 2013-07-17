@@ -186,9 +186,12 @@ ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+>
 -- |if in an instance declaration, we encounter a type constructor with 
 -- a special syntax (i.e., unit, tuple, list, arrow), we have to strip
 -- the qualification (usually "Prelude")
-ppInstanceType :: QualIdent -> Doc
-ppInstanceType ty = if hasSpecialSyntax ty 
-  then ppIdent (unqualify ty) else ppQIdent ty
+ppInstanceType :: TypeConstructor -> Doc
+ppInstanceType (QualTC qid) = ppQIdent qid
+ppInstanceType UnitTC = ppIdent unitId
+ppInstanceType (TupleTC n) = ppIdent (tupleId n)
+ppInstanceType ListTC = ppIdent listId
+ppInstanceType ArrowTC = ppIdent arrowId
 
 ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
