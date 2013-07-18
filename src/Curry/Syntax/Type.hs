@@ -110,6 +110,7 @@ data IDecl
   | IFunctionDecl  Position QualIdent Int Context TypeExpr
   | IClassDecl     Position [QualIdent] QualIdent Ident [IDecl] 
   | IInstanceDecl  Position [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] 
+  | IHidingClassDecl Position [QualIdent] QualIdent Ident [IDecl] 
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------

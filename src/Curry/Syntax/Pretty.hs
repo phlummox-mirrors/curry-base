@@ -182,6 +182,8 @@ ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+>
     punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
   <+> text "=>" <+> ppQIdent cls 
   <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
+ppIDecl (IHidingClassDecl p scs cls ty ds) = 
+  text "hiding" <+> ppIDecl (IClassDecl p scs cls ty ds) 
 
 -- |Pretty print an instance type  
 ppInstanceType :: TypeConstructor -> Doc
