@@ -128,7 +128,7 @@ intfDecls = intfDecl `sepBy` semicolon
 intfDecl :: Parser Token IDecl a
 intfDecl = choice [ iInfixDecl, iHidingDecl, iDataDecl, iNewtypeDecl
                   , iTypeDecl , iFunctionDecl <\> token Id_hiding
-                  , iClassDecl, iInstanceDecl ]
+                  , iClassDecl IClassDecl, iInstanceDecl ]
 
 -- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
@@ -136,9 +136,10 @@ iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
 
 -- |Parser for an interface hiding declaration
 iHidingDecl :: Parser Token IDecl a
-iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
+iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hClassDecl <|> hFuncDecl)
   where
   hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
+  hClassDecl = const <$> iClassDecl IHidingClassDecl
   hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> 
     (Context <$> (parens $ (contextElem `sepBy` comma))) <*-> token DoubleArrow
      <*> type0 True
@@ -189,8 +190,9 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*> qtycon <*> many tyvar
 -- funL 1 :: a -> a
 -- }
 -- @
-iClassDecl :: Parser Token IDecl a
-iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
+iClassDecl :: (Position -> [QualIdent] -> QualIdent -> Ident -> [IDecl] -> IDecl)
+           -> Parser Token IDecl a
+iClassDecl which = which <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
   <*> classTySigs <*-> rightBrace
 
