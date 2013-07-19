@@ -437,7 +437,6 @@ lexNestedComment suc fail p0 = lnc (0 :: Integer) id p0
     (_, c      :s) -> cont d     (c:)                           (next   p) s
     where cont d' comm' = lnc d' (comm . comm')
 
--- Lex tokens at the beginning of a line
 -- Lex tokens at the beginning of a line, managing layout.
 lexBOL :: Lexer Token a
 lexBOL suc fail p s _ []            = lexToken suc fail p s False []
@@ -493,17 +492,14 @@ lexSymbol cont p s = cont
   (incr p $ length sym) rest
   where (sym, rest) = span isSymbolChar s
 
--- /Note:/ the function 'lexOptQual' has been extended to provide
--- the qualified use of the Prelude list operators and tuples.
 -- Lex an optionally qualified entity (identifier or symbol).
 lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
-lexOptQual cont token mIdent p ('.':c:s)
-  | isAlpha  c       = lexQualIdent cont identCont mIdent (next p) (c:s)
-  | isSymbol c       = lexQualSymbol cont identCont mIdent (next p) (c:s)
-  | c=='(' || c=='[' = lexQualPreludeSymbol cont token identCont mIdent
-                       (next p) (c:s)
-  where identCont _ _ = cont token p ('.':c:s)
-lexOptQual cont token _      p s = cont token p s
+lexOptQual cont token mIdent p cs@('.':c:s)
+  | isAlpha  c       = lexQualIdent     cont identCont mIdent (next p) (c:s)
+  | isSymbolChar c   = lexQualSymbol    cont identCont mIdent (next p) (c:s)
+--   | c `elem` ":[("   = lexQualPrimitive cont token     mIdent (next p) (c:s)
+  where identCont _ _ = cont token p cs
+lexOptQual cont token _      p cs = cont token p cs
 
 -- Lex a qualified identifier.
 lexQualIdent :: (Token -> P a) -> P a -> [String] -> P a
@@ -522,15 +518,17 @@ lexQualSymbol cont identCont mIdent p s =
         (incr p (length sym)) rest
   where (sym, rest) = span isSymbolChar s
 
-lexQualPreludeSymbol :: (Token -> P a) -> Token -> P a -> [String] -> P a
-lexQualPreludeSymbol cont _ _ mIdent p ('[':']':rest) =
-  cont (idTok QId mIdent "[]") (incr p 2) rest
-lexQualPreludeSymbol cont _ _ mIdent p ('(':rest)
-  | not (null rest') && head rest' == ')'
-  = cont (idTok QId mIdent ('(':tup++")")) (incr p (length tup+2))
-         (tail rest')
-  where (tup,rest') = span (== ',') rest
-lexQualPreludeSymbol cont token _ _ p s =  cont token p s
+-- Lex a qualified primitive symbol.
+-- lexQualPrimitive :: (Token -> P a) -> Token -> [String] -> P a
+-- lexQualPrimitive cont token mIdent p s = case s of
+--   ':'    :cs -> cont (idTok QId mIdent ":" ) (next p  ) cs
+--   '[':']':cs -> cont (idTok QId mIdent "[]") (incr p 2) cs
+--   '('    :cs |  not (null cs') && head cs' == ')'
+--              -> cont (idTok QId mIdent ident)
+--                      (incr p $ length ident) (tail cs')
+--       where (commas, cs') = span (== ',') cs
+--             ident = '(' : commas ++ ")"
+--   _ -> cont token p s
 
 -- ---------------------------------------------------------------------------
 -- /Note:/ since Curry allows an unlimited range of integer numbers,
