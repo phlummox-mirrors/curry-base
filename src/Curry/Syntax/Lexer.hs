@@ -500,7 +500,8 @@ lexSymbol cont p s = cont
   where (sym, rest) = span isSymbol s
 
 -- /Note:/ the function 'lexOptQual' has been extended to provide
--- the qualified use of the Prelude list operators and tuples.
+-- the qualified use of the Prelude list operators, tuples, and the arrow
+-- "(->)".
 lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
 lexOptQual cont token mIdent p ('.':c:s)
   | isAlpha  c       = lexQualIdent cont identCont mIdent (next p) (c:s)
@@ -533,6 +534,8 @@ lexQualPreludeSymbol cont _ _ mIdent p ('(':rest)
   = cont (idTok QId mIdent ('(':tup++")")) (incr p (length tup+2))
          (tail rest')
   where (tup,rest') = span (== ',') rest
+lexQualPreludeSymbol cont _ _ mIdent p ('(':'-':'>':')':rest) = 
+  cont (idTok QId mIdent "(->)") (incr p 4) rest
 lexQualPreludeSymbol cont token _ _ p s =  cont token p s
 
 -- ---------------------------------------------------------------------------
