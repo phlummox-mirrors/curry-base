@@ -376,12 +376,12 @@ keywordsSpecialIds = Map.union keywords $ Map.fromList
 -- ---------------------------------------------------------------------------
 
 -- |Check whether a 'Char' is allowed for identifiers
-isIdent :: Char -> Bool
-isIdent c = isAlphaNum c || c `elem` "'_"
+isIdentChar :: Char -> Bool
+isIdentChar c = isAlphaNum c || c `elem` "'_"
 
 -- |Check whether a 'Char' is allowed for symbols
-isSymbol :: Char -> Bool
-isSymbol c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
+isSymbolChar :: Char -> Bool
+isSymbolChar c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 
 -- ---------------------------------------------------------------------------
 -- Lexing functions
@@ -438,6 +438,7 @@ lexNestedComment suc fail p0 = lnc (0 :: Integer) id p0
     where cont d' comm' = lnc d' (comm . comm')
 
 -- Lex tokens at the beginning of a line
+-- Lex tokens at the beginning of a line, managing layout.
 lexBOL :: Lexer Token a
 lexBOL suc fail p s _ []            = lexToken suc fail p s False []
 lexBOL suc fail p s _ ctxt@(n:rest)
@@ -450,22 +451,22 @@ lexBOL suc fail p s _ ctxt@(n:rest)
 lexToken :: Lexer Token a
 lexToken suc _    p []       = suc p (tok EOF) p []
 lexToken suc fail p cs@(c:s)
-  | c == '('    = token LeftParen
-  | c == ')'    = token RightParen
-  | c == ','    = token Comma
-  | c == ';'    = token Semicolon
-  | c == '['    = token LeftBracket
-  | c == ']'    = token RightBracket
-  | c == '_'    = token Underscore
-  | c == '`'    = token Backquote
-  | c == '{'    = lexLeftBrace  (suc p) (next p) s
-  | c == '}'    = lexRightBrace (suc p) (next p) s
-  | c == '\''   = lexChar   p suc fail  (next p) s
-  | c == '\"'   = lexString p suc fail  (next p) s
-  | isAlpha  c  = lexIdent      (suc p) p        cs
-  | isSymbol c  = lexSymbol     (suc p) p        cs
-  | isDigit  c  = lexNumber     (suc p) p        cs
-  | otherwise   = fail p ("Illegal character " ++ show c) p s
+  | c == '('       = token LeftParen
+  | c == ')'       = token RightParen
+  | c == ','       = token Comma
+  | c == ';'       = token Semicolon
+  | c == '['       = token LeftBracket
+  | c == ']'       = token RightBracket
+  | c == '_'       = token Underscore
+  | c == '`'       = token Backquote
+  | c == '{'       = lexLeftBrace  (suc p) (next p) s
+  | c == '}'       = lexRightBrace (suc p) (next p) s
+  | c == '\''      = lexChar   p suc fail  (next p) s
+  | c == '\"'      = lexString p suc fail  (next p) s
+  | isAlpha      c = lexIdent      (suc p) p        cs
+  | isSymbolChar c = lexSymbol     (suc p) p        cs
+  | isDigit      c = lexNumber     (suc p) p        cs
+  | otherwise      = fail p ("Illegal character " ++ show c) p s
   where token t = suc p (tok t) (next p) s
 
 -- Lex either a left brace or a left brace semicolon
@@ -477,21 +478,24 @@ lexLeftBrace cont p s       = cont (tok LeftBrace         ) p        s
 lexRightBrace :: (Token -> P a) -> P a
 lexRightBrace cont p s bol ctxt = cont (tok RightBrace) p s bol (drop 1 ctxt)
 
+-- Lex an identifier
 lexIdent :: (Token -> P a) -> P a
 lexIdent cont p s = maybe (lexOptQual cont (token Id) [ident]) (cont . token)
                           (Map.lookup ident keywordsSpecialIds)
                           (incr p $ length ident) rest
-  where (ident, rest) = span isIdent s
+  where (ident, rest) = span isIdentChar s
         token t       = idTok t [] ident
 
+-- Lex a symbol
 lexSymbol :: (Token -> P a) -> P a
 lexSymbol cont p s = cont
   (idTok (Map.findWithDefault Sym sym reservedSpecialOps) [] sym)
   (incr p $ length sym) rest
-  where (sym, rest) = span isSymbol s
+  where (sym, rest) = span isSymbolChar s
 
 -- /Note:/ the function 'lexOptQual' has been extended to provide
 -- the qualified use of the Prelude list operators and tuples.
+-- Lex an optionally qualified entity (identifier or symbol).
 lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
 lexOptQual cont token mIdent p ('.':c:s)
   | isAlpha  c       = lexQualIdent cont identCont mIdent (next p) (c:s)
@@ -501,20 +505,22 @@ lexOptQual cont token mIdent p ('.':c:s)
   where identCont _ _ = cont token p ('.':c:s)
 lexOptQual cont token _      p s = cont token p s
 
+-- Lex a qualified identifier.
 lexQualIdent :: (Token -> P a) -> P a -> [String] -> P a
 lexQualIdent cont identCont mIdent p s =
   maybe (lexOptQual cont (idTok QId mIdent ident) (mIdent ++ [ident]))
         (const identCont)
         (Map.lookup ident keywords)
         (incr p (length ident)) rest
-  where (ident,rest) = span isIdent s
+  where (ident, rest) = span isIdentChar s
 
+-- Lex a qualified symbol.
 lexQualSymbol :: (Token -> P a) -> P a -> [String] -> P a
 lexQualSymbol cont identCont mIdent p s =
   maybe (cont (idTok QSym mIdent sym)) (const identCont)
         (Map.lookup sym reservedOps)
         (incr p (length sym)) rest
-  where (sym,rest) = span isSymbol s
+  where (sym, rest) = span isSymbolChar s
 
 lexQualPreludeSymbol :: (Token -> P a) -> Token -> P a -> [String] -> P a
 lexQualPreludeSymbol cont _ _ mIdent p ('[':']':rest) =
@@ -527,10 +533,11 @@ lexQualPreludeSymbol cont _ _ mIdent p ('(':rest)
 lexQualPreludeSymbol cont token _ _ p s =  cont token p s
 
 -- ---------------------------------------------------------------------------
--- {\em Note:} since Curry allows an unlimited range of integer numbers,
--- read numbers must be converted to Haskell type \texttt{Integer}.
+-- /Note:/ since Curry allows an unlimited range of integer numbers,
+-- read numbers must be converted to Haskell type 'Integer'.
 -- ---------------------------------------------------------------------------
 
+-- Lex a numeric literal.
 lexNumber :: (Token -> P a) -> P a
 lexNumber cont p ('0':c:s)
   | c `elem` "oO"  = lexOctal       cont nullCont (incr p 2) s
@@ -540,18 +547,21 @@ lexNumber cont p s = lexOptFraction cont (intTok 10 digits) digits
                      (incr p $ length digits) rest
   where (digits, rest) = span isDigit s
 
+-- Lex an octal literal.
 lexOctal :: (Token -> P a) -> P a -> P a
 lexOctal cont nullCont p s
   | null digits = nullCont undefined undefined
   | otherwise   = cont (intTok 8 digits) (incr p $ length digits) rest
   where (digits, rest) = span isOctDigit s
 
+-- Lex a hexadecimal literal.
 lexHexadecimal :: (Token -> P a) -> P a -> P a
 lexHexadecimal cont nullCont p s
   | null digits = nullCont undefined undefined
   | otherwise   = cont (intTok 16 digits) (incr p $ length digits) rest
   where (digits, rest) = span isHexDigit s
 
+-- Lex an optional fractional part (float literal).
 lexOptFraction :: (Token -> P a) -> Token -> String -> P a
 lexOptFraction cont _ mant p ('.':c:s)
   | isDigit c = lexOptExponent cont (floatTok mant frac 0 "") mant frac
@@ -562,12 +572,14 @@ lexOptFraction cont token mant p (c:s)
   where intCont _ _ = cont token p (c:s)
 lexOptFraction cont token _ p s = cont token p s
 
+-- Lex an optional exponent (float literal).
 lexOptExponent :: (Token -> P a) -> Token -> String -> String -> P a
 lexOptExponent cont token mant frac p (c:s)
   | c `elem` "eE" = lexSignedExponent cont floatCont mant frac [c] (next p) s
   where floatCont _ _ = cont token p (c:s)
 lexOptExponent cont token _    _    p s = cont token p s
 
+-- Lex an exponent with sign (float literal).
 lexSignedExponent :: (Token -> P a) -> P a -> String -> String -> String
                   -> P a
 lexSignedExponent cont floatCont mant frac e p str = case str of
@@ -577,6 +589,7 @@ lexSignedExponent cont floatCont mant frac e p str = case str of
   _                     -> floatCont                 p        str
   where lexExpo = lexExponent cont mant frac
 
+-- Lex an exponent without sign (float literal).
 lexExponent :: (Token -> P a) -> String -> String -> String -> (Int -> Int)
             -> P a
 lexExponent cont mant frac e expSign p s =
@@ -584,6 +597,7 @@ lexExponent cont mant frac e expSign p s =
   where (digits, rest) = span isDigit s
         expo           = expSign (convertIntegral 10 digits)
 
+-- Lex a character literal.
 lexChar :: Position -> Lexer Token a
 lexChar p0 _       fail p []    = fail p0 "Illegal character constant" p []
 lexChar p0 success fail p (c:s)
@@ -593,11 +607,13 @@ lexChar p0 success fail p (c:s)
   | c == '\t' = lexCharEnd c "\t" p0 success fail (tab  p) s
   | otherwise = lexCharEnd c [c]  p0 success fail (next p) s
 
+-- Lex the end of a character literal.
 lexCharEnd :: Char -> String -> Position -> Lexer Token a
 lexCharEnd c o p0 suc _    p ('\'':s) = suc p0 (charTok c o) (next p) s
 lexCharEnd _ _ p0 _   fail p s        =
   fail p0 "Improperly terminated character constant" p s
 
+-- Lex a String literal.
 lexString :: Position -> Lexer Token a
 lexString p0 suc fail = lexStringRest "" id
   where
@@ -610,6 +626,7 @@ lexString p0 suc fail = lexStringRest "" id
     | otherwise = lexStringRest (c:s0) (so . (c:)) (next p) s
   improperTermination p = fail p0 "Improperly terminated string constant" p []
 
+-- Lex an escaped character inside a string.
 lexStringEscape ::  Position -> String -> (String -> String)
                 -> (String -> (String -> String) -> P a)
                 -> FailP a -> P a
@@ -620,6 +637,7 @@ lexStringEscape p0 s0 so suc fail p cs@(c:s)
   | isSpace c = lexStringGap so (suc s0) fail p cs
   | otherwise = lexEscape p0 (\ c' s' -> suc (c': s0) (so . (s' ++))) fail p cs
 
+-- Lex a string gap.
 lexStringGap :: (String -> String) -> ((String -> String) -> P a)
              -> FailP a -> P a
 lexStringGap _  _   fail p []    = fail p "End-of-file in string gap" p []
@@ -630,6 +648,7 @@ lexStringGap so suc fail p (c:s)
   | isSpace c = lexStringGap (so . (c:)) suc fail (next p) s
   | otherwise = fail p ("Illegal character in string gap: " ++ show c) p s
 
+-- Lex an escaped character.
 lexEscape :: Position -> (Char -> String -> P a) -> FailP a -> P a
 lexEscape p0 suc fail p str = case str of
   -- character escape
