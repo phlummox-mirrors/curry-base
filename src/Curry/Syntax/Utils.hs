@@ -20,7 +20,7 @@ module Curry.Syntax.Utils
   , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
-  , specialConsToTyExpr
+  , specialConsToTyExpr, specialTyConToQualIdent, toTypeConstructor
   ) where
 
 import Control.Monad.State
@@ -178,6 +178,24 @@ specialConsToTyExpr (SpecialConstructorType ListTC [ty]) = ListType ty
 specialConsToTyExpr (SpecialConstructorType ArrowTC (t1:t2:[])) = ArrowType t1 t2 
 specialConsToTyExpr (SpecialConstructorType _ _) = error "specialConsToTyExpr"
 specialConsToTyExpr t = t 
+
+-- |returns a qualified identifiers for the four special type constructors
+specialTyConToQualIdent :: TypeConstructor -> QualIdent
+specialTyConToQualIdent UnitTC = qUnitIdP
+specialTyConToQualIdent (TupleTC n) = qTupleIdP n
+specialTyConToQualIdent ListTC = qListIdP
+specialTyConToQualIdent ArrowTC = qArrowIdP
+specialTyConToQualIdent (QualTC tc) = tc
+
+-- |converts a given identifier to a type constructor, considering special
+-- syntax constructors
+toTypeConstructor :: QualIdent -> TypeConstructor
+toTypeConstructor ty
+  | ty == qArrowId || ty == qArrowIdP = ArrowTC
+  | ty == qListId  || ty == qListIdP  = ListTC
+  | isQTupleId ty                     = TupleTC $ qTupleArity ty
+  | ty == qUnitId  || ty == qUnitIdP  = UnitTC
+  | otherwise                         = QualTC ty
 
 ---------------------------
 -- add source references
