@@ -29,6 +29,9 @@ import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
 import Prelude hiding (exp)
 
+import Data.Maybe
+import Data.List
+
 -- |Parse a 'Module'
 parseSource :: FilePath -> String -> MessageM Module
 parseSource path = fmap addSrcRefs
@@ -166,11 +169,37 @@ iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
-iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*> arity
+iFunctionDecl =  IFunctionDecl <$> position <*> qIfun <*> arity
             <*-> token DoubleColon 
             <*> (Context <$> (parens $ (contextElem `sepBy` comma)))
             <*-> token DoubleArrow
             <*> type0 True
+
+-- |The seperator used in constructed functions
+sep :: String
+sep = ":"
+
+-- |Generated functions like the selection functions and dictionaries
+-- use the separator ":" for seperating elements from each other, and
+-- for assuring that the method/type names will not overlap with names
+-- used in the source code. 
+-- As we write the name as-is into the interface file, we have to consider, 
+-- that function/type names when they are parsed consist of multiple QualIdents, 
+-- seperated by colons.  
+qIfun :: Parser Token QualIdent a
+qIfun = mkQIdent <$> qIdent `sepBy1` token Colon
+  <|> parens (qFunSym <?> "operator symbol expected")
+
+-- |converts a list of QualIdents to one QualIdent: 
+-- @M1.q1 M2.q2 ... Mn.qn@ is converted to @M1."q1:M2.q2:...:Mn.qn"@
+-- and
+-- @q1 M2.q2 ... Mn.qn@ to @"q1:M2.q2:...:Mn.qn"@
+mkQIdent :: [QualIdent] -> QualIdent
+-- the first qualident determines the module
+mkQIdent (qid:qids) = let mdl = qidModule qid in 
+  (if isJust mdl then qualifyWith (fromJust mdl) else qualify) $ 
+  mkIdent (intercalate sep $ show (qidIdent qid) : map show qids)
+mkQIdent [] = error "qIfun"
 
 -- |Parser for function's arity
 arity :: Parser Token Int a
@@ -178,7 +207,8 @@ arity = int `opt` 0
 
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
-iTypeDeclLhs f kw = f <$> tokenPos kw <*> qtycon <*> many tyvar
+iTypeDeclLhs f kw = f <$> tokenPos kw <*> 
+  (mkQIdent <$> qIdent `sepBy1` token Colon) <*> many tyvar
 
 -- ----------------------------------------------------------------------------
 -- type classes specific interface parsers
