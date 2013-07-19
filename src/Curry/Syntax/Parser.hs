@@ -928,18 +928,18 @@ ident = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
 
 qIdent :: Parser Token QualIdent a
 qIdent =  qualify  <$> ident
-      <|> mkQIdent <$> position <*> token QId
-  where mkQIdent p a = qualifyWith (mkMIdent (modulVal a))
-                                   (mkIdentPosition p (sval a))
+      <|> mkQIdent' <$> position <*> token QId
+  where mkQIdent' p a = qualifyWith (mkMIdent (modulVal a))
+                                    (mkIdentPosition p (sval a))
 
 sym :: Parser Token Ident a
 sym = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
       tokens [Sym, SymDot, SymMinus, SymMinusDot]
 
 qSym :: Parser Token QualIdent a
-qSym = qualify <$> sym <|> mkQIdent <$> position <*> token QSym
-  where mkQIdent p a = qualifyWith (mkMIdent (modulVal a))
-                                   (mkIdentPosition p (sval a))
+qSym = qualify <$> sym <|> mkQIdent' <$> position <*> token QSym
+  where mkQIdent' p a = qualifyWith (mkMIdent (modulVal a))
+                                    (mkIdentPosition p (sval a))
 
 colon :: Parser Token QualIdent a
 colon = (\ p -> qualify $ addPositionIdent p consId) <$> tokenPos Colon
