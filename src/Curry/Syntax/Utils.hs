@@ -21,6 +21,7 @@ module Curry.Syntax.Utils
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
   , specialConsToTyExpr, specialTyConToQualIdent, toTypeConstructor
+  , qualifyTypeExpr
   ) where
 
 import Control.Monad.State
@@ -196,6 +197,25 @@ toTypeConstructor ty
   | isQTupleId ty                     = TupleTC $ qTupleArity ty
   | ty == qUnitId  || ty == qUnitIdP  = UnitTC
   | otherwise                         = QualTC ty
+
+
+-- |qualifies a given type expression
+qualifyTypeExpr :: ModuleIdent -> TypeExpr -> TypeExpr
+qualifyTypeExpr m (ConstructorType qid tys) = 
+  ConstructorType (qualQualify m qid) (map (qualifyTypeExpr m) tys)
+qualifyTypeExpr _m v@(VariableType _) = v
+qualifyTypeExpr m (TupleType tys) = TupleType (map (qualifyTypeExpr m) tys)
+qualifyTypeExpr m (ListType ty) = ListType (qualifyTypeExpr m ty)
+qualifyTypeExpr m (ArrowType ty1 ty2) = 
+  ArrowType (qualifyTypeExpr m ty1) (qualifyTypeExpr m ty2)
+qualifyTypeExpr m (RecordType rs mty) = 
+  RecordType (map (\(ids, ty) -> (ids, qualifyTypeExpr m ty)) rs)
+             (fmap (qualifyTypeExpr m) mty)   
+qualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) =  
+  SpecialConstructorType (QualTC $ qualQualify m qid)
+    (map (qualifyTypeExpr m) tys)
+qualifyTypeExpr m (SpecialConstructorType c tys) = 
+  SpecialConstructorType c (map (qualifyTypeExpr m) tys)
 
 ---------------------------
 -- add source references
