@@ -171,19 +171,26 @@ ppIDecl (ITypeDecl _ tc tvs ty) =
 ppIDecl (IFunctionDecl _ f a (Context cx) ty) = ppQIdent f <+> int a
   <+> text "::" <+> parens (hsep $ punctuate comma (map ppContextElem cx)) 
   <+> text "=>" <+> ppTypeExpr 0 ty
-ppIDecl (IClassDecl _ scls cls clsvar tysigs) = 
+ppIDecl (IClassDecl _ scls cls clsvar tysigs depends) = 
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
   $$ vcat (punctuate semi $ map ppIDecl tysigs) 
   $$ rbrace
-ppIDecl (IInstanceDecl _ scx cls ty tyvars) = text "instance" <+> 
+  <+> bracketList (map ppQIdent depends)
+ppIDecl (IInstanceDecl _ scx cls ty tyvars depends) = text "instance" <+> 
   (parens $ hsep $ 
     punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
   <+> text "=>" <+> ppQIdent cls 
   <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
-ppIDecl (IHidingClassDecl p scs cls ty ds) = 
-  text "hiding" <+> ppIDecl (IClassDecl p scs cls ty ds) 
+  <+> bracketList (map ppQIdent depends)
+ppIDecl (IHidingClassDecl _ scls cls clsvar tysigs) = 
+  text "hiding" <+> 
+  text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
+  ppIdent clsvar <+> text "where" 
+  <+> lbrace
+  $$ vcat (punctuate semi $ map ppIDecl tysigs) 
+  $$ rbrace
 
 -- |Pretty print an instance type  
 ppInstanceType :: TypeConstructor -> Doc

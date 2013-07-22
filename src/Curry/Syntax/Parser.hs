@@ -131,7 +131,7 @@ intfDecls = intfDecl `sepBy` semicolon
 intfDecl :: Parser Token IDecl a
 intfDecl = choice [ iInfixDecl, iHidingDecl, iDataDecl, iNewtypeDecl
                   , iTypeDecl , iFunctionDecl <\> token Id_hiding
-                  , iClassDecl IClassDecl, iInstanceDecl ]
+                  , iClassDecl, iInstanceDecl ]
 
 -- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
@@ -142,7 +142,7 @@ iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hClassDecl <|> hFuncDecl)
   where
   hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
-  hClassDecl = const <$> iClassDecl IHidingClassDecl
+  hClassDecl = const <$> iHidingClassDecl
   hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> 
     (Context <$> (parens $ (contextElem `sepBy` comma))) <*-> token DoubleArrow
      <*> type0 True
@@ -220,9 +220,14 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*>
 -- funL 1 :: a -> a
 -- }
 -- @
-iClassDecl :: (Position -> [QualIdent] -> QualIdent -> Ident -> [IDecl] -> IDecl)
-           -> Parser Token IDecl a
-iClassDecl which = which <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
+iClassDecl :: Parser Token IDecl a
+iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
+  <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
+  <*> classTySigs <*-> rightBrace  <*> brackets (qtycls `sepBy` comma)
+
+
+iHidingClassDecl :: Parser Token IDecl a
+iHidingClassDecl = IHidingClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
   <*> classTySigs <*-> rightBrace
 
@@ -245,7 +250,7 @@ iInstanceDecl =
   IInstanceDecl <$> tokenPos KW_instance <*> parens (sepBy simpleclass comma)
   <*-> token DoubleArrow <*> qtycls 
   <*-> leftParen <*> gtycon <*> many tyvar 
-  <*-> rightParen
+  <*-> rightParen <*> brackets (qtycls `sepBy` comma)
 
 -- ---------------------------------------------------------------------------
 -- Top-Level Declarations
