@@ -175,9 +175,9 @@ iFunctionDecl =  IFunctionDecl <$> position <*> qIfun <*> arity
             <*-> token DoubleArrow
             <*> type0 True
 
--- |The seperator used in constructed functions
-sep :: String
-sep = ":"
+-- | the separator used for constructed function and type names
+separator :: Parser Token Attributes a
+separator = token Colon <*-> token Underscore
 
 -- |Generated functions like the selection functions and dictionaries
 -- use the separator ":" for seperating elements from each other, and
@@ -187,7 +187,7 @@ sep = ":"
 -- that function/type names when they are parsed consist of multiple QualIdents, 
 -- seperated by colons.  
 qIfun :: Parser Token QualIdent a
-qIfun = mkQIdent <$> qIdent `sepBy1` token Colon
+qIfun = mkQIdent <$> (qIdent <|> qSym) `sepBy1` separator
   <|> parens (qFunSym <?> "operator symbol expected")
 
 -- |converts a list of QualIdents to one QualIdent: 
@@ -208,7 +208,7 @@ arity = int `opt` 0
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
 iTypeDeclLhs f kw = f <$> tokenPos kw <*> 
-  (mkQIdent <$> qIdent `sepBy1` token Colon) <*> many tyvar
+  (mkQIdent <$> qIdent `sepBy1` separator) <*> many tyvar
 
 -- ----------------------------------------------------------------------------
 -- type classes specific interface parsers
