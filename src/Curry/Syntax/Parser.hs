@@ -223,7 +223,8 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*>
 iClassDecl :: Parser Token IDecl a
 iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
-  <*> classTySigs <*-> rightBrace  <*> brackets (qtycls `sepBy` comma)
+  <*> classTySigs <*-> rightBrace  <*> brackets (fun `sepBy` comma)
+  <*> brackets (qtycls `sepBy` comma)
 
 
 iHidingClassDecl :: Parser Token IDecl a

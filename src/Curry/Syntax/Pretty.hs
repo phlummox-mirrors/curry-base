@@ -171,12 +171,13 @@ ppIDecl (ITypeDecl _ tc tvs ty) =
 ppIDecl (IFunctionDecl _ f a (Context cx) ty) = ppQIdent f <+> int a
   <+> text "::" <+> parens (hsep $ punctuate comma (map ppContextElem cx)) 
   <+> text "=>" <+> ppTypeExpr 0 ty
-ppIDecl (IClassDecl _ scls cls clsvar tysigs depends) = 
+ppIDecl (IClassDecl _ scls cls clsvar tysigs defaults depends) = 
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
   $$ vcat (punctuate semi $ map ppIDecl tysigs) 
   $$ rbrace
+  <+> bracketList (map ppIdent defaults)
   <+> bracketList (map ppQIdent depends)
 ppIDecl (IInstanceDecl _ scx cls ty tyvars depends) = text "instance" <+> 
   (parens $ hsep $ 

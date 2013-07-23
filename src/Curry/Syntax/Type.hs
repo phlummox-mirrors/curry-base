@@ -108,8 +108,11 @@ data IDecl
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
   | IFunctionDecl  Position QualIdent Int Context TypeExpr
-  | IClassDecl     Position [QualIdent] QualIdent Ident [IDecl] [QualIdent]
-  | IInstanceDecl  Position [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] [QualIdent] 
+  -- | position, super classes, class, type var, type sigs, default methods, dependencies
+  | IClassDecl     Position [QualIdent] QualIdent Ident [IDecl] [Ident] [QualIdent]
+  -- |position, context, class, type, type vars, dependencies
+  | IInstanceDecl  Position [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] [QualIdent]
+  -- |position, super classes, class, type var, type sigs
   | IHidingClassDecl Position [QualIdent] QualIdent Ident [IDecl] 
     deriving (Eq, Read, Show, Data, Typeable)
 
