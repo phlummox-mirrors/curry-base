@@ -21,7 +21,7 @@ module Curry.Syntax.Pretty
 
 import Text.PrettyPrint
 
-import Curry.Base.Ident
+import Curry.Base.Ident hiding (sep)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (opName)
 

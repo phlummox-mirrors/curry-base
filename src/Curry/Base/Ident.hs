@@ -66,7 +66,7 @@ module Curry.Base.Ident
   , recordExtId, labelExtId, isRecordExtId, isLabelExtId, fromRecordExtId
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
     -- ** Constructed identifiers
-  , identPrefix
+  , identPrefix, Curry.Base.Ident.sep
   ) where
 
 import Data.Char           (isAlpha, isAlphaNum, isSpace)
@@ -699,3 +699,8 @@ labelExt = "_#Lab:"
 -- | the prefix for constructed identifiers
 identPrefix :: String
 identPrefix = "#"
+
+-- |the seperator string used for constructing identifiers out of smaller
+-- elements
+sep :: String
+sep = ":_"
