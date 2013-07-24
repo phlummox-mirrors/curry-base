@@ -108,11 +108,12 @@ data IDecl
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
   | IFunctionDecl  Position QualIdent Int Context TypeExpr
-  -- | position, super classes, class, type var, type sigs, default methods, dependencies
-  | IClassDecl     Position [QualIdent] QualIdent Ident [IDecl] [Ident] [QualIdent]
+  -- | position, super classes, class, type var, class methods (public or hidden),
+  -- default methods, dependencies
+  | IClassDecl     Position [QualIdent] QualIdent Ident [(Bool, IDecl)] [Ident] [QualIdent]
   -- |position, context, class, type, type vars, dependencies
   | IInstanceDecl  Position [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] [QualIdent]
-  -- |position, super classes, class, type var, type sigs
+  -- |position, super classes, class, type var, class methods
   | IHidingClassDecl Position [QualIdent] QualIdent Ident [IDecl] 
     deriving (Eq, Read, Show, Data, Typeable)
 
@@ -130,9 +131,13 @@ data Decl
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
   | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
+  -- |position, the type of the function, a unique id, the name
+  -- the equations
   | FunctionDecl Position (Maybe ConstrType_) Id Ident [Equation]-- f True = 1 ; f False = 0
   | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
   | ExternalDecl Position [Ident]                                -- f, g external
+  -- |position, the type of the whole pattern, a unique id, the patterns, 
+  -- the right hand side of the pattern declaration
   | PatternDecl  Position (Maybe ConstrType_) Id Pattern Rhs     -- Just x = ...
   | FreeDecl     Position [Ident]                                -- x, y free
   | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}

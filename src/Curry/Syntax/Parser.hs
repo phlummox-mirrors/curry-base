@@ -230,15 +230,25 @@ iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma
 iHidingClassDecl :: Parser Token IDecl a
 iHidingClassDecl = IHidingClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
-  <*> classTySigs <*-> rightBrace
+  <*> hClassTySigs <*-> rightBrace
 
--- |Parser that parses all type signatures of a class declaration
-classTySigs :: Parser Token [IDecl] a
+-- |Parser that parses all type signatures of a hidden class declaration
+hClassTySigs :: Parser Token [IDecl] a
+hClassTySigs = hClassTySig `sepBy` semicolon
+
+-- |Parser that parses one type signature of a hidden class declaration
+hClassTySig :: Parser Token IDecl a
+hClassTySig = iFunctionDecl
+
+-- |Parses all type signatures of a public class declaration  
+classTySigs :: Parser Token [(Bool, IDecl)] a
 classTySigs = classTySig `sepBy` semicolon
 
--- |Parser that parses one type signature of a class declaration
-classTySig :: Parser Token IDecl a
-classTySig = iFunctionDecl
+-- |Parses one type signature of a public class declaration
+classTySig :: Parser Token (Bool, IDecl) a
+classTySig = (\public f -> (public, f)) <$> 
+  (False <$-> token Id_hiding <|> True <$-> token Id_public) <*>
+  iFunctionDecl
 
 -- |Parses an interface declaration of the following form:
 -- @
@@ -923,14 +933,16 @@ anonIdent = (\ p -> addPositionIdent p anonId) <$> tokenPos Underscore
 mIdent :: Parser Token ModuleIdent a
 mIdent = mIdent' <$> position <*>
      tokens [Id,QId,Id_as,Id_ccall,Id_forall,Id_hiding,
-             Id_interface,Id_interfaceTypeClasses,Id_primitive,Id_qualified]
+             Id_interface,Id_interfaceTypeClasses,Id_primitive,
+             Id_public, Id_qualified]
   where mIdent' p a = addPositionModuleIdent p $
                       mkMIdent (modulVal a ++ [sval a])
 
 ident :: Parser Token Ident a
 ident = (\ pos -> mkIdentPosition pos . sval) <$> position <*>
        tokens [Id,Id_as,Id_ccall,Id_forall,Id_hiding,
-               Id_interface,Id_interfaceTypeClasses,Id_primitive,Id_qualified]
+               Id_interface,Id_interfaceTypeClasses,Id_primitive,
+               Id_public, Id_qualified]
 
 qIdent :: Parser Token QualIdent a
 qIdent =  qualify  <$> ident

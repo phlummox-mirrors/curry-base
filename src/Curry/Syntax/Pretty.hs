@@ -175,7 +175,9 @@ ppIDecl (IClassDecl _ scls cls clsvar tysigs defaults depends) =
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
-  $$ vcat (punctuate semi $ map ppIDecl tysigs) 
+  $$ vcat (punctuate semi $ 
+      map (\(b, tysig) -> text (if b then "public" else "hiding") <+> ppIDecl tysig)
+          tysigs) 
   $$ rbrace
   <+> bracketList (map ppIdent defaults)
   <+> bracketList (map ppQIdent depends)
