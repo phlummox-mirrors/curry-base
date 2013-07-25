@@ -187,8 +187,12 @@ separator = token Colon <*-> token Underscore
 -- that function/type names when they are parsed consist of multiple QualIdents, 
 -- seperated by colons.  
 qIfun :: Parser Token QualIdent a
-qIfun = mkQIdent <$> (qIdent <|> qSym) `sepBy1` separator
-  <|> parens (qFunSym <?> "operator symbol expected")
+qIfun = composedIdent <|> parens (qFunSym <?> "operator symbol expected")
+
+-- |an identifier that is composed of qualified identifiers (either identifiers
+-- or operators) seperated by the separator tokens
+composedIdent :: Parser Token QualIdent a
+composedIdent = mkQIdent <$> (qIdent <|> qSym) `sepBy1` separator
 
 -- |converts a list of QualIdents to one QualIdent: 
 -- @M1.q1 M2.q2 ... Mn.qn@ is converted to @M1."q1:M2.q2:...:Mn.qn"@
@@ -224,7 +228,7 @@ iClassDecl :: Parser Token IDecl a
 iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
   <*> classTySigs <*-> rightBrace  <*> brackets (fun `sepBy` comma)
-  <*> brackets (qtycls `sepBy` comma)
+  <*> brackets (composedIdent `sepBy` comma)
 
 
 iHidingClassDecl :: Parser Token IDecl a
@@ -261,7 +265,7 @@ iInstanceDecl =
   IInstanceDecl <$> tokenPos KW_instance <*> parens (sepBy simpleclass comma)
   <*-> token DoubleArrow <*> qtycls 
   <*-> leftParen <*> gtycon <*> many tyvar 
-  <*-> rightParen <*> brackets (qtycls `sepBy` comma)
+  <*-> rightParen <*> brackets (composedIdent `sepBy` comma)
 
 -- ---------------------------------------------------------------------------
 -- Top-Level Declarations
