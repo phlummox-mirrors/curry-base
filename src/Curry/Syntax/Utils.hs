@@ -21,7 +21,7 @@ module Curry.Syntax.Utils
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
   , specialConsToTyExpr, specialTyConToQualIdent, toTypeConstructor
-  , qualifyTypeExpr
+  , qualifyTypeExpr, unqualifyTypeExpr
   ) where
 
 import Control.Monad.State
@@ -216,6 +216,24 @@ qualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) =
     (map (qualifyTypeExpr m) tys)
 qualifyTypeExpr m (SpecialConstructorType c tys) = 
   SpecialConstructorType c (map (qualifyTypeExpr m) tys)
+
+-- |unqualify a given type expression
+unqualifyTypeExpr :: ModuleIdent -> TypeExpr -> TypeExpr
+unqualifyTypeExpr m (ConstructorType qid tys) = 
+  ConstructorType (qualUnqualify m qid) (map (unqualifyTypeExpr m) tys)
+unqualifyTypeExpr _m v@(VariableType _) = v
+unqualifyTypeExpr m (TupleType tys) = TupleType (map (unqualifyTypeExpr m) tys)
+unqualifyTypeExpr m (ListType ty) = ListType (unqualifyTypeExpr m ty)
+unqualifyTypeExpr m (ArrowType ty1 ty2) = 
+  ArrowType (unqualifyTypeExpr m ty1) (unqualifyTypeExpr m ty2)
+unqualifyTypeExpr m (RecordType rs mty) = 
+  RecordType (map (\(ids, ty) -> (ids, unqualifyTypeExpr m ty)) rs)
+             (fmap (unqualifyTypeExpr m) mty)
+unqualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) = 
+  SpecialConstructorType (QualTC $ qualUnqualify m qid)
+    (map (unqualifyTypeExpr m) tys)
+unqualifyTypeExpr m (SpecialConstructorType c tys) = 
+  SpecialConstructorType c (map (unqualifyTypeExpr m) tys)
 
 ---------------------------
 -- add source references
