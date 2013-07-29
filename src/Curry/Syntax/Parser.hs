@@ -234,7 +234,7 @@ iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma
 iHidingClassDecl :: Parser Token IDecl a
 iHidingClassDecl = IHidingClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
-  <*> hClassTySigs <*-> rightBrace
+  <*> hClassTySigs <*-> rightBrace <*> brackets (fun `sepBy` comma)
 
 -- |Parser that parses all type signatures of a hidden class declaration
 hClassTySigs :: Parser Token [IDecl] a

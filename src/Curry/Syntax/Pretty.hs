@@ -187,13 +187,14 @@ ppIDecl (IInstanceDecl _ scx cls ty tyvars depends) = text "instance" <+>
   <+> text "=>" <+> ppQIdent cls 
   <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
   <+> bracketList (map ppQIdent depends)
-ppIDecl (IHidingClassDecl _ scls cls clsvar tysigs) = 
+ppIDecl (IHidingClassDecl _ scls cls clsvar tysigs defaults) = 
   text "hiding" <+> 
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
   $$ vcat (punctuate semi $ map ppIDecl tysigs) 
   $$ rbrace
+  <+> bracketList (map ppIdent defaults)
 
 -- |Pretty print an instance type  
 ppInstanceType :: TypeConstructor -> Doc
