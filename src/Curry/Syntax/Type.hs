@@ -111,8 +111,8 @@ data IDecl
   -- | position, super classes, class, type var, class methods (public or hidden),
   -- default methods, dependencies
   | IClassDecl     Position [QualIdent] QualIdent Ident [(Bool, IDecl)] [Ident] [QualIdent]
-  -- |position, context, class, type, type vars, dependencies
-  | IInstanceDecl  Position [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] [QualIdent]
+  -- |position, defining module, context, class, type, type vars, dependencies
+  | IInstanceDecl  Position (Maybe ModuleIdent) [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] [QualIdent]
   -- |position, super classes, class, type var, class methods, default methods
   | IHidingClassDecl Position [QualIdent] QualIdent Ident [IDecl] [Ident]
     deriving (Eq, Read, Show, Data, Typeable)

@@ -262,7 +262,8 @@ classTySig = (\public f -> (public, f)) <$>
 -- unit, tuple, arrow)) 
 iInstanceDecl :: Parser Token IDecl a
 iInstanceDecl =
-  IInstanceDecl <$> tokenPos KW_instance <*> parens (sepBy simpleclass comma)
+  IInstanceDecl <$> tokenPos KW_instance <*> brackets (optionMaybe mIdent) 
+  <*> parens (sepBy simpleclass comma)
   <*-> token DoubleArrow <*> qtycls 
   <*-> leftParen <*> gtycon <*> many tyvar 
   <*-> rightParen <*> brackets (composedIdent `sepBy` comma)

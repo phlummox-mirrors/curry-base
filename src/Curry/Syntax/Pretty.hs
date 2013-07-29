@@ -20,6 +20,7 @@ module Curry.Syntax.Pretty
   ) where
 
 import Text.PrettyPrint
+import Data.Maybe
 
 import Curry.Base.Ident hiding (sep)
 import Curry.Syntax.Type
@@ -181,7 +182,8 @@ ppIDecl (IClassDecl _ scls cls clsvar tysigs defaults depends) =
   $$ rbrace
   <+> bracketList (map ppIdent defaults)
   <+> bracketList (map ppQIdent depends)
-ppIDecl (IInstanceDecl _ scx cls ty tyvars depends) = text "instance" <+> 
+ppIDecl (IInstanceDecl _ m scx cls ty tyvars depends) = text "instance" <>
+  brackets (if isNothing m then empty else ppMIdent $ fromJust m) <+> 
   (parens $ hsep $ 
     punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
   <+> text "=>" <+> ppQIdent cls 
