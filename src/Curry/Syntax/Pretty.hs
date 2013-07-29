@@ -19,9 +19,9 @@ module Curry.Syntax.Pretty
   , ppExpr, ppOp, ppStmt, ppFieldExpr, ppTypeExpr, ppAlt
   ) where
 
-import Text.PrettyPrint
-
 import Curry.Base.Ident
+import Curry.Base.Pretty
+
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (opName)
 
@@ -124,9 +124,9 @@ ppLhs (ApLhs  lhs ts) = parens (ppLhs lhs) <+> fsep (map (ppPattern 2) ts)
 
 ppRule :: Doc -> Doc -> Rhs -> Doc
 ppRule lhs eq (SimpleRhs _ e ds) =
-  sep [lhs <+> eq,indent (ppExpr 0 e)] $$ ppLocalDefs ds
+  sep [lhs <+> eq, indent (ppExpr 0 e)] $$ ppLocalDefs ds
 ppRule lhs eq (GuardedRhs es ds) =
-  sep [lhs,indent (vcat (map (ppCondExpr eq) es))] $$ ppLocalDefs ds
+  sep [lhs, indent (vcat (map (ppCondExpr eq) es))] $$ ppLocalDefs ds
 
 ppLocalDefs :: [Decl] -> Doc
 ppLocalDefs ds
@@ -173,20 +173,20 @@ ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
 
 -- |Pretty print a type expression
 ppTypeExpr :: Int -> TypeExpr -> Doc
-ppTypeExpr p (ConstructorType tc tys) = parenExp (p > 1 && not (null tys))
+ppTypeExpr p (ConstructorType tc tys) = parenIf (p > 1 && not (null tys))
   (ppQIdent tc <+> fsep (map (ppTypeExpr 2) tys))
 ppTypeExpr _ (VariableType   tv) = ppIdent tv
 ppTypeExpr _ (TupleType     tys) = parenList (map (ppTypeExpr 0) tys)
 ppTypeExpr _ (ListType       ty) = brackets (ppTypeExpr 0 ty)
-ppTypeExpr p (ArrowType ty1 ty2) = parenExp (p > 0)
+ppTypeExpr p (ArrowType ty1 ty2) = parenIf (p > 0)
   (fsep (ppArrowType (ArrowType ty1 ty2)))
   where
   ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
   ppArrowType ty                    = [ppTypeExpr 0 ty]
-ppTypeExpr _ (RecordType fs rty) = braces (list (map ppTypedField fs)
-    <> maybe empty (\ty -> space <> char '|' <+> ppTypeExpr 0 ty) rty)
+ppTypeExpr _ (RecordType fs rty) = record (list (map ppTypedField fs)
+    <+> maybePP (\ty -> char '|' <+> ppTypeExpr 0 ty) rty)
   where
-  ppTypedField (ls,ty) = list (map ppIdent ls) <> text "::" <> ppTypeExpr 0 ty
+  ppTypedField (ls,ty) = list (map ppIdent ls) <+> text "::" <+> ppTypeExpr 0 ty
 
 -- ---------------------------------------------------------------------------
 -- Literals
@@ -204,30 +204,29 @@ ppLiteral (String _ s) = text (show s)
 
 -- |Pretty print a constructor term
 ppPattern :: Int -> Pattern -> Doc
-ppPattern p (LiteralPattern l) = parenExp (p > 1 && isNegative l) (ppLiteral l)
+ppPattern p (LiteralPattern l) = parenIf (p > 1 && isNegative l) (ppLiteral l)
   where isNegative (Char   _ _) = False
         isNegative (Int    _ i) = i < 0
         isNegative (Float  _ f) = f < 0.0
         isNegative (String _ _) = False
-ppPattern p (NegativePattern    op l) = parenExp (p > 1)
+ppPattern p (NegativePattern    op l) = parenIf (p > 1)
   (ppInfixOp op <> ppLiteral l)
 ppPattern _ (VariablePattern       v) = ppIdent v
-ppPattern p (ConstructorPattern c ts) = parenExp (p > 1 && not (null ts))
+ppPattern p (ConstructorPattern c ts) = parenIf (p > 1 && not (null ts))
   (ppQIdent c <+> fsep (map (ppPattern 2) ts))
-ppPattern p (InfixPattern    t1 c t2) = parenExp (p > 0)
+ppPattern p (InfixPattern    t1 c t2) = parenIf (p > 0)
   (sep [ppPattern 1 t1 <+> ppQInfixOp c, indent (ppPattern 0 t2)])
 ppPattern _ (ParenPattern          t) = parens (ppPattern 0 t)
 ppPattern _ (TuplePattern       _ ts) = parenList (map (ppPattern 0) ts)
 ppPattern _ (ListPattern        _ ts) = bracketList (map (ppPattern 0) ts)
 ppPattern _ (AsPattern           v t) = ppIdent v <> char '@' <> ppPattern 2 t
 ppPattern _ (LazyPattern         _ t) = char '~' <> ppPattern 2 t
-ppPattern p (FunctionPattern    f ts) = parenExp (p > 1 && not (null ts))
+ppPattern p (FunctionPattern    f ts) = parenIf (p > 1 && not (null ts))
   (ppQIdent f <+> fsep (map (ppPattern 2) ts))
-ppPattern p (InfixFuncPattern t1 f t2) = parenExp (p > 0)
+ppPattern p (InfixFuncPattern t1 f t2) = parenIf (p > 0)
   (sep [ppPattern 1 t1 <+> ppQInfixOp f, indent (ppPattern 0 t2)])
-ppPattern _ (RecordPattern     fs rt) =
-  braces (list (map ppFieldPatt fs)
-         <> (maybe empty (\t -> space <> char '|' <+> ppPattern 0 t) rt))
+ppPattern _ (RecordPattern     fs rt) = record (list (map ppFieldPatt fs)
+  <+> (maybePP (\t -> char '|' <+> ppPattern 0 t) rt))
 
 -- |Pretty print a record field pattern
 ppFieldPatt :: Field Pattern -> Doc
@@ -248,7 +247,7 @@ ppExpr _ (Variable       v) = ppQIdent v
 ppExpr _ (Constructor    c) = ppQIdent c
 ppExpr _ (Paren          e) = parens (ppExpr 0 e)
 ppExpr p (Typed       e ty) =
-  parenExp (p > 0) (ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty)
+  parenIf (p > 0) (ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty)
 ppExpr _ (Tuple       _ es) = parenList (map (ppExpr 0) es)
 ppExpr _ (List        _ es) = bracketList (map (ppExpr 0) es)
 ppExpr _ (ListCompr _ e qs) =
@@ -261,33 +260,34 @@ ppExpr _ (EnumFromTo        e1 e2) =
 ppExpr _ (EnumFromThenTo e1 e2 e3) =
   brackets (ppExpr 0 e1 <> comma <+> ppExpr 0 e2
               <+> text ".." <+> ppExpr 0 e3)
-ppExpr p (UnaryMinus       op e) = parenExp (p > 1) (ppInfixOp op <> ppExpr 1 e)
+ppExpr p (UnaryMinus       op e) = parenIf (p > 1) (ppInfixOp op <> ppExpr 1 e)
 ppExpr p (Apply           e1 e2) =
-  parenExp (p > 1) (sep [ppExpr 1 e1,indent (ppExpr 2 e2)])
+  parenIf (p > 1) (sep [ppExpr 1 e1,indent (ppExpr 2 e2)])
 ppExpr p (InfixApply   e1 op e2) =
-  parenExp (p > 0) (sep [ppExpr 1 e1 <+> ppQInfixOp (opName op),
+  parenIf (p > 0) (sep [ppExpr 1 e1 <+> ppQInfixOp (opName op),
                          indent (ppExpr 1 e2)])
 ppExpr _ (LeftSection      e op) = parens (ppExpr 1 e <+> ppQInfixOp (opName op))
 ppExpr _ (RightSection     op e) = parens (ppQInfixOp (opName op) <+> ppExpr 1 e)
-ppExpr p (Lambda          _ t e) = parenExp (p > 0)
+ppExpr p (Lambda          _ t e) = parenIf (p > 0)
   (sep [backsl <> fsep (map (ppPattern 2) t) <+> rarrow, indent (ppExpr 0 e)])
-ppExpr p (Let              ds e) = parenExp (p > 0)
+ppExpr p (Let              ds e) = parenIf (p > 0)
           (sep [text "let" <+> ppBlock ds, text "in" <+> ppExpr 0 e])
-ppExpr p (Do              sts e) = parenExp (p > 0)
+ppExpr p (Do              sts e) = parenIf (p > 0)
           (text "do" <+> (vcat (map ppStmt sts) $$ ppExpr 0 e))
-ppExpr p (IfThenElse _ e1 e2 e3) = parenExp (p > 0)
+ppExpr p (IfThenElse _ e1 e2 e3) = parenIf (p > 0)
            (text "if" <+>
             sep [ppExpr 0 e1,
                  text "then" <+> ppExpr 0 e2,
                  text "else" <+> ppExpr 0 e3])
-ppExpr p (Case    _ ct e alts) = parenExp (p > 0)
+ppExpr p (Case    _ ct e alts) = parenIf (p > 0)
            (ppCaseType ct <+> ppExpr 0 e <+> text "of" $$
             indent (vcat (map ppAlt alts)))
-ppExpr _ (RecordConstr     fs) = braces (list (map ppFieldExpr fs))
-ppExpr p (RecordSelection e l) = parenExp (p > 0)
+ppExpr _ (RecordConstr     fs) = braces
+                               $ space <> list (map ppFieldExpr fs) <> space
+ppExpr p (RecordSelection e l) = parenIf (p > 0)
                                  (ppExpr 1 e <+> recSelect <+> ppIdent l)
-ppExpr _ (RecordUpdate   fs e) =
-  braces (list (map ppFieldExpr fs) <+> char '|' <+> ppExpr 0 e)
+ppExpr _ (RecordUpdate   fs e) = braces
+  (space <> list (map ppFieldExpr fs) <+> char '|' <+> ppExpr 0 e <> space)
 
 -- |Pretty print a statement
 ppStmt :: Statement -> Doc
@@ -305,7 +305,7 @@ ppAlt (Alt _ t rhs) = ppRule (ppPattern 0 t) rarrow rhs
 
 -- |Pretty print a record field expression
 ppFieldExpr :: Field Expression -> Doc
-ppFieldExpr (Field _ l e) = ppIdent l <> recBind <> ppExpr 0 e
+ppFieldExpr (Field _ l e) = ppIdent l <+> recBind <+> ppExpr 0 e
 
 -- |Pretty print an operator
 ppOp :: InfixOp -> Doc
@@ -318,16 +318,16 @@ ppOp (InfixConstr op) = ppQInfixOp op
 
 -- |Pretty print an identifier
 ppIdent :: Ident -> Doc
-ppIdent x = parenExp (isInfixOp x) (text (idName x))
+ppIdent x = parenIf (isInfixOp x) (text (idName x))
 
 ppQIdent :: QualIdent -> Doc
-ppQIdent x = parenExp (isQInfixOp x) (text (qualName x))
+ppQIdent x = parenIf (isQInfixOp x) (text (qualName x))
 
 ppInfixOp :: Ident -> Doc
-ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (idName x))
+ppInfixOp x = backQuoteIf (not (isInfixOp x)) (text (idName x))
 
 ppQInfixOp :: QualIdent -> Doc
-ppQInfixOp x = backQuoteExp (not (isQInfixOp x)) (text (qualName x))
+ppQInfixOp x = backQuoteIf (not (isQInfixOp x)) (text (qualName x))
 
 ppMIdent :: ModuleIdent -> Doc
 ppMIdent m = text (moduleName m)
@@ -339,20 +339,17 @@ ppMIdent m = text (moduleName m)
 indent :: Doc -> Doc
 indent = nest 2
 
-maybePP :: (a -> Doc) -> Maybe a -> Doc
-maybePP pp = maybe empty pp
-
-parenExp :: Bool -> Doc -> Doc
-parenExp b doc = if b then parens doc else doc
-
-backQuoteExp :: Bool -> Doc -> Doc
-backQuoteExp b doc = if b then backQuote <> doc <> backQuote else doc
+backQuoteIf :: Bool -> Doc -> Doc
+backQuoteIf b doc = if b then backQuote <> doc <> backQuote else doc
 
 list :: [Doc] -> Doc
 list = fsep . punctuate comma
 
 parenList :: [Doc] -> Doc
 parenList = parens . list
+
+record :: Doc -> Doc
+record doc = braces $ space <> doc <> space
 
 bracketList :: [Doc] -> Doc
 bracketList = brackets . list

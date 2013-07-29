@@ -44,6 +44,10 @@ parenIf :: Bool -> Doc -> Doc
 parenIf False = id
 parenIf True  = parens
 
+-- | Pretty print a 'Maybe' value for the 'Just' constructor only
+maybePP :: (a -> Doc) -> Maybe a -> Doc
+maybePP pp = maybe empty pp
+
 -- |A '.' character.
 dot :: Doc
 dot = char '.'
