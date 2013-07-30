@@ -220,9 +220,11 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*>
 
 -- |Parser for a interface class declaration of the following form:
 -- @
--- class [K, K2] L a where {
--- funL 1 :: a -> a
--- }
+-- class [Superclass_1, ..., Superclass_n] Class a where {
+-- method_1 arity_1 :: type_1;
+-- ...
+-- method_k arity_k :: type_k
+-- } [Default methods] [Dependencies]
 -- @
 iClassDecl :: Parser Token IDecl a
 iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
@@ -230,7 +232,14 @@ iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma
   <*> classTySigs <*-> rightBrace  <*> brackets (fun `sepBy` comma)
   <*> brackets (composedIdent `sepBy` comma)
 
-
+-- |Parser for a interface hidden class declaration of the following form:
+-- @
+-- class [Superclass_1, ..., Superclass_n] Class a where {
+-- method_1 arity_1 :: type_1;
+-- ...
+-- method_k arity_k :: type_k
+-- } [Default methods]
+-- @
 iHidingClassDecl :: Parser Token IDecl a
 iHidingClassDecl = IHidingClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
@@ -256,10 +265,10 @@ classTySig = (\public f -> (public, f)) <$>
 
 -- |Parses an interface declaration of the following form:
 -- @
--- instance (C_1 a_i1, ..., C_n a_in) => C (T a_1 ... a_k)
+-- instance[origin] (C_1 a_i1, ..., C_n a_in) => C (T a_1 ... a_k) [dependencies]
 -- @
 -- where T is a type constructor (can also be a special type constructor (list, 
--- unit, tuple, arrow)) 
+-- unit, tuple, arrow)). "origin" may be empty. 
 iInstanceDecl :: Parser Token IDecl a
 iInstanceDecl =
   IInstanceDecl <$> tokenPos KW_instance <*> brackets (optionMaybe mIdent) 
