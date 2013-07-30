@@ -176,27 +176,27 @@ ppIDecl (IClassDecl _ scls cls clsvar tysigs defaults depends) =
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
-  $$ vcat (punctuate semi $ 
+  $$ nest 2 (vcat (punctuate semi $ 
       map (\(b, tysig) -> text (if b then "public" else "hiding") <+> ppIDecl tysig)
-          tysigs) 
+          tysigs)) 
   $$ rbrace
-  <+> bracketList (map ppIdent defaults)
-  <+> bracketList (map ppQIdent depends)
+  $$ nest 2 (bracketList (map ppIdent defaults))
+  $$ nest 2 (bracketList (map ppQIdent depends))
 ppIDecl (IInstanceDecl _ m scx cls ty tyvars depends) = text "instance" <>
   brackets (if isNothing m then empty else ppMIdent $ fromJust m) <+> 
   (parens $ hsep $ 
     punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
   <+> text "=>" <+> ppQIdent cls 
   <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
-  <+> bracketList (map ppQIdent depends)
+  $$ nest 2 (bracketList (map ppQIdent depends))
 ppIDecl (IHidingClassDecl _ scls cls clsvar tysigs defaults) = 
   text "hiding" <+> 
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
-  $$ vcat (punctuate semi $ map ppIDecl tysigs) 
+  $$ nest 2 (vcat (punctuate semi $ map ppIDecl tysigs)) 
   $$ rbrace
-  <+> bracketList (map ppIdent defaults)
+  $$ nest 2 (bracketList (map ppIdent defaults))
 
 -- |Pretty print an instance type  
 ppInstanceType :: TypeConstructor -> Doc
