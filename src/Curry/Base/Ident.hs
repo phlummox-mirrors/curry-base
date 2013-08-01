@@ -216,7 +216,7 @@ mkIdent x = Ident NoPos x globalScope
 
 -- |Infinite list of different 'Ident's
 identSupply :: [Ident]
-identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
+identSupply = drop 1 $ [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
   where mkNewIdent c 0 = mkIdent [c]
         mkNewIdent c n = mkIdent $ c : show n
 
