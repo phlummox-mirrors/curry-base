@@ -55,7 +55,7 @@ isTypeDecl _                     = False
 
 -- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
-isTypeSig (TypeSig       _ _ _ _) = True
+isTypeSig (TypeSig     _ _ _ _ _) = True
 isTypeSig (ForeignDecl _ _ _ _ _) = True
 isTypeSig _                       = False
 

@@ -130,7 +130,7 @@ data Decl
   | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
-  | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
+  | TypeSig      Position Bool [Ident] Context TypeExpr          -- f, g :: Bool
   -- |position, the type of the function, a unique id, the name
   -- the equations
   | FunctionDecl Position (Maybe ConstrType_) Id Ident [Equation]-- f True = 1 ; f False = 0
@@ -429,7 +429,7 @@ instance Eq Decl where
     = p1 == p2 && i1 == i2 && ids1 == ids2 && n1 == n2
   (TypeDecl p1 id1 ids1 t1) == (TypeDecl p2 id2 ids2 t2) 
     = p1 == p2 && id1 == id2 && ids1 == ids2 && t1 == t2
-  (TypeSig p1 ids1 cx1 t1) == (TypeSig p2 ids2 cx2 t2) 
+  (TypeSig p1 _ ids1 cx1 t1) == (TypeSig p2 _ ids2 cx2 t2) 
     = p1 == p2 && ids1 == ids2 && cx1 == cx2 && t1 == t2
   (FunctionDecl p1 _ _ id1 es1) == (FunctionDecl p2 _ _ id2 es2) 
     = p1 == p2 && id1 == id2 && es1 == es2

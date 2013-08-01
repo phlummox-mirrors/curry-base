@@ -78,12 +78,12 @@ ppDecl (NewtypeDecl _ tc tvs nc) =
   sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppDecl (TypeSig _ fs cx ty) =
+ppDecl (TypeSig _ _ fs cx ty) =
   list (map ppIdent fs) <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty
 ppDecl (FunctionDecl _ _ _ _ eqs) = vcat (map ppEquation eqs)
 ppDecl (ForeignDecl p cc impent f ty) =
   sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
-       indent (ppDecl (TypeSig p [f] (Context []) ty))]
+       indent (ppDecl (TypeSig p False [f] (Context []) ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
         ppCallConv CallConvCCall     = text "ccall"
 ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"

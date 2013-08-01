@@ -385,7 +385,7 @@ funListDecl =  typeSignature
 typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
 typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0 False)
   <|?> (typeSig <$-> token DoubleColon <*> succeed emptyContext <*> type0 False)
-  where typeSig cx ty vs p = TypeSig p vs cx ty
+  where typeSig cx ty vs p = TypeSig p False vs cx ty
 
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
 externalDecl = flip ExternalDecl <$-> token KW_external 
