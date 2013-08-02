@@ -130,6 +130,9 @@ data Decl
   | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
+  -- |as in the compile process, we pass along both expanded and unexpanded
+  -- type signatures, we have to provide a flag that indicates whether 
+  -- the type signature is expanded or not. 
   | TypeSig      Position Bool [Ident] Context TypeExpr          -- f, g :: Bool
   -- |position, the type of the function, a unique id, the name
   -- the equations
