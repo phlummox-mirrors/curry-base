@@ -172,7 +172,8 @@ ppIDecl (ITypeDecl _ tc tvs ty) =
 ppIDecl (IFunctionDecl _ f a (Context cx) ty) = ppQIdent f <+> int a
   <+> text "::" <+> parens (hsep $ punctuate comma (map ppContextElem cx)) 
   <+> text "=>" <+> ppTypeExpr 0 ty
-ppIDecl (IClassDecl _ scls cls clsvar tysigs defaults depends) = 
+ppIDecl (IClassDecl _ hidden scls cls clsvar tysigs defaults depends) = 
+  (if hidden then text "hiding" else empty) <+>  
   text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
   ppIdent clsvar <+> text "where" 
   <+> lbrace
@@ -189,14 +190,7 @@ ppIDecl (IInstanceDecl _ m scx cls ty tyvars depends) = text "instance" <>
   <+> text "=>" <+> ppQIdent cls 
   <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
   $$ nest 2 (bracketList (map ppQIdent depends))
-ppIDecl (IHidingClassDecl _ scls cls clsvar tysigs defaults) = 
-  text "hiding" <+> 
-  text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
-  ppIdent clsvar <+> text "where" 
-  <+> lbrace
-  $$ nest 2 (vcat (punctuate semi $ map ppIDecl tysigs)) 
-  $$ rbrace
-  $$ nest 2 (bracketList (map ppIdent defaults))
+
 
 -- |Pretty print an instance type  
 ppInstanceType :: TypeConstructor -> Doc

@@ -131,7 +131,7 @@ intfDecls = intfDecl `sepBy` semicolon
 intfDecl :: Parser Token IDecl a
 intfDecl = choice [ iInfixDecl, iHidingDecl, iDataDecl, iNewtypeDecl
                   , iTypeDecl , iFunctionDecl <\> token Id_hiding
-                  , iClassDecl, iInstanceDecl ]
+                  , iClassDecl False, iInstanceDecl ]
 
 -- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
@@ -142,7 +142,7 @@ iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hClassDecl <|> hFuncDecl)
   where
   hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
-  hClassDecl = const <$> iHidingClassDecl
+  hClassDecl = const <$> iClassDecl True
   hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> 
     (Context <$> (parens $ (contextElem `sepBy` comma))) <*-> token DoubleArrow
      <*> type0 True
@@ -226,32 +226,12 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*>
 -- method_k arity_k :: type_k
 -- } [Default methods] [Dependencies]
 -- @
-iClassDecl :: Parser Token IDecl a
-iClassDecl = IClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
+iClassDecl :: Bool -> Parser Token IDecl a
+iClassDecl hidden = IClassDecl <$> tokenPos KW_class <*> succeed hidden
+  <*> brackets (qtycls `sepBy` comma) 
   <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
   <*> classTySigs <*-> rightBrace  <*> brackets (fun `sepBy` comma)
   <*> brackets (composedIdent `sepBy` comma)
-
--- |Parser for a interface hidden class declaration of the following form:
--- @
--- class [Superclass_1, ..., Superclass_n] Class a where {
--- method_1 arity_1 :: type_1;
--- ...
--- method_k arity_k :: type_k
--- } [Default methods]
--- @
-iHidingClassDecl :: Parser Token IDecl a
-iHidingClassDecl = IHidingClassDecl <$> tokenPos KW_class <*> brackets (qtycls `sepBy` comma) 
-  <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
-  <*> hClassTySigs <*-> rightBrace <*> brackets (fun `sepBy` comma)
-
--- |Parser that parses all type signatures of a hidden class declaration
-hClassTySigs :: Parser Token [IDecl] a
-hClassTySigs = hClassTySig `sepBy` semicolon
-
--- |Parser that parses one type signature of a hidden class declaration
-hClassTySig :: Parser Token IDecl a
-hClassTySig = iFunctionDecl
 
 -- |Parses all type signatures of a public class declaration  
 classTySigs :: Parser Token [(Bool, IDecl)] a
