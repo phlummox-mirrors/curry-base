@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Monads for message handling
-    Copyright   :  2009 Holger Siegel
-                   2012 Björn Peemöller
+    Copyright   :  2009        Holger Siegel
+                   2012 - 2013 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -28,9 +28,9 @@ import Control.Monad.Error
 import Control.Monad.Identity
 import Control.Monad.Writer   (MonadWriter, WriterT, runWriterT, tell)
 import Data.Maybe             (fromMaybe)
-import Text.PrettyPrint
 
 import Curry.Base.Position
+import Curry.Base.Pretty
 
 -- ---------------------------------------------------------------------------
 -- Message
@@ -51,13 +51,16 @@ instance Ord Message where
 instance Show Message where
   showsPrec _ = shows . ppMessage
 
+instance Error Message where
+  noMsg  = message (text "Failure!")
+  strMsg = message . text
+
 instance HasPosition Message where
   getPosition     = fromMaybe NoPos . msgPos
   setPosition p m = m { msgPos = Just p }
 
-instance Error Message where
-  noMsg  = message (text "Failure!")
-  strMsg = message . text
+instance Pretty Message where
+  pPrint = ppMessage
 
 -- |Construct a 'Message' without a 'Position'
 message :: Doc -> Message

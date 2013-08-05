@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Identifiers
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       2011, Björn Peemöller (bjp@informatik.uni-kiel.de)
+    Copyright   :  (c) 1999 - 2004, Wolfgang Lux
+                       2011 - 2013, Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -30,12 +30,12 @@ module Curry.Base.Ident
 
     -- * Local identifiers
   , Ident (..), mkIdent, showIdent, escName, identSupply
-  , globalScope, hasGlobalScope, renameIdent, unRenameIdent
+  , globalScope, hasGlobalScope, isRenamed, renameIdent, unRenameIdent
   , updIdentName, addPositionIdent, addRefId, isInfixOp
 
     -- * Qualified identifiers
   , QualIdent (..), qualName, qidPosition, isQInfixOp, qualify
-  , qualifyWith, qualQualify, isQualified, unqualify, qualUnqualify
+  , qualifyWith, qualQualify, qualifyLike, isQualified, unqualify, qualUnqualify
   , localIdent, updQualIdent, addRef
 
     -- * Predefined simple identifiers
@@ -52,8 +52,11 @@ module Curry.Base.Ident
     -- ** Identifiers for types
   , qUnitId, qBoolId, qCharId, qIntId, qFloatId, qListId, qIOId, qSuccessId
   , qArrowId, qUnitIdP, qListIdP, qArrowIdP, qTupleIdP
+    -- ** Helper functions for qualified type constructors
+  , hasSpecialSyntax
     -- ** Identifiers for constructors
   , qTrueId, qFalseId, qNilId, qConsId, qTupleId, isQTupleId, qTupleArity
+    
 
     -- * Extended functionality
     -- ** Function pattern
@@ -63,16 +66,17 @@ module Curry.Base.Ident
   , recordExtId, labelExtId, isRecordExtId, isLabelExtId, fromRecordExtId
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
     -- ** Constructed identifiers
-  , identPrefix
+  , identPrefix, Curry.Base.Ident.sep
   ) where
 
-import Data.Char     (isAlpha, isAlphaNum, isSpace)
-import Data.Function (on)
-import Data.Generics (Data(..), Typeable(..))
-import Data.List     (intercalate, isInfixOf, isPrefixOf)
-import Data.Maybe    (isJust, fromMaybe)
+import Data.Char           (isAlpha, isAlphaNum, isSpace)
+import Data.Function       (on)
+import Data.Generics       (Data(..), Typeable(..))
+import Data.List           (intercalate, isInfixOf, isPrefixOf)
+import Data.Maybe          (isJust, fromMaybe)
 
 import Curry.Base.Position
+import Curry.Base.Pretty
 
 -- ---------------------------------------------------------------------------
 -- Module identifier
@@ -106,6 +110,9 @@ instance Show ModuleIdent where
 instance HasPosition ModuleIdent where
   getPosition = midPosition
   setPosition = addPositionModuleIdent
+
+instance Pretty ModuleIdent where
+  pPrint = hcat . punctuate dot . map text . midQualifiers
 
 instance SrcRefOf ModuleIdent where
   srcRefOf = srcRefOf . getPosition
@@ -192,6 +199,10 @@ instance HasPosition Ident where
   getPosition = idPosition
   setPosition = addPositionIdent
 
+instance Pretty Ident where
+  pPrint (Ident _ x n) | n == globalScope = text x
+                       | otherwise        = text x <> dot <> integer n
+
 instance SrcRefOf Ident where
   srcRefOf = srcRefOf . getPosition
 
@@ -205,7 +216,7 @@ mkIdent x = Ident NoPos x globalScope
 
 -- |Infinite list of different 'Ident's
 identSupply :: [Ident]
-identSupply = [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
+identSupply = drop 1 $ [ mkNewIdent c i | i <- [0 ..] :: [Integer], c <- ['a'..'z'] ]
   where mkNewIdent c 0 = mkIdent [c]
         mkNewIdent c n = mkIdent $ c : show n
 
@@ -221,6 +232,10 @@ escName i = '`' : idName i ++ "'"
 -- |Has the identifier global scope?
 hasGlobalScope :: Ident -> Bool
 hasGlobalScope = (== globalScope) . idUnique
+
+-- |Is the 'Ident' renamed?
+isRenamed :: Ident -> Bool
+isRenamed = (/= globalScope) . idUnique
 
 -- |Rename an 'Ident' by changing its unique number
 renameIdent :: Ident -> Integer -> Ident
@@ -277,6 +292,9 @@ instance HasPosition QualIdent where
   getPosition     = getPosition . qidIdent
   setPosition p q = q { qidIdent = setPosition p $ qidIdent q }
 
+instance Pretty QualIdent where
+  pPrint = text . show
+
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify
 
@@ -313,6 +331,12 @@ qualifyWith = QualIdent . Just
 qualQualify :: ModuleIdent -> QualIdent -> QualIdent
 qualQualify m (QualIdent Nothing x) = QualIdent (Just m) x
 qualQualify _ x = x
+
+-- |Qualify an 'Ident' with the 'ModuleIdent' of the given 'QualIdent',
+-- if present.
+qualifyLike :: QualIdent -> Ident -> QualIdent
+qualifyLike (QualIdent Nothing  _) x = qualify x
+qualifyLike (QualIdent (Just m) _) x = qualifyWith m x
 
 -- | Check whether a 'QualIdent' contains a 'ModuleIdent'
 isQualified :: QualIdent -> Bool
@@ -556,6 +580,13 @@ isQTupleId = isTupleId . unqualify
 qTupleArity :: QualIdent -> Int
 qTupleArity = tupleArity . unqualify
 
+-- |returns whether the given type constructor has special syntax
+hasSpecialSyntax :: QualIdent -> Bool
+hasSpecialSyntax qid = qid == qUnitId || qid == qUnitIdP
+    || qid == qListId || qid == qListIdP
+    || isQTupleId qid 
+    || qid == qArrowId || qid == qArrowIdP
+
 -- ---------------------------------------------------------------------------
 -- Micellaneous functions for generating and testing extended identifiers
 -- ---------------------------------------------------------------------------
@@ -668,3 +699,8 @@ labelExt = "_#Lab:"
 -- | the prefix for constructed identifiers
 identPrefix :: String
 identPrefix = "#"
+
+-- |the seperator string used for constructing identifiers out of smaller
+-- elements
+sep :: String
+sep = ":_"

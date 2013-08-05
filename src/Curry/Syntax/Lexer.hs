@@ -126,7 +126,9 @@ data Category
   | Id_forall
   | Id_hiding
   | Id_interface
+  | Id_interfaceTypeClasses
   | Id_primitive
+  | Id_public
   | Id_qualified
 
   -- special operators
@@ -259,7 +261,9 @@ instance Show Token where
   showsPrec _ (Token Id_forall          _) = showsSpecialIdent "forall"
   showsPrec _ (Token Id_hiding          _) = showsSpecialIdent "hiding"
   showsPrec _ (Token Id_interface       _) = showsSpecialIdent "interface"
+  showsPrec _ (Token Id_interfaceTypeClasses _) = showsSpecialIdent "interfaceTypeClasses"
   showsPrec _ (Token Id_primitive       _) = showsSpecialIdent "primitive"
+  showsPrec _ (Token Id_public          _) = showsSpecialIdent "public"
   showsPrec _ (Token Id_qualified       _) = showsSpecialIdent "qualified"
   showsPrec _ (Token LineComment        a) = shows a
   showsPrec _ (Token NestedComment      a) = shows a
@@ -375,7 +379,9 @@ keywordsSpecialIds = Map.union keywords $ Map.fromList
   , ("forall"   , Id_forall   )
   , ("hiding"   , Id_hiding   )
   , ("interface", Id_interface)
+  , ("interfaceTypeClasses", Id_interfaceTypeClasses)
   , ("primitive", Id_primitive)
+  , ("public"   , Id_public   )
   , ("qualified", Id_qualified)
   ]
 
@@ -499,7 +505,8 @@ lexSymbol cont p s = cont
   where (sym, rest) = span isSymbol s
 
 -- /Note:/ the function 'lexOptQual' has been extended to provide
--- the qualified use of the Prelude list operators and tuples.
+-- the qualified use of the Prelude list operators, tuples, and the arrow
+-- "(->)".
 lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
 lexOptQual cont token mIdent p ('.':c:s)
   | isAlpha  c       = lexQualIdent cont identCont mIdent (next p) (c:s)
@@ -532,6 +539,8 @@ lexQualPreludeSymbol cont _ _ mIdent p ('(':rest)
   = cont (idTok QId mIdent ('(':tup++")")) (incr p (length tup+2))
          (tail rest')
   where (tup,rest') = span (== ',') rest
+lexQualPreludeSymbol cont _ _ mIdent p ('(':'-':'>':')':rest) = 
+  cont (idTok QId mIdent "(->)") (incr p 4) rest
 lexQualPreludeSymbol cont token _ _ p s =  cont token p s
 
 -- ---------------------------------------------------------------------------

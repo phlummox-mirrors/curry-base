@@ -20,8 +20,9 @@ module Curry.Syntax.Pretty
   ) where
 
 import Text.PrettyPrint
+import Data.Maybe
 
-import Curry.Base.Ident
+import Curry.Base.Ident hiding (sep)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (opName)
 import Data.Maybe
@@ -80,12 +81,12 @@ ppDecl (NewtypeDecl _ tc tvs nc der) =
   $$ nest 2 (if isJust der then ppDeriving (fromJust der) else empty)
 ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppDecl (TypeSig _ fs cx ty) =
+ppDecl (TypeSig _ _ fs cx ty) =
   list (map ppIdent fs) <+> text "::" <+> ppContext cx <+> ppTypeExpr 0 ty
 ppDecl (FunctionDecl _ _ _ _ eqs) = vcat (map ppEquation eqs)
 ppDecl (ForeignDecl p cc impent f ty) =
   sep [text "foreign" <+> ppCallConv cc <+> maybePP (text . show) impent,
-       indent (ppDecl (TypeSig p [f] (Context []) ty))]
+       indent (ppDecl (TypeSig p False [f] (Context []) ty))]
   where ppCallConv CallConvPrimitive = text "primitive"
         ppCallConv CallConvCCall     = text "ccall"
 ppDecl (ExternalDecl   _ fs) = list (map ppIdent fs) <+> text "external"
@@ -153,9 +154,9 @@ ppDeriving (Deriving qids) =
 -- ---------------------------------------------------------------------------
 
 -- |Pretty print an interface
-ppInterface :: Interface -> Doc
-ppInterface (Interface m is ds)
-  =  text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
+ppInterface :: String -> Interface -> Doc
+ppInterface which (Interface m is ds)
+  =  text which <+> ppMIdent m <+> text "where" <+> lbrace
   $$ vcat (punctuate semi $ map ppIImportDecl is)
   $$ vcat (punctuate semi $ map ppIDecl ds)
   $$ rbrace
@@ -163,13 +164,12 @@ ppInterface (Interface m is ds)
 ppIImportDecl :: IImportDecl -> Doc
 ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
-
 -- |Pretty print an interface declaration
 ppIDecl :: IDecl -> Doc
-ppIDecl (IInfixDecl _ fix p op) = ppPrec fix p <+> ppQInfixOp op
+ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix p <+> ppQInfixOp op
 ppIDecl (HidingDataDecl _ tc tvs) =
-  text "hiding" <+> ppITypeDeclLhs "data" (qualify tc) tvs
-ppIDecl (IDataDecl _ tc tvs cs) =
+  text "hiding" <+> ppITypeDeclLhs "data" tc tvs
+ppIDecl (IDataDecl   _ tc tvs cs) =
   sep (ppITypeDeclLhs "data" tc tvs :
        map indent (zipWith (<+>) (equals : repeat vbar) (map ppIConstr cs)))
   where ppIConstr = maybe (char '_') ppConstr
@@ -177,7 +177,42 @@ ppIDecl (INewtypeDecl _ tc tvs nc) =
   sep [ppITypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
 ppIDecl (ITypeDecl _ tc tvs ty) =
   sep [ppITypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
-ppIDecl (IFunctionDecl _ f _ ty) = ppQIdent f <+> text "::" <+> ppTypeExpr 0 ty
+ppIDecl (IFunctionDecl _ f a (Context cx) ty) = ppQIdent f <+> int a
+  <+> text "::" <+> parens (hsep $ punctuate comma (map ppContextElem cx)) 
+  <+> text "=>" <+> ppTypeExpr 0 ty
+ppIDecl (IClassDecl _ scls cls clsvar tysigs defaults depends) = 
+  text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
+  ppIdent clsvar <+> text "where" 
+  <+> lbrace
+  $$ nest 2 (vcat (punctuate semi $ 
+      map (\(b, tysig) -> text (if b then "public" else "hiding") <+> ppIDecl tysig)
+          tysigs)) 
+  $$ rbrace
+  $$ nest 2 (bracketList (map ppIdent defaults))
+  $$ nest 2 (bracketList (map ppQIdent depends))
+ppIDecl (IInstanceDecl _ m scx cls ty tyvars depends) = text "instance" <>
+  brackets (if isNothing m then empty else ppMIdent $ fromJust m) <+> 
+  (parens $ hsep $ 
+    punctuate comma (map (\(c, a) -> ppQIdent c <+> ppIdent a) scx))
+  <+> text "=>" <+> ppQIdent cls 
+  <+> parens (ppInstanceType ty <+> hsep (map ppIdent tyvars))
+  $$ nest 2 (bracketList (map ppQIdent depends))
+ppIDecl (IHidingClassDecl _ scls cls clsvar tysigs defaults) = 
+  text "hiding" <+> 
+  text "class" <+> bracketList (map ppQIdent scls) <+> ppQIdent cls <+> 
+  ppIdent clsvar <+> text "where" 
+  <+> lbrace
+  $$ nest 2 (vcat (punctuate semi $ map ppIDecl tysigs)) 
+  $$ rbrace
+  $$ nest 2 (bracketList (map ppIdent defaults))
+
+-- |Pretty print an instance type  
+ppInstanceType :: TypeConstructor -> Doc
+ppInstanceType (QualTC qid) = ppQIdent qid
+ppInstanceType UnitTC = ppIdent unitId
+ppInstanceType (TupleTC n) = ppIdent (tupleId n)
+ppInstanceType ListTC = ppIdent listId
+ppInstanceType ArrowTC = ppIdent arrowId
 
 ppITypeDeclLhs :: String -> QualIdent -> [Ident] -> Doc
 ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
@@ -375,16 +410,16 @@ ppContextElem (ContextElem cls tyvar ts) =
 
 -- |Pretty print an identifier
 ppIdent :: Ident -> Doc
-ppIdent x = parenExp (isInfixOp x) (text (show x))
+ppIdent x = parenExp (isInfixOp x) (text (idName x))
 
 ppQIdent :: QualIdent -> Doc
-ppQIdent x = parenExp (isQInfixOp x) (text (show x))
+ppQIdent x = parenExp (isQInfixOp x) (text (qualName x))
 
 ppInfixOp :: Ident -> Doc
-ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (show x))
+ppInfixOp x = backQuoteExp (not (isInfixOp x)) (text (idName x))
 
 ppQInfixOp :: QualIdent -> Doc
-ppQInfixOp x = backQuoteExp (not (isQInfixOp x)) (text (show x))
+ppQInfixOp x = backQuoteExp (not (isQInfixOp x)) (text (qualName x))
 
 ppMIdent :: ModuleIdent -> Doc
 ppMIdent m = text (moduleName m)

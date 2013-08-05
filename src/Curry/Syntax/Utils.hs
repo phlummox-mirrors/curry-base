@@ -20,6 +20,8 @@ module Curry.Syntax.Utils
   , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
+  , specialConsToTyExpr, specialTyConToQualIdent, toTypeConstructor
+  , qualifyTypeExpr, unqualifyTypeExpr
   ) where
 
 import Control.Monad.State
@@ -53,7 +55,7 @@ isTypeDecl _                       = False
 
 -- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
-isTypeSig (TypeSig       _ _ _ _) = True
+isTypeSig (TypeSig     _ _ _ _ _) = True
 isTypeSig (ForeignDecl _ _ _ _ _) = True
 isTypeSig _                       = False
 
@@ -164,6 +166,74 @@ arrowArityTyExpr :: TypeExpr -> Int
 arrowArityTyExpr (ArrowType _ ty) = 1 + arrowArityTyExpr ty
 arrowArityTyExpr (SpecialConstructorType ArrowTC [_, ty]) = 1 + arrowArityTyExpr ty
 arrowArityTyExpr _                = 0
+
+-- |transforms a "SpecialConstructorType" into the other data constructors
+-- of "TypeExpr". Throws an error if kinds are incorrect. 
+specialConsToTyExpr :: TypeExpr -> TypeExpr
+specialConsToTyExpr (SpecialConstructorType (QualTC qid) tys) 
+  = ConstructorType qid tys
+specialConsToTyExpr (SpecialConstructorType UnitTC []) = TupleType []
+specialConsToTyExpr (SpecialConstructorType (TupleTC n) tys) 
+  | n == length tys = TupleType tys 
+specialConsToTyExpr (SpecialConstructorType ListTC [ty]) = ListType ty
+specialConsToTyExpr (SpecialConstructorType ArrowTC (t1:t2:[])) = ArrowType t1 t2 
+specialConsToTyExpr (SpecialConstructorType _ _) = error "specialConsToTyExpr"
+specialConsToTyExpr t = t 
+
+-- |returns a qualified identifiers for the four special type constructors
+specialTyConToQualIdent :: TypeConstructor -> QualIdent
+specialTyConToQualIdent UnitTC = qUnitIdP
+specialTyConToQualIdent (TupleTC n) = qTupleIdP n
+specialTyConToQualIdent ListTC = qListIdP
+specialTyConToQualIdent ArrowTC = qArrowIdP
+specialTyConToQualIdent (QualTC tc) = tc
+
+-- |converts a given identifier to a type constructor, considering special
+-- syntax constructors
+toTypeConstructor :: QualIdent -> TypeConstructor
+toTypeConstructor ty
+  | ty == qArrowId || ty == qArrowIdP = ArrowTC
+  | ty == qListId  || ty == qListIdP  = ListTC
+  | isQTupleId ty                     = TupleTC $ qTupleArity ty
+  | ty == qUnitId  || ty == qUnitIdP  = UnitTC
+  | otherwise                         = QualTC ty
+
+
+-- |qualifies a given type expression
+qualifyTypeExpr :: ModuleIdent -> TypeExpr -> TypeExpr
+qualifyTypeExpr m (ConstructorType qid tys) = 
+  ConstructorType (qualQualify m qid) (map (qualifyTypeExpr m) tys)
+qualifyTypeExpr _m v@(VariableType _) = v
+qualifyTypeExpr m (TupleType tys) = TupleType (map (qualifyTypeExpr m) tys)
+qualifyTypeExpr m (ListType ty) = ListType (qualifyTypeExpr m ty)
+qualifyTypeExpr m (ArrowType ty1 ty2) = 
+  ArrowType (qualifyTypeExpr m ty1) (qualifyTypeExpr m ty2)
+qualifyTypeExpr m (RecordType rs mty) = 
+  RecordType (map (\(ids, ty) -> (ids, qualifyTypeExpr m ty)) rs)
+             (fmap (qualifyTypeExpr m) mty)   
+qualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) =  
+  SpecialConstructorType (QualTC $ qualQualify m qid)
+    (map (qualifyTypeExpr m) tys)
+qualifyTypeExpr m (SpecialConstructorType c tys) = 
+  SpecialConstructorType c (map (qualifyTypeExpr m) tys)
+
+-- |unqualify a given type expression
+unqualifyTypeExpr :: ModuleIdent -> TypeExpr -> TypeExpr
+unqualifyTypeExpr m (ConstructorType qid tys) = 
+  ConstructorType (qualUnqualify m qid) (map (unqualifyTypeExpr m) tys)
+unqualifyTypeExpr _m v@(VariableType _) = v
+unqualifyTypeExpr m (TupleType tys) = TupleType (map (unqualifyTypeExpr m) tys)
+unqualifyTypeExpr m (ListType ty) = ListType (unqualifyTypeExpr m ty)
+unqualifyTypeExpr m (ArrowType ty1 ty2) = 
+  ArrowType (unqualifyTypeExpr m ty1) (unqualifyTypeExpr m ty2)
+unqualifyTypeExpr m (RecordType rs mty) = 
+  RecordType (map (\(ids, ty) -> (ids, unqualifyTypeExpr m ty)) rs)
+             (fmap (unqualifyTypeExpr m) mty)
+unqualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) = 
+  SpecialConstructorType (QualTC $ qualUnqualify m qid)
+    (map (unqualifyTypeExpr m) tys)
+unqualifyTypeExpr m (SpecialConstructorType c tys) = 
+  SpecialConstructorType c (map (unqualifyTypeExpr m) tys)
 
 ---------------------------
 -- add source references

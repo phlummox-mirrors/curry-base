@@ -102,12 +102,19 @@ data IImportDecl = IImportDecl Position ModuleIdent
 
 -- |Interface declaration
 data IDecl
-  = IInfixDecl     Position Infix Integer QualIdent -- TODO: change to int?
-  | HidingDataDecl Position Ident [Ident]           -- TODO: change to QualIdent?
+  = IInfixDecl     Position Infix Integer QualIdent
+  | HidingDataDecl Position QualIdent [Ident]
   | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
-  | IFunctionDecl  Position QualIdent Int TypeExpr
+  | IFunctionDecl  Position QualIdent Int Context TypeExpr
+  -- | position, super classes, class, type var, class methods (public or hidden),
+  -- default methods, dependencies
+  | IClassDecl     Position [QualIdent] QualIdent Ident [(Bool, IDecl)] [Ident] [QualIdent]
+  -- |position, defining module, context, class, type, type vars, dependencies
+  | IInstanceDecl  Position (Maybe ModuleIdent) [(QualIdent, Ident)] QualIdent TypeConstructor [Ident] [QualIdent]
+  -- |position, super classes, class, type var, class methods, default methods
+  | IHidingClassDecl Position [QualIdent] QualIdent Ident [IDecl] [Ident]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -123,10 +130,17 @@ data Decl
   | DataDecl     Position Ident [Ident] [ConstrDecl] (Maybe Deriving)  -- data C a b = C1 a | C2 b [deriving Eq]
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl (Maybe Deriving) -- newtype C a b = C a b [deriving Eq]
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
-  | TypeSig      Position [Ident] Context TypeExpr               -- f, g :: Bool
+  -- |as in the compile process, we pass along both expanded and unexpanded
+  -- type signatures, we have to provide a flag that indicates whether 
+  -- the type signature is expanded or not. 
+  | TypeSig      Position Bool [Ident] Context TypeExpr          -- f, g :: Bool
+  -- |position, the type of the function, a unique id, the name
+  -- the equations
   | FunctionDecl Position (Maybe ConstrType_) Id Ident [Equation]-- f True = 1 ; f False = 0
   | ForeignDecl  Position CallConv (Maybe String) Ident TypeExpr -- foreign ccall "lib.h" fun :: Int
   | ExternalDecl Position [Ident]                                -- f, g external
+  -- |position, the type of the whole pattern, a unique id, the patterns, 
+  -- the right hand side of the pattern declaration
   | PatternDecl  Position (Maybe ConstrType_) Id Pattern Rhs     -- Just x = ...
   | FreeDecl     Position [Ident]                                -- x, y free
   | ClassDecl    Position SContext Ident Ident [Decl]            -- class Eq a => Num a where {TypeSig|FunctionDecl|InfixDecl}
@@ -422,7 +436,7 @@ instance Eq Decl where
     = p1 == p2 && i1 == i2 && ids1 == ids2 && n1 == n2 && d1 == d2
   (TypeDecl p1 id1 ids1 t1) == (TypeDecl p2 id2 ids2 t2) 
     = p1 == p2 && id1 == id2 && ids1 == ids2 && t1 == t2
-  (TypeSig p1 ids1 cx1 t1) == (TypeSig p2 ids2 cx2 t2) 
+  (TypeSig p1 _ ids1 cx1 t1) == (TypeSig p2 _ ids2 cx2 t2) 
     = p1 == p2 && ids1 == ids2 && cx1 == cx2 && t1 == t2
   (FunctionDecl p1 _ _ id1 es1) == (FunctionDecl p2 _ _ id2 es2) 
     = p1 == p2 && id1 == id2 && es1 == es2
