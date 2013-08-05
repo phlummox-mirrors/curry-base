@@ -40,7 +40,7 @@ module Curry.Base.Ident
 
     -- * Predefined simple identifiers
     -- ** Identifiers for modules
-  , emptyMIdent, mainMIdent, preludeMIdent
+  , emptyMIdent, mainMIdent, preludeMIdent, tcPreludeMIdent
     -- ** Identifiers for types
   , unitId, boolId, charId, intId, floatId, listId, ioId, successId, arrowId
     -- ** Identifiers for constructors
@@ -388,6 +388,10 @@ mainMIdent = ModuleIdent NoPos ["main"]
 -- | 'ModuleIdent' for the Prelude
 preludeMIdent :: ModuleIdent
 preludeMIdent = ModuleIdent NoPos ["Prelude"]
+
+-- | 'ModuleIdent' for type classes Prelude
+tcPreludeMIdent :: ModuleIdent
+tcPreludeMIdent = ModuleIdent NoPos ["TCPrelude"]
 
 -- ---------------------------------------------------------------------------
 -- Identifiers for types
