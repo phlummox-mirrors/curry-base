@@ -36,6 +36,9 @@ newtype A11 a = A11 a
   deriving (Eq, Ord, Show)
 
 
+data A12 a = A12 a
+  deriving (Prelude.Eq, P.Ord, Show)
+  
 {-
 type X a = X a
   deriving (Eq)
