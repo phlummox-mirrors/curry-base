@@ -25,7 +25,6 @@ import Data.Maybe
 import Curry.Base.Ident hiding (sep)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (opName)
-import Data.Maybe
 
 -- |Pretty print a module
 ppModule :: Module -> Doc
