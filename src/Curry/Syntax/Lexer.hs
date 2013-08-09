@@ -83,7 +83,7 @@ data Category
   | KW_case
   | KW_class 
   | KW_data
---  | KW_deriving -- not supported yet
+  | KW_deriving
   | KW_do
   | KW_else
   | KW_external
@@ -235,6 +235,7 @@ instance Show Token where
   showsPrec _ (Token KW_case            _) = showsEscaped "case"
   showsPrec _ (Token KW_class           _) = showsEscaped "class"
   showsPrec _ (Token KW_data            _) = showsEscaped "data"
+  showsPrec _ (Token KW_deriving        _) = showsEscaped "deriving"
   showsPrec _ (Token KW_do              _) = showsEscaped "do"
   showsPrec _ (Token KW_else            _) = showsEscaped "else"
   showsPrec _ (Token KW_external        _) = showsEscaped "external"
@@ -347,6 +348,7 @@ keywords = Map.fromList
   [ ("case"    , KW_case    )
   , ("class"   , KW_class   )
   , ("data"    , KW_data    )
+  , ("deriving", KW_deriving)
   , ("do"      , KW_do      )
   , ("else"    , KW_else    )
   , ("external", KW_external)

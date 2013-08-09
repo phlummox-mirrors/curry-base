@@ -71,11 +71,13 @@ ppSepBlock = vcat . map (\d -> text "" $+$ ppDecl d)
 -- |Pretty print a declaration
 ppDecl :: Decl -> Doc
 ppDecl (InfixDecl _ fix p ops) = ppPrec fix p <+> list (map ppInfixOp ops)
-ppDecl (DataDecl  _ tc tvs cs) =
+ppDecl (DataDecl  _ tc tvs cs der) =
   sep (ppTypeDeclLhs "data" tc tvs :
        map indent (zipWith (<+>) (equals : repeat vbar) (map ppConstr cs)))
-ppDecl (NewtypeDecl _ tc tvs nc) =
+  $$ nest 2 (if isJust der then ppDeriving (fromJust der) else empty)
+ppDecl (NewtypeDecl _ tc tvs nc der) =
   sep [ppTypeDeclLhs "newtype" tc tvs <+> equals,indent (ppNewConstr nc)]
+  $$ nest 2 (if isJust der then ppDeriving (fromJust der) else empty)
 ppDecl (TypeDecl _ tc tvs ty) =
   sep [ppTypeDeclLhs "type" tc tvs <+> equals,indent (ppTypeExpr 0 ty)]
 ppDecl (TypeSig _ _ fs cx ty) =
@@ -140,6 +142,11 @@ ppLocalDefs :: [Decl] -> Doc
 ppLocalDefs ds
   | null ds   = empty
   | otherwise = indent (text "where" <+> ppBlock ds)
+
+ppDeriving :: Deriving -> Doc
+ppDeriving (Deriving qids) = 
+  text "deriving" <+>
+  parens (hsep $ punctuate comma (map ppQIdent qids))
 
 -- ---------------------------------------------------------------------------
 -- Interfaces
