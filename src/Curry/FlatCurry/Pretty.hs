@@ -60,12 +60,22 @@ ppFuncExports fs = [ ppPrefixOp qn | Func qn _ Public _ _ <- fs]
 ppImport :: String -> Doc
 ppImport m = text "import" <+> text m
 
+-- |pretty-print a operator fixity declaration
+ppOpDecl :: OpDecl -> Doc
+ppOpDecl (Op qn fix n) = ppFixity fix <+> int n <+> ppInfixOp qn
+
+-- |pretty-print the associativity keyword
+ppFixity :: Fixity -> Doc
+ppFixity InfixOp  = text "infix"
+ppFixity InfixlOp = text "infixl"
+ppFixity InfixrOp = text "infixr"
+
 -- |pretty-print a type declaration
 ppTypeDecl :: TypeDecl -> Doc
-ppTypeDecl (Type    qn _ ixs cs) = text "data" <+> ppQName qn
-  <+> hcat (map ppTVarIndex ixs) $+$ ppConsDecls cs
-ppTypeDecl (TypeSyn qn _ ixs ty) = text "type" <+> ppQName qn
-  <+> hcat (map ppTVarIndex ixs) <+> equals <+> ppTypeExpr 0 ty
+ppTypeDecl (Type    qn _ vs cs) = text "data" <+> ppQName qn
+  <+> hsep (map ppTVarIndex vs) $+$ ppConsDecls cs
+ppTypeDecl (TypeSyn qn _ vs ty) = text "type" <+> ppQName qn
+  <+> hsep (map ppTVarIndex vs) <+> equals <+> ppTypeExpr 0 ty
 
 -- |pretty-print the constructor declarations
 ppConsDecls :: [ConsDecl] -> Doc
@@ -109,10 +119,12 @@ ppExpr _ (Var        v) = ppVarIndex v
 ppExpr _ (Lit        l) = ppLiteral l
 ppExpr p (Comb _ qn es) = parenIf (p > 0)
                         $ ppPrefixOp qn <+> fsep (map (ppExpr 1) es)
-ppExpr p (Free    vs e) = parenIf (p > 0) $ sep
-                          [ letSym <+> list (map ppVarIndex vs) <+> free
-                          , inSym <+> ppExpr 0 e
-                          ]
+ppExpr p (Free    vs e)
+  | null vs             = ppExpr p e
+  | otherwise           = parenIf (p > 0) $ sep
+                            [ letSym <+> list (map ppVarIndex vs) <+> free
+                            , inSym <+> ppExpr 0 e
+                            ]
 ppExpr p (Let     ds e) = parenIf (p > 0) $ sep
                           [letSym <+> ppDecls ds, inSym <+> ppExpr 0 e]
 ppExpr p (Or     e1 e2) = parenIf (p > 0)
@@ -122,6 +134,24 @@ ppExpr p (Case ct e bs) = parenIf (p > 0)
                           $$ indent (vcat (map ppBranch bs))
 ppExpr p (Typed   e ty) = parenIf (p > 0)
                         $ ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty
+
+-- |pretty-print a variable
+ppVarIndex :: VarIndex -> Doc
+ppVarIndex i = text $ 'v' : show i
+
+-- |pretty-print a literal
+ppLiteral :: Literal -> Doc
+ppLiteral (Intc   i) = integer i
+ppLiteral (Floatc f) = double  f
+ppLiteral (Charc  c) = text (showEscape c)
+
+showEscape :: Char -> String
+showEscape c
+  | o <   10  = "'\\00" ++ show o ++ "'"
+  | o <   32  = "'\\0"  ++ show o ++ "'"
+  | o == 127  = "'\\127'"
+  | otherwise = show c
+  where o = ord c
 
 -- |pretty-print a list of declarations
 ppDecls :: [(VarIndex, Expr)] -> Doc
@@ -144,34 +174,6 @@ ppBranch (Branch p e) = ppPattern p <+> rarrow <+> ppExpr 0 e
 ppPattern :: Pattern -> Doc
 ppPattern (Pattern  qn vs) = ppPrefixOp qn <+> fsep (map ppVarIndex vs)
 ppPattern (LPattern     l) = ppLiteral l
-
--- |pretty-print a literal
-ppLiteral :: Literal -> Doc
-ppLiteral (Intc   i) = integer i
-ppLiteral (Floatc f) = double  f
-ppLiteral (Charc  c) = text (showEscape c)
-
-showEscape :: Char -> String
-showEscape c
-  | o <   10  = "'\\00" ++ show o ++ "'"
-  | o <   32  = "'\\0"  ++ show o ++ "'"
-  | o == 127  = "'\\127'"
-  | otherwise = show c
-  where o = ord c
-
--- |pretty-print a operator fixity declaration
-ppOpDecl :: OpDecl -> Doc
-ppOpDecl (Op qn fix n) = ppFixity fix <+> int n <+> ppInfixOp qn
-
--- |pretty-print the associativity keyword
-ppFixity :: Fixity -> Doc
-ppFixity InfixOp  = text "infix"
-ppFixity InfixlOp = text "infixl"
-ppFixity InfixrOp = text "infixr"
-
--- |pretty-print a variable
-ppVarIndex :: VarIndex -> Doc
-ppVarIndex i = text $ 'v' : show i
 
 -- Names
 
