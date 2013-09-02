@@ -33,7 +33,7 @@ module Curry.Base.LLParseComb
     -- *  parser combinators
   , (<?>), (<|>), (<|?>), (<*>), (<\>), (<\\>)
   , (<$>), (<$->), (<*->), (<-*>), (<**>), (<??>), (<.>)
-  , opt, choice, flag, optional, optionMaybe, many, many1, sepBy, sepBy1
+  , opt, choice, flag, optional, option, many, many1, sepBy, sepBy1
   , chainr, chainr1, chainl, chainl1, between, ops
 
     -- * Layout combinators
@@ -150,7 +150,7 @@ Parser e1 ps1 <|> Parser e2 ps2
   where common = Map.keysSet ps1 `Set.intersection` Map.keysSet ps2
 
 -- |Non-deterministic choice between two parsers.
--- 
+--
 -- The other parsing combinators require that the grammar being parsed
 -- is LL(1). In some cases it may be difficult or even
 -- impossible to transform a grammar into LL(1) form. As a remedy, we
@@ -278,8 +278,8 @@ optional :: Symbol s => Parser s a b -> Parser s () b
 optional p = const () <$> p `opt` ()
 
 -- |Try to apply a parser and return its result in a 'Maybe' type
-optionMaybe :: Symbol s => Parser s a b -> Parser s (Maybe a) b
-optionMaybe p = Just <$> p `opt` Nothing
+option :: Symbol s => Parser s a b -> Parser s (Maybe a) b
+option p = Just <$> p `opt` Nothing
 
 -- |Repeatedly apply a parser for 0 or more occurences
 many :: Symbol s => Parser s a b -> Parser s [a] b

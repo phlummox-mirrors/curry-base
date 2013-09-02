@@ -29,12 +29,15 @@ import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
 -- |Parse a 'Module'
 parseSource :: FilePath -> String -> MessageM Module
-parseSource path = fmap addSrcRefs
-                 . fullParser (moduleHeader <*> layout topDecls) lexer path
+parseSource fn
+  = fmap addSrcRefs
+  . fullParser (uncurry <$> moduleHeader <*> layout moduleDecls) lexer fn
 
 -- |Parse a 'Module' header
 parseHeader :: FilePath -> String -> MessageM Module
-parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
+parseHeader
+  = prefixParser (moduleHeader <*> startLayout importDecls <*> succeed []) lexer
+  where importDecls = many (importDecl <*-> many semicolon)
 
 -- |Parse an 'Interface'
 parseInterface :: FilePath -> String -> MessageM Interface
@@ -49,12 +52,11 @@ parseGoal = fullParser goal lexer ""
 -- ---------------------------------------------------------------------------
 
 -- |Parser for a module header
-moduleHeader :: Parser Token ([Decl] -> Module) a
-moduleHeader =  Module <$-> token KW_module <*>  modIdent
-                       <*>  optionMaybe exportSpec
+moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
+moduleHeader =  Module <$-> token KW_module <*> modIdent
+                       <*>  option exportSpec
                        <*-> expectWhere
-                       <*>  importDecls
-            <|> Module mainMIdent Nothing <$> importDecls
+                `opt` Module mainMIdent Nothing
 
 -- |Parser for an export specification
 exportSpec :: Parser Token ExportSpec a
@@ -68,9 +70,11 @@ export =  qtycon <**> (parens spec `opt` Export)         -- type constructor
   where spec =       ExportTypeAll  <$-> token DotDot
             <|> flip ExportTypeWith <$>  con `sepBy` comma
 
--- |Parser for import declarations
-importDecls :: Parser Token [ImportDecl] a
-importDecls = optional leftBrace <-*> many (importDecl <*-> many semicolon)
+moduleDecls :: Parser Token ([ImportDecl], [Decl]) a
+moduleDecls = impDecl <$> importDecl
+                      <*> (semicolon <-*> moduleDecls `opt` ([], []))
+          <|> (,) []  <$> topDecls
+  where impDecl i (is, ds) = (i:is ,ds)
 
 -- |Parser for a single import declaration
 importDecl :: Parser Token ImportDecl a
@@ -78,8 +82,8 @@ importDecl =  flip . ImportDecl
           <$> tokenPos KW_import
           <*> flag (token Id_qualified)
           <*> modIdent
-          <*> optionMaybe (token Id_as <-*> modIdent)
-          <*> optionMaybe importSpec
+          <*> option (token Id_as <-*> modIdent)
+          <*> option importSpec
 
 -- |Parser for an import specification
 importSpec :: Parser Token ImportSpec a
@@ -98,23 +102,20 @@ importSpec =   position
 
 -- |Parser for an interface
 interface :: Parser Token Interface a
-interface =   Interface
-         <$-> token Id_interface <*>  modIdent
-         <*-> expectWhere        <*-> leftBrace
-         <*>  iImportDecls
-         <*>  intfDecls          <*-> rightBrace
+interface = uncurry <$> intfHeader <*> braces intfDecls
 
--- |Parser for interface import declarations
-iImportDecls :: Parser Token [IImportDecl] a
-iImportDecls = iImportDecl `sepBy` semicolon
+intfHeader :: Parser Token ([IImportDecl] -> [IDecl] -> Interface) a
+intfHeader = Interface <$-> token Id_interface <*> modIdent <*-> expectWhere
+
+intfDecls :: Parser Token ([IImportDecl], [IDecl]) a
+intfDecls = impDecl <$> iImportDecl
+                    <*> (semicolon <-*> intfDecls `opt` ([], []))
+        <|> (,) [] <$> intfDecl `sepBy` semicolon
+  where impDecl i (is, ds) = (i:is, ds)
 
 -- |Parser for a single interface import declaration
 iImportDecl :: Parser Token IImportDecl a
 iImportDecl = IImportDecl <$> tokenPos KW_import <*> modIdent
-
--- |Parser for interface declarations
-intfDecls :: Parser Token [IDecl] a
-intfDecls = intfDecl `sepBy` semicolon
 
 -- |Parser for a single interface declaration
 intfDecl :: Parser Token IDecl a
@@ -300,7 +301,7 @@ valueDecl = position <**> decl
 foreignDecl :: Parser Token Decl a
 foreignDecl = ForeignDecl
           <$> tokenPos KW_foreign
-          <*> callConv <*> (optionMaybe string)
+          <*> callConv <*> (option string)
           <*> fun <*-> token DoubleColon <*> type0 False
   where callConv =  CallConvPrimitive <$-> token Id_primitive
                 <|> CallConvCCall     <$-> token Id_ccall
@@ -455,7 +456,7 @@ recordPattern = layoutOff <-*> braces content
   where
   content   = RecordPattern <$> (fieldPatt `sepBy` comma) <*> record
   fieldPatt = Field <$> position <*> labId <*-> expectEquals <*> pattern0
-  record    = optionMaybe (expectBar <-*> pattern2)
+  record    = option (expectBar <-*> pattern2)
 
 -- ---------------------------------------------------------------------------
 -- Partial patterns used in the combinators above, but also for parsing
@@ -805,6 +806,12 @@ tupleCommas = (\ p -> qualify . addPositionIdent p . tupleId . succ . length)
 -- Layout
 -- ---------------------------------------------------------------------------
 
+-- |This function starts a new layout block but does not wait for its end.
+-- This is only used for parsing the module header.
+startLayout :: Parser Token a b -> Parser Token a b
+startLayout p = layoutOff <-*> leftBraceSemicolon <-*> p
+             <|> layoutOn <-*> p
+
 layout :: Parser Token a b -> Parser Token a b
 layout p =  layoutOff <-*> between leftBraceSemicolon p rightBrace
         <|> layoutOn  <-*> p <*-> (token VRightBrace <|> layoutEnd)
@@ -839,7 +846,7 @@ tokens = foldr1 (<|>) . map token
 tokenPos :: Category -> Parser Token Position a
 tokenPos c = position <*-> token c
 
-tokenOps :: [(Category,a)] -> Parser Token a b
+tokenOps :: [(Category, a)] -> Parser Token a b
 tokenOps cs = ops [(Token c NoAttributes, x) | (c, x) <- cs]
 
 comma :: Parser Token Attributes a

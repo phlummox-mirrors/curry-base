@@ -64,7 +64,7 @@ type P a = Position   -- ^ Current source code position
 -- |Apply a lexer on a 'String' to lex the content. The second parameter
 -- requires a 'FilePath' to use in the 'Position'
 parse :: P a -> FilePath -> String -> MessageM a
-parse p fn s = p (first fn) s False []
+parse p fn s = p (first fn) s True []
 
 -- ---------------------------------------------------------------------------
 -- CPS lexer
