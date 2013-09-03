@@ -141,8 +141,7 @@ ppLocalDefs ds
 ppInterface :: Interface -> Doc
 ppInterface (Interface m is ds)
   =  text "interface" <+> ppMIdent m <+> text "where" <+> lbrace
-  $$ vcat (punctuate semi $ map ppIImportDecl is)
-  $$ vcat (punctuate semi $ map ppIDecl ds)
+  $$ vcat (punctuate semi $ map ppIImportDecl is ++ map ppIDecl ds)
   $$ rbrace
 
 ppIImportDecl :: IImportDecl -> Doc
