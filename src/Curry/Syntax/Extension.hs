@@ -58,7 +58,7 @@ classifyExtension i = case reads extName of
   where extName = idName i
 
 -- |Different Curry tools which may accept compiler options.
-data Tool = KICS | KICS2 | MCC | PAKCS | UnknownTool String
+data Tool = KICS2 | PAKCS | UnknownTool String
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Classifies a 'String' as a 'Tool'
