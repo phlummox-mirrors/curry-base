@@ -24,12 +24,24 @@ showModule :: Module -> String
 showModule m = showsModule m "\n"
 
 showsModule :: Module -> ShowS
-showsModule (Module mident espec imps decls)
+showsModule (Module ps mident espec imps decls)
   = showsString "Module "
+  . showsList (\p -> showsPragma p . newline) ps
   . showsModuleIdent mident . newline
   . showsMaybe showsExportSpec espec . newline
   . showsList (\i -> showsImportDecl i . newline) imps
   . showsList (\d -> showsDecl d . newline) decls
+
+showsPragma :: ModulePragma -> ShowS
+showsPragma (LanguagePragma exts)
+  = showsString "(LanguagePragma "
+  . showsList shows exts
+  . showsString ")"
+showsPragma (OptionsPragma mbTool args)
+  = showsString "(OptionsPragma "
+  . showsMaybe shows mbTool
+  . shows args
+  . showsString ")"
 
 showsExportSpec :: ExportSpec -> ShowS
 showsExportSpec (Exporting pos exports)

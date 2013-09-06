@@ -32,8 +32,8 @@ import Curry.Files.PathUtils
 -- |Replace the generic module name @main@ with the module name derived
 -- from the 'FilePath' of the module.
 patchModuleId :: FilePath -> Module -> Module
-patchModuleId fn m@(Module mid es is ds)
-  | mid == mainMIdent = Module (mkMIdent [takeBaseName fn]) es is ds
+patchModuleId fn m@(Module ps mid es is ds)
+  | mid == mainMIdent = Module ps (mkMIdent [takeBaseName fn]) es is ds
   | otherwise         = m
 
 -- |Is the declaration an infix declaration?

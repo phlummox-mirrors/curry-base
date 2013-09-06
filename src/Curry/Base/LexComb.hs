@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Lexer combinators
-    Copyright   :  (c) 1999-2004, Wolfgang Lux
-                       2012     , Björn Peemöller
+    Copyright   :  (c) 1999 - 2004, Wolfgang Lux
+                       2012 - 2013, Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -18,7 +18,6 @@
     therefore has to check for layout tokens. The fourth argument is a stack
     of indentations that is used to handle nested layout groups.
 -}
-
 module Curry.Base.LexComb
   ( -- * Types
     Symbol (..), Indent, Context, P, MessageM, SuccessP, FailP, Lexer

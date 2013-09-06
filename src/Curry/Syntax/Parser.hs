@@ -23,6 +23,7 @@ import Curry.Base.Position    (Position, mk, mk')
 import Curry.Base.Message     (MessageM)
 import Curry.Base.LLParseComb
 
+import Curry.Syntax.Extension
 import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, addSrcRefs)
@@ -53,10 +54,28 @@ parseGoal = fullParser goal lexer ""
 
 -- |Parser for a module header
 moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
-moduleHeader =  Module <$-> token KW_module <*> modIdent
-                       <*>  option exportSpec
-                       <*-> expectWhere
-                `opt` Module mainMIdent Nothing
+moduleHeader = (\ps (m, es) -> Module ps m es)
+           <$> modulePragmas
+           <*> header
+  where header = (,) <$-> token KW_module <*> modIdent
+                     <*>  option exportSpec
+                     <*-> expectWhere
+                `opt` (mainMIdent, Nothing)
+
+modulePragmas :: Parser Token [ModulePragma] a
+modulePragmas = many (languagePragma <|> optionsPragma)
+
+languagePragma :: Parser Token ModulePragma a
+languagePragma =   (LanguagePragma . map (classifyExtension . idName))
+              <$-> token PragmaLanguage
+              <*>  (ident `sepBy1` comma)
+              <*-> token PragmaEnd
+
+optionsPragma :: Parser Token ModulePragma a
+optionsPragma =   (\a -> OptionsPragma (fmap classifyTool $ toolVal a)
+                                       (toolArgs a))
+             <$>  token PragmaOptions
+             <*-> token PragmaEnd
 
 -- |Parser for an export specification
 exportSpec :: Parser Token ExportSpec a

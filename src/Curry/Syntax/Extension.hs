@@ -1,7 +1,7 @@
 {- |
     Module      :  $Header$
     Description :  Curry language extensions
-    Copyright   :  (c) 2012 Björn Peemöller
+    Copyright   :  (c) 2013 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -25,39 +25,37 @@ module Curry.Syntax.Extension
 import Data.Char     (toUpper)
 import Data.Generics (Data (..), Typeable (..))
 
--- |Data type representing Curry language extensions
+-- |Data type representing Curry language extensions.
 data Extension
-  = BangPatterns
-  | FunctionalPatterns
-  | Newtypes
-  | NoImplicitPrelude
-  | Records
+  = KnownExtension KnownExtension
   | UnknownExtension String
     deriving (Eq, Read, Show, Data, Typeable)
 
-knownExtensions :: [Extension]
-knownExtensions =
-  [ BangPatterns
-  , FunctionalPatterns
-  , Newtypes
-  , NoImplicitPrelude
-  , Records
-  ]
+data KnownExtension
+  = FunctionalPatterns
+  | NoImplicitPrelude
+  | Records
+    deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
 
--- |'Extension's available by Kiel's Curry compilers
-kielExtensions :: [Extension]
+-- |List of all known 'Extension's.
+knownExtensions :: [KnownExtension]
+knownExtensions = [ minBound .. maxBound ]
+
+-- |'Extension's available by Kiel's Curry compilers.
+kielExtensions :: [KnownExtension]
 kielExtensions = [FunctionalPatterns, Records]
 
 -- |Classifies a 'String' as an 'Extension'
 classifyExtension :: String -> Extension
 classifyExtension str = case reads str of
-  [(e, "")] -> e
+  [(e, "")] -> KnownExtension e
   _         -> UnknownExtension str
 
+-- |Different Curry tools which may accept compiler options.
 data Tool = KICS | KICS2 | MCC | PAKCS | UnknownTool String
     deriving (Eq, Read, Show, Data, Typeable)
 
--- |Classifies a 'String' as an 'Extension'
+-- |Classifies a 'String' as a 'Tool'
 classifyTool :: String -> Tool
 classifyTool str = case reads (map toUpper str) of
   [(t, "")] -> t

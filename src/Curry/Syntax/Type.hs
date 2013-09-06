@@ -18,7 +18,8 @@
 
 module Curry.Syntax.Type
   ( -- * Module header
-    Module (..), ExportSpec (..), Export (..)
+    Module (..), ModulePragma (..), Extension (..), Tool (..)
+  , ExportSpec (..), Export (..)
   , ImportDecl (..), ImportSpec (..), Import (..), Qualified
     -- * Interface
   , Interface (..), IImportDecl (..), IDecl (..)
@@ -37,12 +38,20 @@ import Data.Generics (Data (..), Typeable (..))
 import Curry.Base.Ident
 import Curry.Base.Position
 
+import Curry.Syntax.Extension
+
 -- ---------------------------------------------------------------------------
 -- Modules
 -- ---------------------------------------------------------------------------
 
 -- |Curry module
-data Module = Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
+data Module = Module [ModulePragma] ModuleIdent (Maybe ExportSpec)
+                     [ImportDecl] [Decl]
+    deriving (Eq, Read, Show, Data, Typeable)
+
+data ModulePragma
+  = LanguagePragma [Extension]
+  | OptionsPragma (Maybe Tool) String
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Export specification
