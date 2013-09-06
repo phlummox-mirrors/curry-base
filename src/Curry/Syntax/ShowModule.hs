@@ -33,12 +33,14 @@ showsModule (Module ps mident espec imps decls)
   . showsList (\d -> showsDecl d . newline) decls
 
 showsPragma :: ModulePragma -> ShowS
-showsPragma (LanguagePragma exts)
+showsPragma (LanguagePragma pos exts)
   = showsString "(LanguagePragma "
+  . showsPosition pos . space
   . showsList shows exts
   . showsString ")"
-showsPragma (OptionsPragma mbTool args)
+showsPragma (OptionsPragma pos mbTool args)
   = showsString "(OptionsPragma "
+  . showsPosition pos . space
   . showsMaybe shows mbTool
   . shows args
   . showsString ")"

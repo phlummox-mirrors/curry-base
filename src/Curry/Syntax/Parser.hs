@@ -66,16 +66,18 @@ modulePragmas :: Parser Token [ModulePragma] a
 modulePragmas = many (languagePragma <|> optionsPragma)
 
 languagePragma :: Parser Token ModulePragma a
-languagePragma =   (LanguagePragma . map (classifyExtension . idName))
-              <$-> token PragmaLanguage
-              <*>  (ident `sepBy1` comma)
+languagePragma =   LanguagePragma
+              <$>  tokenPos PragmaLanguage
+              <*>  (languageExtension `sepBy1` comma)
               <*-> token PragmaEnd
+  where languageExtension = classifyExtension <$> ident
 
 optionsPragma :: Parser Token ModulePragma a
-optionsPragma =   (\a -> OptionsPragma (fmap classifyTool $ toolVal a)
-                                       (toolArgs a))
-             <$>  token PragmaOptions
-             <*-> token PragmaEnd
+optionsPragma = (\pos a -> OptionsPragma pos (fmap classifyTool $ toolVal a)
+                                             (toolArgs a))
+           <$>  position
+           <*>  token PragmaOptions
+           <*-> token PragmaEnd
 
 -- |Parser for an export specification
 exportSpec :: Parser Token ExportSpec a

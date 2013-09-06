@@ -14,7 +14,8 @@
     abstract syntax tree of Curry.
 -}
 module Curry.Syntax.Utils
-  ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
+  ( hasLanguageExtension, knownExtensions
+  , isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
   , isRecordDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
@@ -25,9 +26,17 @@ import Data.Generics
 
 import Curry.Base.Ident
 import Curry.Base.Position
+import Curry.Syntax.Extension
 import Curry.Syntax.Type
 
 import Curry.Files.PathUtils
+
+hasLanguageExtension :: Module -> KnownExtension -> Bool
+hasLanguageExtension mdl ext = ext `elem` knownExtensions mdl
+
+knownExtensions :: Module -> [KnownExtension]
+knownExtensions (Module ps _ _ _ _) =
+  [ e | LanguagePragma _ exts <- ps, KnownExtension _ e <- exts]
 
 -- |Replace the generic module name @main@ with the module name derived
 -- from the 'FilePath' of the module.

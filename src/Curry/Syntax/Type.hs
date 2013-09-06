@@ -50,8 +50,8 @@ data Module = Module [ModulePragma] ModuleIdent (Maybe ExportSpec)
     deriving (Eq, Read, Show, Data, Typeable)
 
 data ModulePragma
-  = LanguagePragma [Extension]
-  | OptionsPragma (Maybe Tool) String
+  = LanguagePragma Position [Extension]
+  | OptionsPragma  Position (Maybe Tool) String
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Export specification

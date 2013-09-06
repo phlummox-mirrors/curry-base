@@ -39,18 +39,18 @@ ppModuleHeader ps m es is
                  <+> maybePP ppExportSpec es <+> text "where"
 
 ppModulePragma :: ModulePragma -> Doc
-ppModulePragma (LanguagePragma     exts) = text "{-# LANGUAGE"
+ppModulePragma (LanguagePragma _      exts) = text "{-# LANGUAGE"
   <+> list (map ppExtension exts) <+> text "#-}"
-ppModulePragma (OptionsPragma tool args) = text "{-# OPTIONS"
+ppModulePragma (OptionsPragma  _ tool args) = text "{-# OPTIONS"
   <> maybe empty ((text "_" <>) . ppTool) tool <+> text args <+> text "#-}"
+
+ppExtension :: Extension -> Doc
+ppExtension (KnownExtension   _ e) = text (show e)
+ppExtension (UnknownExtension _ e) = text e
 
 ppTool :: Tool -> Doc
 ppTool (UnknownTool t) = text t
 ppTool t               = text (show t)
-
-ppExtension :: Extension -> Doc
-ppExtension (UnknownExtension e) = text e
-ppExtension e                    = text (show e)
 
 ppExportSpec :: ExportSpec -> Doc
 ppExportSpec (Exporting _ es) = parenList (map ppExport es)

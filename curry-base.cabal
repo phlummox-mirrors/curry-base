@@ -73,6 +73,7 @@ Library
     Curry.Files.PathUtils
     Curry.Files.Unlit
     Curry.Syntax
+    Curry.Syntax.Extension
     Curry.Syntax.Lexer
     Curry.Syntax.Parser
     Curry.Syntax.Pretty

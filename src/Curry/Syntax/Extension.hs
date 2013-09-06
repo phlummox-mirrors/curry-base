@@ -15,9 +15,7 @@
 
 module Curry.Syntax.Extension
   ( -- * Extensions
-    Extension (..), classifyExtension
-    -- * Extension groups
-  , kielExtensions, knownExtensions
+    Extension (..), KnownExtension (..), classifyExtension, kielExtensions
     -- * Tools
   , Tool (..), classifyTool
   ) where
@@ -25,31 +23,39 @@ module Curry.Syntax.Extension
 import Data.Char     (toUpper)
 import Data.Generics (Data (..), Typeable (..))
 
+import Curry.Base.Ident    (Ident (..))
+import Curry.Base.Position
+
 -- |Data type representing Curry language extensions.
 data Extension
-  = KnownExtension KnownExtension
-  | UnknownExtension String
+  = KnownExtension   Position KnownExtension
+  | UnknownExtension Position String
     deriving (Eq, Read, Show, Data, Typeable)
 
+instance HasPosition Extension where
+  getPosition (KnownExtension   p _) = p
+  getPosition (UnknownExtension p _) = p
+
+  setPosition p (KnownExtension   _ e) = KnownExtension   p e
+  setPosition p (UnknownExtension _ e) = UnknownExtension p e
+
 data KnownExtension
-  = FunctionalPatterns
+  = AnonFreeVars
+  | FunctionalPatterns
   | NoImplicitPrelude
   | Records
     deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
 
--- |List of all known 'Extension's.
-knownExtensions :: [KnownExtension]
-knownExtensions = [ minBound .. maxBound ]
-
 -- |'Extension's available by Kiel's Curry compilers.
 kielExtensions :: [KnownExtension]
-kielExtensions = [FunctionalPatterns, Records]
+kielExtensions = [AnonFreeVars, FunctionalPatterns, Records]
 
 -- |Classifies a 'String' as an 'Extension'
-classifyExtension :: String -> Extension
-classifyExtension str = case reads str of
-  [(e, "")] -> KnownExtension e
-  _         -> UnknownExtension str
+classifyExtension :: Ident -> Extension
+classifyExtension i = case reads extName of
+  [(e, "")] -> KnownExtension   (idPosition i) e
+  _         -> UnknownExtension (idPosition i) extName
+  where extName = idName i
 
 -- |Different Curry tools which may accept compiler options.
 data Tool = KICS | KICS2 | MCC | PAKCS | UnknownTool String
