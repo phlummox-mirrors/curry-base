@@ -15,7 +15,7 @@
 
 module Curry.Syntax.Extension
   ( -- * Extensions
-    Extension (..), KnownExtension (..), classifyExtension
+    Extension (..), KnownExtension (..), classifyExtension, kielExtensions
     -- * Tools
   , Tool (..), classifyTool
   ) where
@@ -53,6 +53,10 @@ classifyExtension i = case reads extName of
   [(e, "")] -> KnownExtension   (idPosition i) e
   _         -> UnknownExtension (idPosition i) extName
   where extName = idName i
+
+-- |'Extension's available by Kiel's Curry compilers.
+kielExtensions :: [KnownExtension]
+kielExtensions = [AnonFreeVars, FunctionalPatterns, Records]
 
 -- |Different Curry tools which may accept compiler options.
 data Tool = KICS2 | PAKCS | UnknownTool String
