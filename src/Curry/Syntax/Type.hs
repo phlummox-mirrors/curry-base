@@ -18,8 +18,12 @@
 
 module Curry.Syntax.Type
   ( -- * Module header
-    Module (..), ModulePragma (..), Extension (..), Tool (..)
+    Module (..)
+    -- ** Module pragmas
+  , ModulePragma (..), Extension (..), KnownExtension (..), Tool (..)
+    -- ** Export specification
   , ExportSpec (..), Export (..)
+    -- ** Import declarations
   , ImportDecl (..), ImportSpec (..), Import (..), Qualified
     -- * Interface
   , Interface (..), IImportDecl (..), IDecl (..)
