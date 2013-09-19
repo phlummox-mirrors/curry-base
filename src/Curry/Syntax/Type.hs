@@ -256,7 +256,7 @@ data Expression
   | Tuple           SrcRef [Expression]
   | List            [SrcRef] [Expression]
   | ListCompr       SrcRef Expression [Statement] -- the ref corresponds to the main list
-  | EnumFrom        Expression
+  | EnumFrom        (Maybe ConstrType_) Expression
   | EnumFromThen    Expression Expression
   | EnumFromTo      Expression Expression
   | EnumFromThenTo  Expression Expression Expression
@@ -404,7 +404,7 @@ instance Eq Expression where
   (Tuple _ es1) == (Tuple _ es2) = es1 == es2
   (List _ es1) == (List _ es2) = es1 == es2
   (ListCompr _ e1 ss1) == (ListCompr _ e2 ss2) = e1 == e2 && ss1 == ss2
-  (EnumFrom e1) == (EnumFrom e2) = e1 == e2
+  (EnumFrom _ e1) == (EnumFrom _ e2) = e1 == e2
   (EnumFromThen e11 e21) == (EnumFromThen e12 e22) = e11 == e12 && e21 == e22
   (EnumFromTo e11 e21) == (EnumFromTo e12 e22) = e11 == e12 && e21 == e22
   (EnumFromThenTo e11 e21 e31) == (EnumFromThenTo e12 e22 e32) 

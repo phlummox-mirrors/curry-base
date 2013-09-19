@@ -408,7 +408,7 @@ showsExpression (ListCompr _ expr stmts)
   . showsExpression expr . space
   . showsList showsStatement stmts
   . showsString ")"
-showsExpression (EnumFrom expr)
+showsExpression (EnumFrom _ expr)
   = showsString "(EnumFrom "
   . showsExpression expr
   . showsString ")"
