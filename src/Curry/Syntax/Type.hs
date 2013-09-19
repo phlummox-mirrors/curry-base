@@ -49,9 +49,10 @@ data Module = Module [ModulePragma] ModuleIdent (Maybe ExportSpec)
                      [ImportDecl] [Decl]
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Module pragma
 data ModulePragma
-  = LanguagePragma Position [Extension]
-  | OptionsPragma  Position (Maybe Tool) String
+  = LanguagePragma Position [Extension]         -- ^ language pragma
+  | OptionsPragma  Position (Maybe Tool) String -- ^ options pragms
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Export specification

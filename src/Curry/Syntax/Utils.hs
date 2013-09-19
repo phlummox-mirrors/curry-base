@@ -1,9 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  Utility functions for Curry's abstract syntax
-    Copyright   :  (c) 1999-2004 Wolfgang Lux
-                       2005 Martin Engelke
-                       2011 Björn Peemöller
+    Copyright   :  (c) 1999 - 2004 Wolfgang Lux
+                       2005        Martin Engelke
+                       2011 - 2013 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -13,6 +13,7 @@
     This module provides some utility functions for working with the
     abstract syntax tree of Curry.
 -}
+
 module Curry.Syntax.Utils
   ( hasLanguageExtension, knownExtensions
   , isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
@@ -31,9 +32,11 @@ import Curry.Syntax.Type
 
 import Curry.Files.PathUtils
 
+-- |Check whether a 'Module' has a specific 'KnownExtension' enabled by a pragma
 hasLanguageExtension :: Module -> KnownExtension -> Bool
 hasLanguageExtension mdl ext = ext `elem` knownExtensions mdl
 
+-- |Extract all known extensions from a 'Module'
 knownExtensions :: Module -> [KnownExtension]
 knownExtensions (Module ps _ _ _ _) =
   [ e | LanguagePragma _ exts <- ps, KnownExtension _ e <- exts]

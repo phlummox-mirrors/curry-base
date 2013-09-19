@@ -15,7 +15,7 @@
 
 module Curry.Syntax.Extension
   ( -- * Extensions
-    Extension (..), KnownExtension (..), classifyExtension, kielExtensions
+    Extension (..), KnownExtension (..), classifyExtension
     -- * Tools
   , Tool (..), classifyTool
   ) where
@@ -26,10 +26,10 @@ import Data.Generics (Data (..), Typeable (..))
 import Curry.Base.Ident    (Ident (..))
 import Curry.Base.Position
 
--- |Data type representing Curry language extensions.
+-- |Specified language extensions, either known or unknown.
 data Extension
-  = KnownExtension   Position KnownExtension
-  | UnknownExtension Position String
+  = KnownExtension   Position KnownExtension -- ^ a known extension
+  | UnknownExtension Position String         -- ^ an unknown extension
     deriving (Eq, Read, Show, Data, Typeable)
 
 instance HasPosition Extension where
@@ -39,16 +39,13 @@ instance HasPosition Extension where
   setPosition p (KnownExtension   _ e) = KnownExtension   p e
   setPosition p (UnknownExtension _ e) = UnknownExtension p e
 
+-- |Known language extensions of Curry.
 data KnownExtension
-  = AnonFreeVars
-  | FunctionalPatterns
-  | NoImplicitPrelude
-  | Records
+  = AnonFreeVars       -- ^ anonymous free variables
+  | FunctionalPatterns -- ^ functional patterns
+  | NoImplicitPrelude  -- ^ no implicit import of the prelude
+  | Records            -- ^ record syntax
     deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
-
--- |'Extension's available by Kiel's Curry compilers.
-kielExtensions :: [KnownExtension]
-kielExtensions = [AnonFreeVars, FunctionalPatterns, Records]
 
 -- |Classifies a 'String' as an 'Extension'
 classifyExtension :: Ident -> Extension
