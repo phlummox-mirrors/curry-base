@@ -55,12 +55,13 @@ module Curry.Base.Ident
   , qTrueId, qFalseId, qNilId, qConsId, qTupleId, isQTupleId, qTupleArity
 
     -- * Extended functionality
-    -- ** Function pattern
+    -- ** Functional patterns
   , fpSelectorId, isFpSelectorId, isQualFpSelectorId
     -- ** Records
   , recSelectorId, qualRecSelectorId, recUpdateId, qualRecUpdateId
-  , recordExtId, labelExtId, isRecordExtId, isLabelExtId, fromRecordExtId
-  , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
+  , recordExt, recordExtId, isRecordExtId, fromRecordExtId
+  , labelExt, labelExtId, isLabelExtId, fromLabelExtId
+  , renameLabel, mkLabelIdent
   ) where
 
 import Data.Char           (isAlpha, isAlphaNum, isSpace)
@@ -563,6 +564,12 @@ qTupleArity = tupleArity . unqualify
 -- Micellaneous functions for generating and testing extended identifiers
 -- ---------------------------------------------------------------------------
 
+-- Functional patterns
+
+-- | Annotation for function pattern identifiers
+fpSelExt :: String
+fpSelExt = "_#selFP"
+
 -- | Construct an 'Ident' for a functional pattern
 fpSelectorId :: Int -> Ident
 fpSelectorId n = mkIdent $ fpSelExt ++ show n
@@ -574,6 +581,12 @@ isFpSelectorId = (fpSelExt `isInfixOf`) . idName
 -- | Check whether an 'QualIdent' is an identifier for a function pattern
 isQualFpSelectorId :: QualIdent -> Bool
 isQualFpSelectorId = isFpSelectorId . unqualify
+
+-- Record selection
+
+-- | Annotation for record selection identifiers
+recSelExt :: String
+recSelExt = "_#selR@"
 
 -- | Construct an 'Ident' for a record selection pattern
 recSelectorId :: QualIdent -- ^ identifier of the record
@@ -587,6 +600,12 @@ qualRecSelectorId :: ModuleIdent -- ^ default module
                   -> Ident       -- ^ label identifier
                   -> QualIdent
 qualRecSelectorId m r l = qualRecordId m r $ recSelectorId r l
+
+-- Record update
+
+-- | Annotation for record update identifiers
+recUpdExt :: String
+recUpdExt = "_#updR@"
 
 -- | Construct an 'Ident' for a record update pattern
 recUpdateId :: QualIdent -- ^ record identifier
@@ -610,13 +629,19 @@ mkRecordId ann r l = mkIdent $ concat
 qualRecordId :: ModuleIdent -> QualIdent -> Ident -> QualIdent
 qualRecordId m r = qualifyWith (fromMaybe m $ qidModule r)
 
+-- Record tyes
+
+-- | Annotation for record identifiers
+recordExt :: String
+recordExt = "_#Rec:"
+
 -- | Construct an 'Ident' for a record
 recordExtId :: Ident -> Ident
 recordExtId r = mkIdent $ recordExt ++ idName r
 
--- | Construct an 'Ident' for a record label
-labelExtId :: Ident -> Ident
-labelExtId l = mkIdent $ labelExt ++ idName l
+-- | Check whether an 'Ident' is an identifier for a record
+isRecordExtId :: Ident -> Bool
+isRecordExtId = (recordExt `isPrefixOf`) . idName
 
 -- | Retrieve the 'Ident' from a record identifier
 fromRecordExtId :: Ident -> Ident
@@ -625,20 +650,26 @@ fromRecordExtId r
   | otherwise      = r
  where (p, r') = splitAt (length recordExt) (idName r)
 
+-- Record labels
+
+-- | Annotation for record label identifiers
+labelExt :: String
+labelExt = "_#Lab:"
+
+-- | Construct an 'Ident' for a record label
+labelExtId :: Ident -> Ident
+labelExtId l = mkIdent $ labelExt ++ idName l
+
+-- | Check whether an 'Ident' is an identifier for a record label
+isLabelExtId :: Ident -> Bool
+isLabelExtId = (labelExt `isPrefixOf`) . idName
+
 -- | Retrieve the 'Ident' from a record label identifier
 fromLabelExtId :: Ident -> Ident
 fromLabelExtId l
   | p == labelExt = mkIdent l'
   | otherwise     = l
  where (p, l') = splitAt (length labelExt) (idName l)
-
--- | Check whether an 'Ident' is an identifier for a record
-isRecordExtId :: Ident -> Bool
-isRecordExtId = (recordExt `isPrefixOf`) . idName
-
--- | Check whether an 'Ident' is an identifier for a record label
-isLabelExtId :: Ident -> Bool
-isLabelExtId = (labelExt `isPrefixOf`) . idName
 
 -- | Construct an 'Ident' for a record label
 mkLabelIdent :: String -> Ident
@@ -647,23 +678,3 @@ mkLabelIdent c = renameIdent (mkIdent c) (-1)
 -- | Rename an 'Ident' for a record label
 renameLabel :: Ident -> Ident
 renameLabel l = renameIdent l (-1)
-
--- | Annotation for function pattern identifiers
-fpSelExt :: String
-fpSelExt = "_#selFP"
-
--- | Annotation for record selection identifiers
-recSelExt :: String
-recSelExt = "_#selR@"
-
--- | Annotation for record update identifiers
-recUpdExt :: String
-recUpdExt = "_#updR@"
-
--- | Annotation for record identifiers
-recordExt :: String
-recordExt = "_#Rec:"
-
--- | Annotation for record label identifiers
-labelExt :: String
-labelExt = "_#Lab:"

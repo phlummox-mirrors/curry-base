@@ -33,7 +33,7 @@ module Curry.Base.LexComb
   , convertIntegral, convertFloating
   ) where
 
-import Data.Char           (isDigit, isUpper, ord)
+import Data.Char           (digitToInt)
 
 import Curry.Base.Message  (MessageM, failWithAt)
 import Curry.Base.Position (Position, first)
@@ -141,19 +141,14 @@ popContext _    pos _ _   []         = failWithAt pos $
 
 -- |Convert a String into a signed intergral using a given base
 convertSignedIntegral :: Num a => a -> String -> a
-convertSignedIntegral b ('+':s) = convertIntegral b s
+convertSignedIntegral b ('+':s) =   convertIntegral b s
 convertSignedIntegral b ('-':s) = - convertIntegral b s
-convertSignedIntegral b s       = convertIntegral b s
+convertSignedIntegral b s       =   convertIntegral b s
 
 -- |Convert a String into an unsigned intergral using a given base
 convertIntegral :: Num a => a -> String -> a
 convertIntegral b = foldl op 0
-  where m `op` n | isDigit n = b * m + fromIntegral (ord n - ord0)
-                 | isUpper n = b * m + fromIntegral (ord n - ordA)
-                 | otherwise = b * m + fromIntegral (ord n - orda)
-        ord0 = ord '0'
-        ordA = ord 'A' - 10
-        orda = ord 'a' - 10
+  where m `op` n = b * m + fromIntegral (digitToInt n)
 
 -- |Convert a mantissa, a fraction part and an exponent into a signed
 -- floating value
