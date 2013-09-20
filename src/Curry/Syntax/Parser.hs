@@ -742,9 +742,9 @@ listExpr = brackets (elements `opt` mk' List [])
   where
   elements = expr <**> rest
   rest = comprehension
-      <|> enumeration (flip EnumFromTo) (EnumFrom Nothing)
+      <|> enumeration (flip $ EnumFromTo Nothing) (EnumFrom Nothing)
       <|> comma <-*> expr <**>
-          (enumeration (flip3 EnumFromThenTo) (flip EnumFromThen)
+          (enumeration (flip3 $ EnumFromThenTo Nothing) (flip $ EnumFromThen Nothing)
           <|> list <$> many (comma <-*> expr))
     `opt` (\e -> mk' List [e])
   comprehension = flip (mk ListCompr) <$-> bar <*> quals

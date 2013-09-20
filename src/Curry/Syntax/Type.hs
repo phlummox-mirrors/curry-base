@@ -257,9 +257,9 @@ data Expression
   | List            [SrcRef] [Expression]
   | ListCompr       SrcRef Expression [Statement] -- the ref corresponds to the main list
   | EnumFrom        (Maybe ConstrType_) Expression
-  | EnumFromThen    Expression Expression
-  | EnumFromTo      Expression Expression
-  | EnumFromThenTo  Expression Expression Expression
+  | EnumFromThen    (Maybe ConstrType_) Expression Expression
+  | EnumFromTo      (Maybe ConstrType_) Expression Expression
+  | EnumFromThenTo  (Maybe ConstrType_) Expression Expression Expression
   | UnaryMinus      Ident Expression
   | Apply           Expression Expression
   | InfixApply      Expression InfixOp Expression
@@ -405,9 +405,9 @@ instance Eq Expression where
   (List _ es1) == (List _ es2) = es1 == es2
   (ListCompr _ e1 ss1) == (ListCompr _ e2 ss2) = e1 == e2 && ss1 == ss2
   (EnumFrom _ e1) == (EnumFrom _ e2) = e1 == e2
-  (EnumFromThen e11 e21) == (EnumFromThen e12 e22) = e11 == e12 && e21 == e22
-  (EnumFromTo e11 e21) == (EnumFromTo e12 e22) = e11 == e12 && e21 == e22
-  (EnumFromThenTo e11 e21 e31) == (EnumFromThenTo e12 e22 e32) 
+  (EnumFromThen _ e11 e21) == (EnumFromThen _ e12 e22) = e11 == e12 && e21 == e22
+  (EnumFromTo _ e11 e21) == (EnumFromTo _ e12 e22) = e11 == e12 && e21 == e22
+  (EnumFromThenTo _ e11 e21 e31) == (EnumFromThenTo _ e12 e22 e32) 
     = e11 == e12 && e21 == e22 && e31 == e32
   (UnaryMinus i1 e1) == (UnaryMinus i2 e2) = i1 == i2 && e1 == e2
   (Apply e11 e21) == (Apply e12 e22) = e11 == e12 && e21 == e22

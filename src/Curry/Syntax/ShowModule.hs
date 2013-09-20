@@ -412,17 +412,17 @@ showsExpression (EnumFrom _ expr)
   = showsString "(EnumFrom "
   . showsExpression expr
   . showsString ")"
-showsExpression (EnumFromThen exp1 exp2)
+showsExpression (EnumFromThen _ exp1 exp2)
   = showsString "(EnumFromThen "
   . showsExpression exp1 . space
   . showsExpression exp2
   . showsString ")"
-showsExpression (EnumFromTo exp1 exp2)
+showsExpression (EnumFromTo _ exp1 exp2)
   = showsString "(EnumFromTo "
   . showsExpression exp1 . space
   . showsExpression exp2
   . showsString ")"
-showsExpression (EnumFromThenTo exp1 exp2 exp3)
+showsExpression (EnumFromThenTo _ exp1 exp2 exp3)
   = showsString "(EnumFromThenTo "
   . showsExpression exp1 . space
   . showsExpression exp2 . space

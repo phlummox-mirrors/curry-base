@@ -299,11 +299,11 @@ ppExpr _ (List        _ es) = bracketList (map (ppExpr 0) es)
 ppExpr _ (ListCompr _ e qs) =
   brackets (ppExpr 0 e <+> vbar <+> list (map ppStmt qs))
 ppExpr _ (EnumFrom _            e) = brackets (ppExpr 0 e <+> text "..")
-ppExpr _ (EnumFromThen      e1 e2) =
+ppExpr _ (EnumFromThen _    e1 e2) =
   brackets (ppExpr 0 e1 <> comma <+> ppExpr 0 e2 <+> text "..")
-ppExpr _ (EnumFromTo        e1 e2) =
+ppExpr _ (EnumFromTo _      e1 e2) =
   brackets (ppExpr 0 e1 <+> text ".." <+> ppExpr 0 e2)
-ppExpr _ (EnumFromThenTo e1 e2 e3) =
+ppExpr _ (EnumFromThenTo _ e1 e2 e3) =
   brackets (ppExpr 0 e1 <> comma <+> ppExpr 0 e2
               <+> text ".." <+> ppExpr 0 e3)
 ppExpr p (UnaryMinus       op e) = parenExp (p > 1) (ppInfixOp op <> ppExpr 1 e)
