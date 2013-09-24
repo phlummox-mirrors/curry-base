@@ -26,7 +26,7 @@ import Curry.Base.LLParseComb
 
 import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
-import Curry.Syntax.Utils (mkInt, addSrcRefs)
+import Curry.Syntax.Utils (mkInt, mkFloat, addSrcRefs)
 
 import Prelude hiding (exp)
 
@@ -539,7 +539,7 @@ labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0 True
 literal :: Parser Token Literal a
 literal = mk Char   <$> char
       <|> mkInt     <$> integer
-      <|> mk Float  <$> float
+      <|> mkFloat   <$> float
       <|> mk String <$> string
 
 -- ---------------------------------------------------------------------------
@@ -627,10 +627,10 @@ gconId :: Parser Token QualIdent a
 gconId = colon <|> tupleCommas
 
 negNum :: Parser Token (Ident -> Pattern) a
-negNum = flip NegativePattern <$> (mkInt <$> integer <|> mk Float <$> float)
+negNum = flip NegativePattern <$> (mkInt <$> integer <|> mkFloat <$> float)
 
 negFloat :: Parser Token (Ident -> Pattern) a
-negFloat = flip NegativePattern . mk Float
+negFloat = flip NegativePattern . mkFloat
            <$> (fromIntegral <$> integer <|> float)
 
 optAsPattern :: Parser Token (Ident -> Pattern) a

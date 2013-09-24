@@ -224,7 +224,7 @@ data CondExpr = CondExpr Position Expression Expression
 data Literal
   = Char   SrcRef Char
   | Int    Ident  Integer
-  | Float  SrcRef Double
+  | Float  Ident  Double
   | String SrcRef String
     deriving (Eq, Read, Show, Data, Typeable)
 
@@ -334,7 +334,7 @@ instance SrcRefOf Pattern where
 instance SrcRefOf Literal where
   srcRefOf (Char   s _) = s
   srcRefOf (Int    i _) = srcRefOf i
-  srcRefOf (Float  s _) = s
+  srcRefOf (Float  i _) = srcRefOf i
   srcRefOf (String s _) = s
 
 -- ---------------------------------------------------------------------------

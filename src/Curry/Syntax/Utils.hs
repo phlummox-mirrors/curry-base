@@ -17,7 +17,7 @@
 module Curry.Syntax.Utils
   ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
   , isInstanceDecl, isRecordDecl, isFunctionDecl, isPatternDecl, patchModuleId
-  , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
+  , flatLhs, mkInt, mkFloat, fieldLabel, fieldTerm, field2Tuple, opName
   , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
@@ -119,6 +119,10 @@ flatLhs lhs = flat lhs []
 -- |Construct an Integer literal
 mkInt :: Integer -> Literal
 mkInt i = mk (\r -> Int (addPositionIdent (AST r) anonId) i)
+
+-- |Construct a Float literal
+mkFloat :: Double -> Literal
+mkFloat f = mk (\r -> Float (addPositionIdent (AST r) anonId) f)
 
 -- |Select the label of a field
 fieldLabel :: Field a -> Ident

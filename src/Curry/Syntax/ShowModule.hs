@@ -300,8 +300,9 @@ showsLiteral (Int ident n)
   . showsIdent ident . space
   . shows n
   . showsString ")"
-showsLiteral (Float _ x)
+showsLiteral (Float ident x)
   = showsString "(Float "
+  . showsIdent ident . space
   . shows x
   . showsString ")"
 showsLiteral (String _ s)
