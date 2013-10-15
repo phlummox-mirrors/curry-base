@@ -677,7 +677,7 @@ expr0 = expr1 `chainr1` (flip InfixApply <$> infixOp)
 
 -- expr1 ::= - expr2 | -. expr2 | expr2
 expr1 :: Parser Token Expression a
-expr1 =  UnaryMinus <$> (minus <|> fminus) <*> expr2
+expr1 =  UnaryMinus Nothing <$> (minus <|> fminus) <*> expr2
      <|> expr2
 
 -- expr2 ::= lambdaExpr | letExpr | doExpr | ifExpr | caseExpr | expr3
@@ -711,7 +711,7 @@ parenExpr = parens pExpr
       <|> leftSectionOrTuple <\> minus <\> fminus
       <|> opOrRightSection <\> minus <\> fminus
       `opt` mk Tuple []
-  minusOrTuple = flip UnaryMinus <$> expr1 <.> infixOrTuple
+  minusOrTuple = flip (UnaryMinus Nothing) <$> expr1 <.> infixOrTuple
             `opt` Variable Nothing . qualify
   leftSectionOrTuple = expr1 <**> infixOrTuple
   infixOrTuple = ($ id) <$> infixOrTuple'

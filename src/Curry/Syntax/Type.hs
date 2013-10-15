@@ -260,7 +260,7 @@ data Expression
   | EnumFromThen    (Maybe ConstrType_) Expression Expression
   | EnumFromTo      (Maybe ConstrType_) Expression Expression
   | EnumFromThenTo  (Maybe ConstrType_) Expression Expression Expression
-  | UnaryMinus      Ident Expression
+  | UnaryMinus      (Maybe ConstrType_) Ident Expression
   | Apply           Expression Expression
   | InfixApply      Expression InfixOp Expression
   | LeftSection     Expression InfixOp
@@ -409,7 +409,7 @@ instance Eq Expression where
   (EnumFromTo _ e11 e21) == (EnumFromTo _ e12 e22) = e11 == e12 && e21 == e22
   (EnumFromThenTo _ e11 e21 e31) == (EnumFromThenTo _ e12 e22 e32) 
     = e11 == e12 && e21 == e22 && e31 == e32
-  (UnaryMinus i1 e1) == (UnaryMinus i2 e2) = i1 == i2 && e1 == e2
+  (UnaryMinus _ i1 e1) == (UnaryMinus _ i2 e2) = i1 == i2 && e1 == e2
   (Apply e11 e21) == (Apply e12 e22) = e11 == e12 && e21 == e22
   (InfixApply e11 op1 e21) == (InfixApply e12 op2 e22) 
     =  e11 == e12 && op1 == op2 && e21 == e22

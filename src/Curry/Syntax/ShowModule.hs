@@ -429,7 +429,7 @@ showsExpression (EnumFromThenTo _ exp1 exp2 exp3)
   . showsExpression exp2 . space
   . showsExpression exp3
   . showsString ")"
-showsExpression (UnaryMinus ident expr)
+showsExpression (UnaryMinus _ ident expr)
   = showsString "(UnaryMinus "
   . showsIdent ident . space
   . showsExpression expr

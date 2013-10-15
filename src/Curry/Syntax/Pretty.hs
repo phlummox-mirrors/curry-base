@@ -306,7 +306,7 @@ ppExpr _ (EnumFromTo _      e1 e2) =
 ppExpr _ (EnumFromThenTo _ e1 e2 e3) =
   brackets (ppExpr 0 e1 <> comma <+> ppExpr 0 e2
               <+> text ".." <+> ppExpr 0 e3)
-ppExpr p (UnaryMinus       op e) = parenExp (p > 1) (ppInfixOp op <> ppExpr 1 e)
+ppExpr p (UnaryMinus _     op e) = parenExp (p > 1) (ppInfixOp op <> ppExpr 1 e)
 ppExpr p (Apply           e1 e2) =
   parenExp (p > 1) (sep [ppExpr 1 e1,indent (ppExpr 2 e2)])
 ppExpr p (InfixApply   e1 op e2) =
