@@ -392,7 +392,7 @@ preludeMIdent = ModuleIdent NoPos ["Prelude"]
 
 -- | 'ModuleIdent' for type classes Prelude
 tcPreludeMIdent :: ModuleIdent
-tcPreludeMIdent = ModuleIdent NoPos ["TCPrelude"]
+tcPreludeMIdent = ModuleIdent NoPos ["Prelude"]
 
 -- ---------------------------------------------------------------------------
 -- Identifiers for types
