@@ -67,7 +67,7 @@ module Curry.Base.Ident
   , recordExtId, labelExtId, isRecordExtId, isLabelExtId, fromRecordExtId
   , fromLabelExtId, renameLabel, recordExt, labelExt, mkLabelIdent
     -- ** Constructed identifiers
-  , identPrefix, Curry.Base.Ident.sep
+  , identPrefix, Curry.Base.Ident.sep, extractOrigName
   ) where
 
 import Data.Char           (isAlpha, isAlphaNum, isSpace)
@@ -709,3 +709,19 @@ identPrefix = "#"
 -- elements
 sep :: String
 sep = ":_"
+
+-- |Extracts the original name of the given identifier. This is the string after
+-- the last "sep". 
+extractOrigName :: Ident -> Ident
+extractOrigName = updIdentName extractOrigName' 
+
+extractOrigName' :: String -> String
+extractOrigName' s = last (split' s "" [])
+  where 
+  sep' = Curry.Base.Ident.sep
+  lenSep = length sep'
+  split' :: String -> String -> [String] -> [String]
+  split' str acc1 acc2
+    | sep' `isPrefixOf` str = split' (drop lenSep str) "" (reverse acc1 : acc2)
+    | null str              = reverse (reverse acc1 : acc2)
+    | otherwise             = split' (tail str) (head str : acc1) acc2
