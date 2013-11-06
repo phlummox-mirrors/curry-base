@@ -512,7 +512,7 @@ lexOptQual :: (Token -> P a) -> Token -> [String] -> P a
 lexOptQual cont token mIdent p cs@('.':c:s)
   | isAlpha  c       = lexQualIdent     cont identCont mIdent (next p) (c:s)
   | isSymbolChar c   = lexQualSymbol    cont identCont mIdent (next p) (c:s)
---   | c `elem` ":[("   = lexQualPrimitive cont token     mIdent (next p) (c:s)
+  | c `elem` "[("    = lexQualPrimitive cont token     mIdent (next p) (c:s)
   where identCont _ _ = cont token p cs
 lexOptQual cont token _      p cs = cont token p cs
 
@@ -546,16 +546,17 @@ lexQualSymbol cont identCont mIdent p s =
 -- lexQualPreludeSymbol cont token _ _ p s =  cont token p s
 
 -- Lex a qualified primitive symbol.
--- lexQualPrimitive :: (Token -> P a) -> Token -> [String] -> P a
--- lexQualPrimitive cont token mIdent p s = case s of
---   ':'    :cs -> cont (idTok QId mIdent ":" ) (next p  ) cs
---   '[':']':cs -> cont (idTok QId mIdent "[]") (incr p 2) cs
---   '('    :cs |  not (null cs') && head cs' == ')'
---              -> cont (idTok QId mIdent ident)
---                      (incr p $ length ident) (tail cs')
---       where (commas, cs') = span (== ',') cs
---             ident = '(' : commas ++ ")"
---   _ -> cont token p s
+lexQualPrimitive :: (Token -> P a) -> Token -> [String] -> P a
+lexQualPrimitive cont token mIdent p s = case s of
+  ':'    :cs -> cont (idTok QId mIdent ":" ) (next p  ) cs
+  '[':']':cs -> cont (idTok QId mIdent "[]") (incr p 2) cs
+  '('    :cs |  not (null cs') && head cs' == ')'
+             -> cont (idTok QId mIdent ident)
+                     (incr p $ length ident) (tail cs')
+      where (commas, cs') = span (== ',') cs
+            ident = '(' : commas ++ ")"
+  '(':'-':'>':')':cs -> cont (idTok QId mIdent "(->)") (incr p 4) cs
+  _ -> cont token p s
 
 -- ---------------------------------------------------------------------------
 -- /Note:/ since Curry allows an unlimited range of integer numbers,
