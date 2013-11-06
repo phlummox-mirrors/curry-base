@@ -35,12 +35,15 @@ import Data.List
 
 -- |Parse a 'Module'
 parseSource :: FilePath -> String -> MessageM Module
-parseSource path = fmap addSrcRefs
-                 . fullParser (moduleHeader <*> layout topDecls) lexer path
+parseSource fn
+  = fmap addSrcRefs
+  . fullParser (uncurry <$> moduleHeader <*> layout moduleDecls) lexer fn
 
 -- |Parse a 'Module' header
 parseHeader :: FilePath -> String -> MessageM Module
-parseHeader = prefixParser (moduleHeader <*> succeed []) lexer
+parseHeader
+  = prefixParser (moduleHeader <*> startLayout importDecls <*> succeed []) lexer
+  where importDecls = many (importDecl <*-> many semicolon)
 
 -- |Parse an 'Interface'
 parseInterface :: FilePath -> String -> MessageM [Interface]
@@ -55,12 +58,11 @@ parseGoal = fullParser goal lexer ""
 -- ---------------------------------------------------------------------------
 
 -- |Parser for a module header
-moduleHeader :: Parser Token ([Decl] -> Module) a
-moduleHeader =  Module <$-> token KW_module <*>  modIdent
-                       <*>  optionMaybe exportSpec
-                       <*-> checkWhere
-                       <*>  importDecls
-            <|> Module mainMIdent Nothing <$> importDecls
+moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
+moduleHeader =  Module <$-> token KW_module <*> modIdent
+                       <*>  option exportSpec
+                       <*-> expectWhere
+                `opt` Module mainMIdent Nothing
 
 -- |Parser for an export specification
 exportSpec :: Parser Token ExportSpec a
@@ -74,9 +76,11 @@ export =  qtycon <**> (parens spec `opt` Export)         -- type constructor
   where spec =       ExportTypeAll  <$-> token DotDot
             <|> flip ExportTypeWith <$>  con `sepBy` comma
 
--- |Parser for import declarations
-importDecls :: Parser Token [ImportDecl] a
-importDecls = optional leftBrace <-*> many (importDecl <*-> many semicolon)
+moduleDecls :: Parser Token ([ImportDecl], [Decl]) a
+moduleDecls = impDecl <$> importDecl
+                      <*> (semicolon <-*> moduleDecls `opt` ([], []))
+          <|> (,) []  <$> topDecls
+  where impDecl i (is, ds) = (i:is ,ds)
 
 -- |Parser for a single import declaration
 importDecl :: Parser Token ImportDecl a
@@ -84,8 +88,8 @@ importDecl =  flip . ImportDecl
           <$> tokenPos KW_import
           <*> flag (token Id_qualified)
           <*> modIdent
-          <*> optionMaybe (token Id_as <-*> modIdent)
-          <*> optionMaybe importSpec
+          <*> option (token Id_as <-*> modIdent)
+          <*> option importSpec
 
 -- |Parser for an import specification
 importSpec :: Parser Token ImportSpec a
@@ -110,23 +114,20 @@ interfaces = (\i1 i2 -> i1 : [i2]) <$>
 
 -- |Parser for an interface
 interface :: Category -> Parser Token Interface a
-interface tk = Interface
-         <$-> token tk           <*>  modIdent
-         <*-> checkWhere         <*-> leftBrace
-         <*>  iImportDecls
-         <*>  intfDecls          <*-> rightBrace
+interface tk = uncurry <$> intfHeader tk <*> braces intfDecls
 
--- |Parser for interface import declarations
-iImportDecls :: Parser Token [IImportDecl] a
-iImportDecls = iImportDecl `sepBy` semicolon
+intfHeader :: Category -> Parser Token ([IImportDecl] -> [IDecl] -> Interface) a
+intfHeader tk = Interface <$-> token tk <*> modIdent <*-> expectWhere
+
+intfDecls :: Parser Token ([IImportDecl], [IDecl]) a
+intfDecls = impDecl <$> iImportDecl
+                    <*> (semicolon <-*> intfDecls `opt` ([], []))
+        <|> (,) [] <$> intfDecl `sepBy` semicolon
+  where impDecl i (is, ds) = (i:is, ds)
 
 -- |Parser for a single interface import declaration
 iImportDecl :: Parser Token IImportDecl a
 iImportDecl = IImportDecl <$> tokenPos KW_import <*> modIdent
-
--- |Parser for interface declarations
-intfDecls :: Parser Token [IDecl] a
-intfDecls = intfDecl `sepBy` semicolon
 
 -- |Parser for a single interface declaration
 intfDecl :: Parser Token IDecl a
@@ -230,7 +231,7 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*>
 iClassDecl :: Bool -> Parser Token IDecl a
 iClassDecl hidden = IClassDecl <$> tokenPos KW_class <*> succeed hidden
   <*> brackets (qtycls `sepBy` comma) 
-  <*> qtycls <*> tyvar <*-> checkWhere <*-> leftBrace 
+  <*> qtycls <*> tyvar <*-> expectWhere <*-> leftBrace 
   <*> classTySigs <*-> rightBrace  <*> brackets (fun `sepBy` comma)
   <*> brackets (composedIdent `sepBy` comma)
 
@@ -252,7 +253,7 @@ classTySig = (\public f -> (public, f)) <$>
 -- unit, tuple, arrow)). "origin" may be empty. 
 iInstanceDecl :: Parser Token IDecl a
 iInstanceDecl =
-  IInstanceDecl <$> tokenPos KW_instance <*> brackets (optionMaybe mIdent) 
+  IInstanceDecl <$> tokenPos KW_instance <*> brackets (option mIdent) 
   <*> parens (sepBy simpleclass comma)
   <*-> token DoubleArrow <*> qtycls 
   <*-> leftParen <*> gtycon <*> many tyvar 
@@ -269,23 +270,14 @@ topDecl :: Parser Token Decl a
 topDecl = choice [ dataDecl, newtypeDecl, typeDecl, foreignDecl
                  , infixDecl, functionDecl, classDecl, instanceDecl ]
 
-infixDecl :: Parser Token Decl a
-infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
-
-infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
-infixDeclLhs f = f <$> position <*> tokenOps infixKW
-                   <*> (integer <?> "precedence level expected") -- TODO: change to int?
-  where
-  infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
-
 dataDecl :: Parser Token Decl a
 dataDecl = typeDeclLhsWithDeriving DataDecl KW_data <*> constrs 
-  <*> optionMaybe deriving0
+  <*> option deriving0
   where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
 newtypeDecl :: Parser Token Decl a
 newtypeDecl = typeDeclLhsWithDeriving NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl 
-  <*> optionMaybe deriving0
+  <*> option deriving0
 
 typeDecl :: Parser Token Decl a
 typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> type0 True
@@ -321,9 +313,6 @@ constrDecl = position <**> (existVars <**> constr)
 newConstrDecl :: Parser Token NewConstrDecl a
 newConstrDecl = NewConstrDecl <$> position <*> existVars <*> con <*> type2 False
 
-valueDecls :: Parser Token [Decl] a
-valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
-
 existVars :: Parser Token [Ident] a
 {-
 existVars flat
@@ -336,38 +325,13 @@ functionDecl :: Parser Token Decl a
 functionDecl = position <**> decl
   where
   decl = fun `sepBy1` comma <**> funListDecl
-    <|?> funRule
-
-funRule :: Parser Token (Position -> Decl) a
-funRule = funDecl <$> lhs <*> declRhs
-  where
+    <|?> mkFunDecl <$> lhs <*> declRhs
   lhs = (\f -> (f, FunLhs f [])) <$> fun <|?> funLhs
 
-valueDecl :: Parser Token Decl a
-valueDecl = position <**> decl
+funRule :: Parser Token (Position -> Decl) a
+funRule = mkFunDecl <$> lhs <*> declRhs
   where
-  decl =   var `sepBy1` comma <**> valListDecl
-      <|?> valDecl <$> pattern0 <*> declRhs
-      <|?> funDecl <$> curriedLhs <*> declRhs
-
-  valDecl (ConstructorPattern c ts)
-    | not (isConstrId c) = funDecl (f, FunLhs f ts)
-    where f = unqualify c
-  valDecl t = opDecl id t
-
-  opDecl f (InfixPattern t1 op t2)
-    | isConstrId op = opDecl (f . InfixPattern t1 op) t2
-    | otherwise    = funDecl (op', OpLhs (f t1) op' t2)
-    where op' = unqualify op
-  opDecl f t = patDecl (f t)
-
-  isConstrId c = c == qConsId || isQualified c || isQTupleId c
-
-funDecl :: (Ident,Lhs) -> Rhs -> Position -> Decl
-funDecl (f,lhs) rhs' p = FunctionDecl p Nothing (-1) f [Equation p lhs rhs']
-
-patDecl :: Pattern -> Rhs -> Position -> Decl
-patDecl t rhs' p = PatternDecl p Nothing (-1) t rhs'
+  lhs = (\f -> (f, FunLhs f [])) <$> fun <|?> funLhs
 
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 funListDecl =  typeSignature
@@ -381,27 +345,26 @@ typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArr
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
 externalDecl = flip ExternalDecl <$-> token KW_external 
 
-valListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-valListDecl = funListDecl <|> flip FreeDecl <$-> token KW_free
+mkFunDecl :: (Ident, Lhs) -> Rhs -> Position -> Decl
+mkFunDecl (f, lhs) rhs' p = FunctionDecl p Nothing (-1) f [Equation p lhs rhs']
 
-funLhs :: Parser Token (Ident,Lhs) a
-funLhs = funLhs'     <$> fun      <*> many1 pattern2
-    <|?> flip ($ id) <$> pattern1 <*> opLhs'
+funLhs :: Parser Token (Ident, Lhs) a
+funLhs = mkFunLhs    <$> fun      <*> many1 pattern2
+    <|?> flip ($ id) <$> pattern1 <*> opLhs
     <|?> curriedLhs
   where
-  opLhs' = opLhs <$> funSym <*> pattern0
-      <|> infixPat <$> gConSym <\> funSym <*> pattern1 <*> opLhs'
-      <|> backquote <-*> opIdLhs
-  opIdLhs = opLhs <$> funId <*-> checkBackquote <*> pattern0
-        <|> infixPat <$> qConId <\> funId <*-> backquote <*> pattern1
-                      <*> opLhs'
-  funLhs' f ts = (f,FunLhs f ts)
-  opLhs op t2 f t1 = (op,OpLhs (f t1) op t2)
-  infixPat op t2 f g t1 = f (g . InfixPattern t1 op) t2
+  opLhs  =                opLHS funSym (gConSym <\> funSym)
+       <|> backquote <-*> opLHS (funId            <*-> expectBackquote)
+                                (qConId <\> funId <*-> expectBackquote)
+  opLHS funP consP = mkOpLhs    <$> funP  <*> pattern0
+                 <|> mkInfixPat <$> consP <*> pattern1 <*> opLhs
+  mkFunLhs f ts           = (f , FunLhs f ts)
+  mkOpLhs op t2 f t1      = (op, OpLhs (f t1) op t2)
+  mkInfixPat op t2 f g t1 = f (g . InfixPattern t1 op) t2
 
 curriedLhs :: Parser Token (Ident,Lhs) a
 curriedLhs = apLhs <$> parens funLhs <*> many1 pattern2
-  where apLhs (f,lhs) ts = (f,ApLhs lhs ts)
+  where apLhs (f, lhs) ts = (f, ApLhs lhs ts)
 
 declRhs :: Parser Token Rhs a
 declRhs = rhs equals
@@ -414,10 +377,46 @@ rhs eq = rhsExpr <*> localDecls
 localDecls :: Parser Token [Decl] a
 localDecls = token KW_where <-*> layout valueDecls `opt` []
 
+valueDecls :: Parser Token [Decl] a
+valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
+
+infixDecl :: Parser Token Decl a
+infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
+
+infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
+infixDeclLhs f = f <$> position <*> tokenOps infixKW
+                   <*> (integer <?> "precedence level expected")
+  where
+  infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
+
+valueDecl :: Parser Token Decl a
+valueDecl = position <**> decl
+  where
+  decl =   var `sepBy1` comma         <**> valListDecl
+      <|?> patOrFunDecl <$> pattern0   <*> declRhs
+      <|?> mkFunDecl    <$> curriedLhs <*> declRhs
+
+  valListDecl = funListDecl <|> flip FreeDecl <$-> token KW_free
+
+  patOrFunDecl (ConstructorPattern c ts)
+    | not (isConstrId c) = mkFunDecl (f, FunLhs f ts)
+    where f = unqualify c
+  patOrFunDecl t = patOrOpDecl id t
+
+  patOrOpDecl f (InfixPattern t1 op t2)
+    | isConstrId op = patOrOpDecl (f . InfixPattern t1 op) t2
+    | otherwise     = mkFunDecl (op', OpLhs (f t1) op' t2)
+    where op' = unqualify op
+  patOrOpDecl f t = mkPatDecl (f t)
+
+  mkPatDecl t rhs' p = PatternDecl p Nothing (-1) t rhs'
+
+  isConstrId c = c == qConsId || isQualified c || isQTupleId c
+
 foreignDecl :: Parser Token Decl a
 foreignDecl = ForeignDecl
           <$> tokenPos KW_foreign
-          <*> callConv <*> (optionMaybe string)
+          <*> callConv <*> (option string)
           <*> fun <*-> token DoubleColon <*> type0 False
   where callConv =  CallConvPrimitive <$-> token Id_primitive
                 <|> CallConvCCall     <$-> token Id_ccall
@@ -546,37 +545,38 @@ literal = mk Char   <$> char
 -- Patterns
 -- ---------------------------------------------------------------------------
 
--- pattern0 ::= pattern1 [ ConOp pattern0 ]
+-- pattern0 ::= pattern1 [ gconop pattern0 ]
 pattern0 :: Parser Token Pattern a
 pattern0 = pattern1 `chainr1` (flip InfixPattern <$> gconop)
 
 -- pattern1 ::= varId
 --           |  QConId { pattern2 }
---           |  '-'  negnum
---           |  '-.' negFloat
+--           |  '-'  Integer
+--           |  '-.' Float
 --           |  '(' parenPattern'
 --           | pattern2
 pattern1 :: Parser Token Pattern a
 pattern1 =  varId <**> identPattern'
         <|> ConstructorPattern <$> qConId <\> varId <*> many pattern2
-        <|> minus <**> negNum
+        <|> minus  <**> negNum
         <|> fminus <**> negFloat
         <|> leftParen <-*> parenPattern'
         <|> pattern2 <\> qConId <\> leftParen
   where
   identPattern' =  optAsPattern
-               <|> conPattern <$> many1 pattern2
-  parenPattern' =  minus <**> minusPattern negNum
+               <|> mkConsPattern <$> many1 pattern2
+  mkConsPattern ts c = ConstructorPattern (qualify c) ts
+
+  parenPattern' =  minus  <**> minusPattern negNum
                <|> fminus <**> minusPattern negFloat
                <|> gconPattern
                <|> funSym <\> minus <\> fminus <*-> rightParen
                                                <**> identPattern'
                <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
-  minusPattern p = rightParen <-*> identPattern'
+  minusPattern p = rightParen <-*> identPattern' -- (-) and (-.) as Constructors
                 <|> parenMinusPattern p <*-> rightParen
   gconPattern = ConstructorPattern <$> gconId <*-> rightParen
                                     <*> many pattern2
-  conPattern ts = flip ConstructorPattern ts . qualify
 
 pattern2 :: Parser Token Pattern a
 pattern2 =  literalPattern <|> anonPattern <|> identPattern
@@ -589,6 +589,9 @@ literalPattern = LiteralPattern <$> literal
 anonPattern :: Parser Token Pattern a
 anonPattern = VariablePattern <$> anonIdent
 
+-- identPattern ::= Variable
+--               |  Variable @ pattern2
+--               |  qConId
 identPattern :: Parser Token Pattern a
 identPattern =  varId <**> optAsPattern
             <|> flip ConstructorPattern [] <$> qConId <\> varId
@@ -596,7 +599,7 @@ identPattern =  varId <**> optAsPattern
 parenPattern :: Parser Token Pattern a
 parenPattern = leftParen <-*> parenPattern'
   where
-  parenPattern' = minus <**> minusPattern negNum
+  parenPattern' = minus  <**> minusPattern negNum
               <|> fminus <**> minusPattern negFloat
               <|> flip ConstructorPattern [] <$> gconId <*-> rightParen
               <|> funSym <\> minus <\> fminus <*-> rightParen
@@ -615,8 +618,8 @@ recordPattern :: Parser Token Pattern a
 recordPattern = layoutOff <-*> braces content
   where
   content   = RecordPattern <$> (fieldPatt `sepBy` comma) <*> record
-  fieldPatt = Field <$> position <*> labId <*-> checkEquals <*> pattern0
-  record    = optionMaybe (checkBar <-*> pattern2)
+  fieldPatt = Field <$> position <*> labId <*-> expectEquals <*> pattern0
+  record    = option (expectBar <-*> pattern2)
 
 -- ---------------------------------------------------------------------------
 -- Partial patterns used in the combinators above, but also for parsing
@@ -638,9 +641,9 @@ optAsPattern = flip AsPattern <$-> token At <*> pattern2
          `opt` VariablePattern
 
 optInfixPattern :: Parser Token (Pattern -> Pattern) a
-optInfixPattern = infixPat <$> gconop <*> pattern0
+optInfixPattern = mkInfixPat <$> gconop <*> pattern0
             `opt` id
-  where infixPat op t2 t1 = InfixPattern t1 op t2
+  where mkInfixPat op t2 t1 = InfixPattern t1 op t2
 
 optTuplePattern :: Parser Token (Pattern -> Pattern) a
 optTuplePattern = tuple <$> many1 (comma <-*> pattern0)
@@ -686,7 +689,7 @@ expr2 = choice [ lambdaExpr, letExpr, doExpr, ifExpr, caseExpr
                , expr3 <**> (recordSelect <|?> application) ]
   where
   recordSelect = (flip (foldl RecordSelection))
-              <$> many1 (checkSelect <-*> labId)
+              <$> many1 (expectSelect <-*> labId)
   application  = (\es e -> foldl1 Apply (e:es)) <$> many expr3
 
 expr3 :: Parser Token Expression a
@@ -757,13 +760,13 @@ recordExpr :: Parser Token Expression a
 recordExpr = layoutOff <-*> braces content
   where
   content        = fieldAccess `sepBy` comma <**> constrOpUpdate
-  fieldAccess    = Field <$> position <*> labId <*-> checkBind <*> expr
-  constrOpUpdate = flip RecordUpdate <$-> checkBar <*> expr
+  fieldAccess    = Field <$> position <*> labId <*-> expectBind <*> expr
+  constrOpUpdate = flip RecordUpdate <$-> expectBar <*> expr
                    `opt` RecordConstr
 
 lambdaExpr :: Parser Token Expression a
 lambdaExpr = mk Lambda <$-> token Backslash <*> many1 pattern2
-                       <*-> checkRightArrow <*> expr
+                       <*-> expectRightArrow <*> expr
 
 letExpr :: Parser Token Expression a
 letExpr = Let <$-> token KW_let <*> layout valueDecls
@@ -785,7 +788,7 @@ caseExpr = keyword <*> expr
                <|> mk Case Rigid <$-> token KW_case
 
 alt :: Parser Token Alt a
-alt = Alt <$> position <*> pattern0 <*> rhs checkRightArrow
+alt = Alt <$> position <*> pattern0 <*> rhs expectRightArrow
 
 -- ---------------------------------------------------------------------------
 -- \paragraph{Statements in list comprehensions and \texttt{do} expressions}
@@ -981,6 +984,12 @@ tupleCommas = (\ p -> qualify . addPositionIdent p . tupleId . succ . length)
 -- Layout
 -- ---------------------------------------------------------------------------
 
+-- |This function starts a new layout block but does not wait for its end.
+-- This is only used for parsing the module header.
+startLayout :: Parser Token a b -> Parser Token a b
+startLayout p = layoutOff <-*> leftBraceSemicolon <-*> p
+             <|> layoutOn <-*> p
+
 layout :: Parser Token a b -> Parser Token a b
 layout p =  layoutOff <-*> between leftBraceSemicolon p rightBrace
         <|> layoutOn  <-*> p <*-> (token VRightBrace <|> layoutEnd)
@@ -999,7 +1008,7 @@ parens :: Parser Token a b -> Parser Token a b
 parens p = between leftParen p rightParen
 
 backquotes :: Parser Token a b -> Parser Token a b
-backquotes p = between backquote p checkBackquote
+backquotes p = between backquote p expectBackquote
 
 -- ---------------------------------------------------------------------------
 -- Simple token parsers
@@ -1015,7 +1024,7 @@ tokens = foldr1 (<|>) . map token
 tokenPos :: Category -> Parser Token Position a
 tokenPos c = position <*-> token c
 
-tokenOps :: [(Category,a)] -> Parser Token a b
+tokenOps :: [(Category, a)] -> Parser Token a b
 tokenOps cs = ops [(Token c NoAttributes, x) | (c, x) <- cs]
 
 comma :: Parser Token Attributes a
@@ -1027,32 +1036,32 @@ semicolon = token Semicolon <|> token VSemicolon
 bar :: Parser Token Attributes a
 bar = token Bar
 
-checkBar :: Parser Token Attributes a
-checkBar = bar <?> "| expected"
+expectBar :: Parser Token Attributes a
+expectBar = bar <?> "| expected"
 
 equals :: Parser Token Attributes a
 equals = token Equals
 
-checkEquals :: Parser Token Attributes a
-checkEquals = equals <?> "= expected"
+expectEquals :: Parser Token Attributes a
+expectEquals = equals <?> "= expected"
 
-checkWhere :: Parser Token Attributes a
-checkWhere = token KW_where <?> "where expected"
+expectWhere :: Parser Token Attributes a
+expectWhere = token KW_where <?> "where expected"
 
-checkSelect :: Parser Token Attributes a
-checkSelect = token Select <?> ":-> expected"
+expectSelect :: Parser Token Attributes a
+expectSelect = token Select <?> ":-> expected"
 
-checkRightArrow :: Parser Token Attributes a
-checkRightArrow  = token RightArrow <?> "-> expected"
+expectRightArrow :: Parser Token Attributes a
+expectRightArrow  = token RightArrow <?> "-> expected"
 
-checkBind :: Parser Token Attributes a
-checkBind = token Bind <?> ":= expected"
+expectBind :: Parser Token Attributes a
+expectBind = token Bind <?> ":= expected"
 
 backquote :: Parser Token Attributes a
 backquote = token Backquote
 
-checkBackquote :: Parser Token Attributes a
-checkBackquote = backquote <?> "backquote (`) expected"
+expectBackquote :: Parser Token Attributes a
+expectBackquote = backquote <?> "backquote (`) expected"
 
 leftParen :: Parser Token Attributes a
 leftParen = token LeftParen

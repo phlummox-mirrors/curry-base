@@ -26,8 +26,8 @@
 
 module Curry.Base.Ident
   ( -- * Module identifiers
-    ModuleIdent (..), mkMIdent, moduleName, fromModuleName, isValidModuleName
-  , addPositionModuleIdent
+    ModuleIdent (..), mkMIdent, moduleName, escModuleName
+  , fromModuleName, isValidModuleName, addPositionModuleIdent
 
     -- * Local identifiers
   , Ident (..), mkIdent, showIdent, escName, identSupply
@@ -35,7 +35,7 @@ module Curry.Base.Ident
   , updIdentName, addPositionIdent, addRefId, isInfixOp
 
     -- * Qualified identifiers
-  , QualIdent (..), qualName, qidPosition, isQInfixOp, qualify
+  , QualIdent (..), qualName, escQualName, qidPosition, isQInfixOp, qualify
   , qualifyWith, qualQualify, qualifyLike, isQualified, unqualify, qualUnqualify
   , localIdent, updQualIdent, addRef
 
@@ -126,6 +126,10 @@ mkMIdent = ModuleIdent NoPos
 -- |Retrieve the hierarchical name of a module
 moduleName :: ModuleIdent -> String
 moduleName = intercalate "." . midQualifiers
+
+-- |Show the name of an 'ModuleIdent' escaped by ticks
+escModuleName :: ModuleIdent -> String
+escModuleName m = '`' : moduleName m ++ "'"
 
 -- |Add a source code 'Position' to a 'ModuleIdent'
 addPositionModuleIdent :: Position -> ModuleIdent -> ModuleIdent
@@ -303,6 +307,10 @@ instance SrcRefOf QualIdent where
 qualName :: QualIdent -> String
 qualName (QualIdent Nothing  x) = idName x
 qualName (QualIdent (Just m) x) = moduleName m ++ "." ++ idName x
+
+-- |Show the name of an 'QualIdent' escaped by ticks
+escQualName :: QualIdent -> String
+escQualName qn = '`' : qualName qn ++ "'"
 
 -- |Retrieve the 'Position' of a 'QualIdent'
 qidPosition :: QualIdent -> Position

@@ -60,17 +60,27 @@ ppFuncExports fs = [ ppPrefixOp qn | Func qn _ Public _ _ <- fs]
 ppImport :: String -> Doc
 ppImport m = text "import" <+> text m
 
+-- |pretty-print a operator fixity declaration
+ppOpDecl :: OpDecl -> Doc
+ppOpDecl (Op qn fix n) = ppFixity fix <+> int n <+> ppInfixOp qn
+
+-- |pretty-print the associativity keyword
+ppFixity :: Fixity -> Doc
+ppFixity InfixOp  = text "infix"
+ppFixity InfixlOp = text "infixl"
+ppFixity InfixrOp = text "infixr"
+
 -- |pretty-print a type declaration
 ppTypeDecl :: TypeDecl -> Doc
-ppTypeDecl (Type    qn _ ixs cs) = text "data" <+> ppQName qn
-  <+> hcat (map ppTVarIndex ixs) $+$ ppConsDecls cs
-ppTypeDecl (TypeSyn qn _ ixs ty) = text "type" <+> ppQName qn
-  <+> hcat (map ppTVarIndex ixs) <+> equals <+> ppTypeExpr 0 ty
+ppTypeDecl (Type    qn _ vs cs) = text "data" <+> ppQName qn
+  <+> hsep (map ppTVarIndex vs) $+$ ppConsDecls cs
+ppTypeDecl (TypeSyn qn _ vs ty) = text "type" <+> ppQName qn
+  <+> hsep (map ppTVarIndex vs) <+> equals <+> ppTypeExpr 0 ty
 
 -- |pretty-print the constructor declarations
 ppConsDecls :: [ConsDecl] -> Doc
 ppConsDecls cs = indent $ vcat $
-  zipWith (<+>) (equals : repeat vbar) (map ppConsDecl cs)
+  zipWith (<+>) (equals : repeat (char '|')) (map ppConsDecl cs)
 
 -- |pretty print a single constructor
 ppConsDecl :: ConsDecl -> Doc
@@ -78,7 +88,7 @@ ppConsDecl (Cons qn _ _ tys) = fsep $ ppPrefixOp qn : map (ppTypeExpr 2) tys
 
 -- |pretty-print a type expression
 ppTypeExpr :: Int -> TypeExpr -> Doc
-ppTypeExpr _ (TVar         idx) = ppTVarIndex idx
+ppTypeExpr _ (TVar           v) = ppTVarIndex v
 ppTypeExpr p (FuncType ty1 ty2) = parenIf (p > 0) $ fsep
   [ppTypeExpr 1 ty1, rarrow, ppTypeExpr 0 ty2]
 ppTypeExpr p (TCons     qn tys) = parenIf (p > 1 && not (null tys)) $ fsep
@@ -93,9 +103,9 @@ ppTVarIndex i = text $ vars !! i
 
 -- |pretty-print a function declaration
 ppFuncDecl :: FuncDecl -> Doc
-ppFuncDecl (Func qn _ _ ty rule)
+ppFuncDecl (Func qn _ _ ty r)
   = hsep [ppPrefixOp qn, text "::", ppTypeExpr 0 ty]
-    $+$ ppPrefixOp qn <+> ppRule rule
+    $+$ ppPrefixOp qn <+> ppRule r
 
 -- |pretty-print a function rule
 ppRule :: Rule -> Doc
@@ -107,12 +117,13 @@ ppRule (External _) = text "external"
 ppExpr :: Int -> Expr -> Doc
 ppExpr _ (Var        v) = ppVarIndex v
 ppExpr _ (Lit        l) = ppLiteral l
-ppExpr p (Comb _ qn es) = parenIf (p > 0)
-                        $ ppPrefixOp qn <+> fsep (map (ppExpr 1) es)
-ppExpr p (Free    vs e) = parenIf (p > 0) $ sep
-                          [ letSym <+> list (map ppVarIndex vs) <+> free
-                          , inSym <+> ppExpr 0 e
-                          ]
+ppExpr p (Comb _ qn es) = ppComb p qn es
+ppExpr p (Free    vs e)
+  | null vs             = ppExpr p e
+  | otherwise           = parenIf (p > 0) $ sep
+                            [ letSym <+> list (map ppVarIndex vs) <+> free
+                            , inSym <+> ppExpr 0 e
+                            ]
 ppExpr p (Let     ds e) = parenIf (p > 0) $ sep
                           [letSym <+> ppDecls ds, inSym <+> ppExpr 0 e]
 ppExpr p (Or     e1 e2) = parenIf (p > 0)
@@ -123,6 +134,34 @@ ppExpr p (Case ct e bs) = parenIf (p > 0)
 ppExpr p (Typed   e ty) = parenIf (p > 0)
                         $ ppExpr 0 e <+> text "::" <+> ppTypeExpr 0 ty
 
+-- |pretty-print a variable
+ppVarIndex :: VarIndex -> Doc
+ppVarIndex i = text $ 'v' : show i
+
+-- |pretty-print a literal
+ppLiteral :: Literal -> Doc
+ppLiteral (Intc   i) = integer i
+ppLiteral (Floatc f) = double  f
+ppLiteral (Charc  c) = text (showEscape c)
+
+-- |Escape character literal
+showEscape :: Char -> String
+showEscape c
+  | o <   10  = "'\\00" ++ show o ++ "'"
+  | o <   32  = "'\\0"  ++ show o ++ "'"
+  | o == 127  = "'\\127'"
+  | otherwise = show c
+  where o = ord c
+
+-- |Pretty print a constructor or function call
+ppComb :: Int -> QName -> [Expr] -> Doc
+ppComb _ qn []      = ppPrefixOp qn
+ppComb p qn [e1,e2]
+  | isInfixOp qn    = parenIf (p > 0)
+                    $ hsep [ppExpr 1 e1, ppInfixOp qn, ppExpr 1 e2]
+ppComb p qn es      = parenIf (p > 0)
+                    $ hsep (ppPrefixOp qn : map (ppExpr 1) es)
+
 -- |pretty-print a list of declarations
 ppDecls :: [(VarIndex, Expr)] -> Doc
 ppDecls = vcat . map ppDecl
@@ -131,7 +170,7 @@ ppDecls = vcat . map ppDecl
 ppDecl :: (VarIndex, Expr) -> Doc
 ppDecl (v, e) = ppVarIndex v <+> equals <+> ppExpr 0 e
 
--- |pretty-print the (f)case keyword
+-- |pretty-print the type of a case expression
 ppCaseType :: CaseType -> Doc
 ppCaseType Rigid = text "case"
 ppCaseType Flex  = text "fcase"
@@ -142,54 +181,28 @@ ppBranch (Branch p e) = ppPattern p <+> rarrow <+> ppExpr 0 e
 
 -- |pretty-print a pattern
 ppPattern :: Pattern -> Doc
-ppPattern (Pattern  qn vs) = ppPrefixOp qn <+> fsep (map ppVarIndex vs)
-ppPattern (LPattern     l) = ppLiteral l
-
--- |pretty-print a literal
-ppLiteral :: Literal -> Doc
-ppLiteral (Intc   i) = integer i
-ppLiteral (Floatc f) = double  f
-ppLiteral (Charc  c) = text (showEscape c)
-
-showEscape :: Char -> String
-showEscape c
-  | o <   10  = "'\\00" ++ show o ++ "'"
-  | o <   32  = "'\\0"  ++ show o ++ "'"
-  | o == 127  = "'\\127'"
-  | otherwise = show c
-  where o = ord c
-
--- |pretty-print a operator fixity declaration
-ppOpDecl :: OpDecl -> Doc
-ppOpDecl (Op qn fix n) = ppFixity fix <+> int n <+> ppInfixOp qn
-
--- |pretty-print the associativity keyword
-ppFixity :: Fixity -> Doc
-ppFixity InfixOp  = text "infix"
-ppFixity InfixlOp = text "infixl"
-ppFixity InfixrOp = text "infixr"
-
--- |pretty-print a variable
-ppVarIndex :: VarIndex -> Doc
-ppVarIndex i = text $ 'v' : show i
+ppPattern (Pattern c [v1,v2])
+  | isInfixOp c               = ppVarIndex v1 <+> ppInfixOp c <+> ppVarIndex v2
+ppPattern (Pattern  c     vs) = fsep (ppPrefixOp c : map ppVarIndex vs)
+ppPattern (LPattern        l) = ppLiteral l
 
 -- Names
 
--- |pretty-print a qualified name
-ppQName :: QName -> Doc
-ppQName (m, i) = text $ concat [m, ".", i]
-
--- |pretty-print a name in prefix manner
+-- |pretty-print a prefix operator
 ppPrefixOp :: QName -> Doc
 ppPrefixOp qn = parenIf (isInfixOp qn) (ppQName qn)
 
 -- |pretty-print a name in infix manner
 ppInfixOp :: QName -> Doc
-ppInfixOp qn = backqouteIf (not (isInfixOp qn)) (ppQName qn)
+ppInfixOp qn = if isInfixOp qn then ppQName qn else bquotes (ppQName qn)
 
--- |Is a 'QName' an infix operator?
+-- |pretty-print a qualified name
+ppQName :: QName -> Doc
+ppQName (m, i) = text $ m ++ '.' : i
+
+-- |Check whether an operator is an infix operator
 isInfixOp :: QName -> Bool
-isInfixOp (_, i) = all (`elem` "~!@#$%^&*+-=<>:?./|\\") i
+isInfixOp = all (`elem` "~!@#$%^&*+-=<>:?./|\\") . snd
 
 -- Helper
 
@@ -211,14 +224,8 @@ list = fsep . punctuate comma
 parenIf :: Bool -> Doc -> Doc
 parenIf b doc = if b then parens doc else doc
 
-backqouteIf :: Bool -> Doc -> Doc
-backqouteIf b doc = if b then backQuote <> doc <> backQuote else doc
-
-vbar :: Doc
-vbar = text "|"
+bquotes :: Doc -> Doc
+bquotes doc = char '`' <> doc <> char '`'
 
 rarrow :: Doc
 rarrow = text "->"
-
-backQuote :: Doc
-backQuote = char '`'

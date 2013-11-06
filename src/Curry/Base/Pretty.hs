@@ -17,6 +17,7 @@ module Curry.Base.Pretty
   , module Text.PrettyPrint
   ) where
 
+import Data.List        (intersperse)
 import Text.PrettyPrint
 
 -- | Pretty printing class.
@@ -43,6 +44,18 @@ prettyShow = render . pPrint
 parenIf :: Bool -> Doc -> Doc
 parenIf False = id
 parenIf True  = parens
+
+-- | Pretty print a 'Maybe' value for the 'Just' constructor only
+maybePP :: (a -> Doc) -> Maybe a -> Doc
+maybePP pp = maybe empty pp
+
+-- | A blank line.
+blankLine :: Doc
+blankLine = text ""
+
+-- | Seperate a list of 'Doc's by a 'blankLine'.
+sepByBlankLine :: [Doc] -> Doc
+sepByBlankLine = vcat . intersperse blankLine
 
 -- |A '.' character.
 dot :: Doc
