@@ -1,6 +1,6 @@
 {- |
     Module      :  $Header$
-    Description :  Type class for equivalence check
+    Description :  Type class for equivalence checks
     Copyright   :  (c) 2013 Björn Peemöller
     License     :  OtherLicense
 

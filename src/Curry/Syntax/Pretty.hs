@@ -27,14 +27,30 @@ import Curry.Syntax.Utils (opName)
 
 -- |Pretty print a module
 ppModule :: Module -> Doc
-ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppSepBlock ds
+ppModule (Module ps m es is ds) = ppModuleHeader ps m es is $$ ppSepBlock ds
 
-ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> [ImportDecl] -> Doc
-ppModuleHeader m es is
+ppModuleHeader :: [ModulePragma] -> ModuleIdent -> Maybe ExportSpec
+               -> [ImportDecl] -> Doc
+ppModuleHeader ps m es is
   | null is   = header
   | otherwise = header $+$ text "" $+$ (vcat $ map ppImportDecl is)
-  where header = text "module" <+> ppMIdent m
+  where header = (vcat $ map ppModulePragma ps)
+                 $+$ text "module" <+> ppMIdent m
                  <+> maybePP ppExportSpec es <+> text "where"
+
+ppModulePragma :: ModulePragma -> Doc
+ppModulePragma (LanguagePragma _      exts) = text "{-# LANGUAGE"
+  <+> list (map ppExtension exts) <+> text "#-}"
+ppModulePragma (OptionsPragma  _ tool args) = text "{-# OPTIONS"
+  <> maybe empty ((text "_" <>) . ppTool) tool <+> text args <+> text "#-}"
+
+ppExtension :: Extension -> Doc
+ppExtension (KnownExtension   _ e) = text (show e)
+ppExtension (UnknownExtension _ e) = text e
+
+ppTool :: Tool -> Doc
+ppTool (UnknownTool t) = text t
+ppTool t               = text (show t)
 
 ppExportSpec :: ExportSpec -> Doc
 ppExportSpec (Exporting _ es) = parenList (map ppExport es)
