@@ -41,8 +41,9 @@ Version 0.3.8
 =============
 
   * The parser now takes the layout into respect when parsing the import
-    list. This fixes issue #494 where a module with imports, but without
-    other declarations could not be parsed.
+    list. This fixes issue #494 where a module with imports without
+    restrictions, directly followed by an operator definition,
+    could not be parsed.
 
   * Various internal improvements.
 
