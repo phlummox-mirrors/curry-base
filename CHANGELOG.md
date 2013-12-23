@@ -1,6 +1,9 @@
 Change log for curry-base
 =========================
 
+Version 0.3.10 (under development)
+==================================
+
 Version 0.3.9
 =============
 
