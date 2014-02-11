@@ -30,7 +30,7 @@ module Curry.Base.Position
   , SrcRef (..), SrcRefOf (..), srcRef, noRef, mk, mk', incSrcRef
   ) where
 
-import Data.Generics     (Data(..), Typeable (..))
+import Data.Generics     (Data(..), Typeable)
 import System.FilePath
 
 import Curry.Base.Pretty

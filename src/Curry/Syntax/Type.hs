@@ -37,7 +37,7 @@ module Curry.Syntax.Type
   , Goal (..)
   ) where
 
-import Data.Generics (Data (..), Typeable (..))
+import Data.Generics (Data (..), Typeable)
 
 import Curry.Base.Ident
 import Curry.Base.Position
