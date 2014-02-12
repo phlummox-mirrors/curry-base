@@ -4,6 +4,30 @@ Change log for curry-base
 Version 0.3.10 (under development)
 ==================================
 
+  * Make library under GHC 7.8 without warnings.
+
+  * The definition of AbstractCurry has been changed to incorporate
+    new features and remove unused features.
+
+    New features include:
+
+      * String literals
+      * Flexible case expressions
+
+    Removed features include:
+
+      * Evaluation annotations
+      * Target for external functions
+
+  * Unliterating and lexing/parsing of source files are now decoupled
+    to support custom preprocessors.
+
+  * Split `Curry.AbstractCurry` and `Curry.FlatCurry` into two modules
+    `.Type` and `.Files`, where `.Type` now only contains the type definition
+    while `.Files` contains read/write functions.
+    Both are subsumed by the parent modules `Curry.AbstractCurry`
+    and `Curry.FlatCurry` for convenience.
+
 Version 0.3.9
 =============
 
