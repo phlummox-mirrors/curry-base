@@ -50,6 +50,8 @@ Library
   ghc-options: -Wall
   Exposed-Modules:
     Curry.AbstractCurry
+    Curry.AbstractCurry.Files
+    Curry.AbstractCurry.Type
     Curry.Base.Equiv
     Curry.Base.Ident
     Curry.Base.LexComb
@@ -66,12 +68,14 @@ Library
     Curry.ExtendedFlat.Type
     Curry.ExtendedFlat.TypeInference
     Curry.ExtendedFlat.UnMutual
-    Curry.FlatCurry.Goodies
-    Curry.FlatCurry.Pretty
-    Curry.FlatCurry.Type
     Curry.Files.Filenames
     Curry.Files.PathUtils
     Curry.Files.Unlit
+    Curry.FlatCurry
+    Curry.FlatCurry.Files
+    Curry.FlatCurry.Goodies
+    Curry.FlatCurry.Pretty
+    Curry.FlatCurry.Type
     Curry.Syntax
     Curry.Syntax.Extension
     Curry.Syntax.Lexer
