@@ -66,7 +66,7 @@ module Curry.Base.Ident
 
 import Data.Char           (isAlpha, isAlphaNum, isSpace)
 import Data.Function       (on)
-import Data.Generics       (Data(..), Typeable)
+import Data.Generics       (Data, Typeable)
 import Data.List           (intercalate, isInfixOf, isPrefixOf)
 import Data.Maybe          (isJust, fromMaybe)
 

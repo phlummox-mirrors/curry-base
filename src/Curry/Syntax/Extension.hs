@@ -20,8 +20,8 @@ module Curry.Syntax.Extension
   , Tool (..), classifyTool
   ) where
 
-import Data.Char     (toUpper)
-import Data.Generics (Data (..), Typeable (..))
+import Data.Char           (toUpper)
+import Data.Generics       (Data, Typeable)
 
 import Curry.Base.Ident    (Ident (..))
 import Curry.Base.Position
