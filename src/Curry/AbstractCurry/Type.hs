@@ -199,16 +199,16 @@ data CRule = CRule [CPattern] CRhs
 
 -- |Right-hand-side of a 'CRule' or an @case@ expression
 data CRhs
-  = CSimpleRhs  CExpr [CLocalDecl] -- @expr where decls@
-  | CGuardedRhs [(CExpr, CExpr)] [CLocalDecl]          -- @| cond = expr where decls@
+  = CSimpleRhs  CExpr            [CLocalDecl] -- @expr where decls@
+  | CGuardedRhs [(CExpr, CExpr)] [CLocalDecl] -- @| cond = expr where decls@
     deriving (Eq, Read, Show)
 
 
 -- | Local (let/where) declarations
 data CLocalDecl
-  = CLocalFunc CFuncDecl                  -- ^ local function declaration
-  | CLocalPat CPattern CExpr [CLocalDecl] -- ^ local pattern declaration
-  | CLocalVar CVarIName                   -- ^ local free variable declaration
+  = CLocalFunc CFuncDecl     -- ^ local function declaration
+  | CLocalPat  CPattern CRhs -- ^ local pattern declaration
+  | CLocalVar  CVarIName     -- ^ local free variable declaration
     deriving (Eq, Read, Show)
 
 

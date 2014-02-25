@@ -36,7 +36,7 @@ module Curry.Base.Ident
     -- * Qualified identifiers
   , QualIdent (..), qualName, escQualName, qidPosition, isQInfixOp, qualify
   , qualifyWith, qualQualify, qualifyLike, isQualified, unqualify, qualUnqualify
-  , localIdent, updQualIdent, addRef
+  , localIdent, isLocalIdent, updQualIdent, addRef
 
     -- * Predefined simple identifiers
     -- ** Identifiers for modules
@@ -363,6 +363,10 @@ localIdent _ (QualIdent Nothing   x) = Just x
 localIdent m (QualIdent (Just m') x)
   | m == m'   = Just x
   | otherwise = Nothing
+
+-- |Check whether the given 'QualIdent' is local to the given 'ModuleIdent'.
+isLocalIdent :: ModuleIdent -> QualIdent -> Bool
+isLocalIdent mid qid = isJust (localIdent mid qid)
 
 -- | Update a 'QualIdent' by applying functions to its components
 updQualIdent :: (ModuleIdent -> ModuleIdent) -> (Ident -> Ident)

@@ -3,7 +3,7 @@
     Description :  Utility functions for Curry's abstract syntax
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2013 Björn Peemöller
+                       2011 - 2014 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -17,7 +17,7 @@
 module Curry.Syntax.Utils
   ( hasLanguageExtension, knownExtensions
   , isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl, patchModuleId
+  , isRecordDecl, isFunctionDecl, isExternalDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   ) where
@@ -73,12 +73,23 @@ isValueDecl (ForeignDecl _ _ _ _ _) = True
 isValueDecl (ExternalDecl      _ _) = True
 isValueDecl (PatternDecl     _ _ _) = True
 isValueDecl (FreeDecl          _ _) = True
-isValueDecl _ = False
+isValueDecl _                       = False
 
 -- |Is the declaration a record declaration?
 isRecordDecl :: Decl -> Bool
 isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
 isRecordDecl _                                 = False
+
+-- |Is the declaration a function declaration?
+isFunctionDecl :: Decl -> Bool
+isFunctionDecl (FunctionDecl _ _ _) = True
+isFunctionDecl _                    = False
+
+-- |Is the declaration an external declaration?
+isExternalDecl :: Decl -> Bool
+isExternalDecl (ForeignDecl _ _ _ _ _) = True
+isExternalDecl (ExternalDecl      _ _) = True
+isExternalDecl _                       = False
 
 -- |Convert an infix operator into an expression
 infixOp :: InfixOp -> Expression
