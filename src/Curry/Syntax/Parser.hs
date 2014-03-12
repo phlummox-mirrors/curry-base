@@ -892,7 +892,7 @@ expectWhere :: Parser Token Attributes a
 expectWhere = token KW_where <?> "where expected"
 
 expectSelect :: Parser Token Attributes a
-expectSelect = token Select <?> ":-> expected"
+expectSelect = token Select <?> ":> expected"
 
 expectRightArrow :: Parser Token Attributes a
 expectRightArrow  = token RightArrow <?> "-> expected"

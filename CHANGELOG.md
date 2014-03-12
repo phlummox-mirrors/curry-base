@@ -4,6 +4,9 @@ Change log for curry-base
 Version 0.3.10 (under development)
 ==================================
 
+  * Fixed bug in parser which complained `:-> expected` when it really
+    looked for `:>`.
+
   * Make library under GHC 7.8 without warnings.
 
   * The definition of AbstractCurry has been changed to incorporate
