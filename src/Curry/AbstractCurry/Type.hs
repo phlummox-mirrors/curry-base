@@ -215,9 +215,9 @@ data CRule = CRule [CPattern] [(CExpr, CExpr)] [CLocalDecl]
 
 -- | Local (let/where) declarations
 data CLocalDecl
-  = CLocalFunc CFuncDecl     -- ^ local function declaration
-  | CLocalPat  CPattern CRhs -- ^ local pattern declaration
-  | CLocalVar  CVarIName     -- ^ local free variable declaration
+  = CLocalFunc CFuncDecl                  -- ^ local function declaration
+  | CLocalPat CPattern CExpr [CLocalDecl] -- ^ local pattern declaration
+  | CLocalVar  CVarIName                  -- ^ local free variable declaration
     deriving (Eq, Read, Show)
 
 

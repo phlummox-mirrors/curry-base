@@ -13,13 +13,8 @@
 {-# LANGUAGE CPP #-}
 
 module Curry.Files.PathUtils
-  ( -- * Re-exports from 'System.FilePath'
-    takeBaseName, dropExtension, takeExtension, takeFileName
-
-  , moduleNameToFile, fileNameToModule, isCurryFilePath
-
-    -- * Retrieving curry files
-  , lookupCurryFileIn     , lookupCurryFile
+  ( -- * Retrieving curry files
+    lookupCurryFileIn     , lookupCurryFile
   , lookupCurryModuleIn   , lookupCurryModule
   , lookupCurryInterfaceIn, lookupCurryInterface
   , lookupFileIn          , lookupFile
@@ -29,9 +24,9 @@ module Curry.Files.PathUtils
   ) where
 
 import qualified Control.Exception as C (IOException, handle)
-import Control.Monad (liftM, liftM2)
-import System.FilePath
-import System.Directory
+import           Control.Monad          (liftM, liftM2)
+import           System.FilePath
+import           System.Directory
 
 #if MIN_VERSION_directory(1,2,0)
 import Data.Time (UTCTime)
@@ -41,20 +36,6 @@ import System.Time (ClockTime)
 
 import Curry.Base.Ident
 import Curry.Files.Filenames
-
--- |Create a 'FilePath' from a 'ModuleIdent' using the hierarchical module
--- system
-moduleNameToFile :: ModuleIdent -> FilePath
-moduleNameToFile = foldr1 (</>) . midQualifiers
-
--- |Extract the 'ModuleIdent' from a 'FilePath'
-fileNameToModule :: FilePath -> ModuleIdent
-fileNameToModule = mkMIdent . splitDirectories . dropExtension . dropDrive
-
--- |Checks whether a 'String' represents a 'FilePath' to a Curry module
-isCurryFilePath :: String -> Bool
-isCurryFilePath str =  isValid str
-                    && takeExtension str `elem` ("" : moduleExts)
 
 -- ---------------------------------------------------------------------------
 -- Searching for files
@@ -67,7 +48,7 @@ isCurryFilePath str =  isValid str
 --   in are ignored.
 -- - If the file name has no extension, then a source file extension is
 --   assumed.
-lookupCurryFileIn :: [FilePath] -> FilePath -> IO (Maybe (FilePath,FilePath))
+lookupCurryFileIn :: [FilePath] -> FilePath -> IO (Maybe (FilePath, FilePath))
 lookupCurryFileIn paths fn = lookupFileIn ("." : paths') exts fn
   where
   paths' | pathSeparator `elem` fn = []
@@ -151,7 +132,7 @@ writeModule :: Bool     -- ^ should the 'currySubdir' be included in the path?
             -> String   -- ^ file content
             -> IO ()
 writeModule inSubdir fn contents = do
-  let fn' = if inSubdir then ensureCurrySubdir fn else fn
+  let fn' = addCurrySubdir inSubdir fn
   createDirectoryIfMissing True $ takeDirectory fn'
   writeFile fn' contents
 
@@ -182,26 +163,6 @@ getModuleModTime = tryOnExistingFile getModificationTime
 combineM :: (Monad m, Monad m1) => (m (m1 (FilePath, FilePath)))
          -> (m (m1 FilePath))
 combineM = liftM (liftM $ uncurry combine)
-
--- | Ensure that the 'currySubdir' is the last component of the
--- directory structure of the given 'FilePath'. If the 'FilePath' already
--- contains the 'currySubdir', it remains unchanged.
-ensureCurrySubdir :: FilePath -> FilePath
-ensureCurrySubdir = ensureSubdir currySubdir
-
--- | Ensure that the given sub-directory is the last component of the
--- directory structure of the given 'FilePath'. If the 'FilePath' already
--- contains the sub-directory it remains unchanged.
-ensureSubdir :: String   -- ^ sub-directory to add
-             -> FilePath -- ^ original 'FilePath'
-             -> FilePath -- ^ original 'FilePath'
-ensureSubdir subdir file
-  = replaceDirectory file $ addSub (splitDirectories $ takeDirectory file)
-  where
-  addSub :: [String] -> String
-  addSub dirs | null dirs           = subdir
-              | last dirs == subdir = joinPath dirs
-              | otherwise           = joinPath dirs </> subdir
 
 tryOnExistingFile :: (FilePath -> IO a) -> FilePath -> IO (Maybe a)
 tryOnExistingFile action fn = C.handle ignoreIOException $ do

@@ -57,8 +57,7 @@ readFlat = liftM (liftM (read . skipComment)) . readModule where
 -- If the flag is set, the file will be written into the hidden @.curry@
 -- sub-directory.
 writeFlatCurry :: Bool -> FilePath -> Prog -> IO ()
-writeFlatCurry inHiddenSubdir filename
-  = writeModule inHiddenSubdir filename . showFlatCurry
+writeFlatCurry subdir fn = writeModule subdir fn . showFlatCurry
 
 -- |Shows FlatCurry program in a nicer way.
 showFlatCurry :: Prog -> String

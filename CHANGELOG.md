@@ -4,6 +4,9 @@ Change log for curry-base
 Version 0.3.10 (under development)
 ==================================
 
+  * Updated internal structure of `Curry.Base.Filenames` and
+    `Curry.Base.PathUtils`.
+
   * Fixed bug in parser which complained `:-> expected` when it really
     looked for `:>`.
 

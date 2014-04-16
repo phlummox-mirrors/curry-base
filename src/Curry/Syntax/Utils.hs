@@ -27,10 +27,9 @@ import Data.Generics
 
 import Curry.Base.Ident
 import Curry.Base.Position
+import Curry.Files.Filenames (takeBaseName)
 import Curry.Syntax.Extension
 import Curry.Syntax.Type
-
-import Curry.Files.PathUtils
 
 -- |Check whether a 'Module' has a specific 'KnownExtension' enabled by a pragma
 hasLanguageExtension :: Module -> KnownExtension -> Bool

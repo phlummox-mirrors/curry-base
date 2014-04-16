@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Handling of literate Curry files
-    Copyright   :  (c) 2009 Holger Siegel
-                       2012 Björn Peemöller
+    Copyright   :  (c) 2009         Holger Siegel
+                       2012  - 2014 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -20,13 +20,12 @@
 
 module Curry.Files.Unlit (isLiterate, unlit) where
 
-import Control.Monad    (when, zipWithM)
-import Data.Char        (isSpace)
+import Control.Monad         (when, zipWithM)
+import Data.Char             (isSpace)
 
 import Curry.Base.Position   (Position (..), first, noRef)
 import Curry.Base.Message    (MessageM, failWithAt)
-import Curry.Files.Filenames (lcurryExt)
-import Curry.Files.PathUtils (takeExtension)
+import Curry.Files.Filenames (lcurryExt, takeExtension)
 
 -- |Check whether a 'FilePath' represents a literate Curry module
 isLiterate :: FilePath -> Bool
@@ -48,7 +47,7 @@ unlit fn cy
       return (unlines ls)
   | otherwise     = return cy
 
--- |Classify a line
+-- |Classification of a single program line
 classify :: Int -> String -> Line
 classify l ('>' : cs) = Program l cs
 classify _ cs | all isSpace cs = Blank

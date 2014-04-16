@@ -1,7 +1,7 @@
 {- |
     Module      :  $Header$
     Description :  Type class for equivalence checks
-    Copyright   :  (c) 2013 Björn Peemöller
+    Copyright   :  (c) 2013 - 2014 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -21,11 +21,13 @@ class Equiv a where
   -- |Test if two values are equivalent
   (=~=) :: a -> a -> Bool
 
+-- |Instance for 'Maybe'
 instance Equiv a => Equiv (Maybe a) where
   Nothing =~= Nothing = True
   Just x  =~= Just y  = x =~= y
   _       =~= _       = False
 
+-- |Instance for '[]'
 instance Equiv a => Equiv [a] where
   []   =~= []   = True
   x:xs =~= y:ys = x =~= y && xs =~= ys
