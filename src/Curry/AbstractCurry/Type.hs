@@ -1,9 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Library to support meta-programming in Curry
-    Copyright   :  Michael Hanus  , April 2004
-                   Martin Engelke , July 2005
-                   Björn Peemöller, November 2013
+    Copyright   :  (c) Michael Hanus, April 2004
+                       Martin Engelke, July 2005
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -24,9 +23,9 @@
 module Curry.AbstractCurry.Type
   ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
   , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
-  , CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
-  , CLocalDecl (..), CExpr (..), CCaseType (..), CStatement (..)
-  , CPattern (..), CLiteral (..), CField
+  , CVarIName, CFuncDecl (..), CRules (..), CEvalAnnot (..), CRule (..)
+  , CLocalDecl (..), CExpr (..), CStatement (..), CPattern (..)
+  , CBranchExpr (..), CLiteral (..), CField
   ) where
 
 -- ---------------------------------------------------------------------------
@@ -181,10 +180,27 @@ data CFixity
 
     Thus, a function declaration consists of the name, arity, type, and
     a list of rules.
-
-    If the list of rules is empty the function is considered to be externally defined.
 -}
-data CFuncDecl = CFunc QName Int CVisibility CTypeExpr [CRule]
+data CFuncDecl = CFunc QName Int CVisibility CTypeExpr CRules
+    deriving (Eq, Read, Show)
+
+
+{- |A funcztion either consists of a list of general program rules with
+    an evaluation annotation, or it is externally defined.
+-}
+data CRules
+  = CRules CEvalAnnot [CRule] -- ^ general program rule
+  | CExternal String          -- ^ externally defined
+    deriving (Eq, Read, Show)
+
+
+{- |Evaluation annotations for functions.
+    They can be either flexible (default), rigid, or choice.
+-}
+data CEvalAnnot
+  = CFlex
+  | CRigid
+  | CChoice
     deriving (Eq, Read, Show)
 
 
@@ -193,14 +209,7 @@ data CFuncDecl = CFunc QName Int CVisibility CTypeExpr [CRule]
     source text) with their corresponding right-hand sides, and
     a list of local declarations.
 -}
-data CRule = CRule [CPattern] CRhs
-    deriving (Eq, Read, Show)
-
-
--- |Right-hand-side of a 'CRule' or an @case@ expression
-data CRhs
-  = CSimpleRhs  CExpr            [CLocalDecl] -- @expr where decls@
-  | CGuardedRhs [(CExpr, CExpr)] [CLocalDecl] -- @| cond = expr where decls@
+data CRule = CRule [CPattern] [(CExpr, CExpr)] [CLocalDecl]
     deriving (Eq, Read, Show)
 
 
@@ -231,7 +240,7 @@ data CPattern
   | CPComb QName [CPattern]
     -- |as-pattern (extended Curry)
   | CPAs CVarIName CPattern
-    -- |functional pattern (extended Curry)
+    -- |function pattern (extended Curry)
   | CPFuncComb QName [CPattern]
     -- |lazy pattern (extended Curry)
   | CPLazy CPattern
@@ -250,8 +259,7 @@ data CExpr
   | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
   | CDoExpr    [CStatement]         -- ^ do expression
   | CListComp  CExpr [CStatement]   -- ^ list comprehension
-  | CCase      CCaseType CExpr [(CPattern, CRhs)]  -- ^ case expression
-  | CTyped     CExpr CTypeExpr      -- ^ typed expression
+  | CCase      CExpr [CBranchExpr]  -- ^ case expression
   | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
   | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
   | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
@@ -271,7 +279,6 @@ data CLiteral
   = CIntc   Integer -- ^ Int literal
   | CFloatc Double  -- ^ Float literal
   | CCharc  Char    -- ^ Char literal
-  | CString String  -- ^ String literal
     deriving (Eq, Read, Show)
 
 
@@ -283,8 +290,8 @@ data CStatement
     deriving (Eq, Read, Show)
 
 
--- |Type of case expressions
-data CCaseType
-  = CRigid -- ^ rigid case expression
-  | CFlex  -- ^ flexible case expression
+-- |Branches in case expressions.
+data CBranchExpr
+  = CBranch        CPattern CExpr
+  | CGuardedBranch CPattern [(CExpr, CExpr)]
     deriving (Eq, Read, Show)
