@@ -1,8 +1,8 @@
 Change log for curry-base
 =========================
 
-Version 0.3.10 (under development)
-==================================
+Version 0.3.10
+==============
 
   * Updated internal structure of `Curry.Base.Filenames` and
     `Curry.Base.PathUtils`.
