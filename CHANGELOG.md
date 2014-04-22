@@ -10,20 +10,7 @@ Version 0.3.10
   * Fixed bug in parser which complained `:-> expected` when it really
     looked for `:>`.
 
-  * Make library under GHC 7.8 without warnings.
-
-  * The definition of AbstractCurry has been changed to incorporate
-    new features and remove unused features.
-
-    New features include:
-
-      * String literals
-      * Flexible case expressions
-
-    Removed features include:
-
-      * Evaluation annotations
-      * Target for external functions
+  * Make library compile under GHC 7.8 without warnings.
 
   * Unliterating and lexing/parsing of source files are now decoupled
     to support custom preprocessors.
