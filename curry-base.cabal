@@ -16,10 +16,6 @@ Homepage:      http://curry-language.org
 Build-Type:    Simple
 Stability:     experimental
 
-Flag split-syb
-  Description: Has the syb functionality been split into the package syb?
-  Default:     True
-
 Flag broken-directory
   Description: Is the cabal configuration of directory incomplete?
   Default:     False
@@ -30,10 +26,7 @@ Flag old-time
 
 Library
   hs-source-dirs: src
-  if flag(split-syb)
-    Build-Depends: base == 4.*, syb
-  else
-    Build-Depends: base == 3.*
+  Build-Depends: base == 4.*, syb >= 0.3
   if flag(broken-directory) {
     Build-Depends: time, directory == 1.2.0.0, base >= 4.6
   } else  { if flag(old-time) {
