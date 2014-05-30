@@ -4,6 +4,10 @@ Change log for curry-base
 Version 0.3.10
 ==============
 
+  * Added syntax extension `NegativeLiterals` to translate negated literals
+    into negative literals instead of a call to `Prelude.negate` and
+    `Prelude.negateFloat`, respectively.
+
   * Updated internal structure of `Curry.Base.Filenames` and
     `Curry.Base.PathUtils`.
 

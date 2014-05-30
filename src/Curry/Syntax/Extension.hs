@@ -43,6 +43,7 @@ instance HasPosition Extension where
 data KnownExtension
   = AnonFreeVars       -- ^ anonymous free variables
   | FunctionalPatterns -- ^ functional patterns
+  | NegativeLiterals   -- ^ negative literals
   | NoImplicitPrelude  -- ^ no implicit import of the prelude
   | Records            -- ^ record syntax
     deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
