@@ -1,12 +1,18 @@
 Change log for curry-base
 =========================
 
-Version 0.3.10
-==============
+Under Development
+=================
 
   * Added syntax extension `NegativeLiterals` to translate negated literals
     into negative literals instead of a call to `Prelude.negate` and
     `Prelude.negateFloat`, respectively.
+
+  * Added `CYMAKE` to the list of recognized tools when parsing an options
+    pragma (`{-# OPTIONS_CYMAKE opt1 opt2 ... optN #-}`).
+
+Version 0.3.10
+==============
 
   * Updated internal structure of `Curry.Base.Filenames` and
     `Curry.Base.PathUtils`.
