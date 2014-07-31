@@ -27,7 +27,7 @@ module Curry.Files.Filenames
   , curryExt, lcurryExt, icurryExt
 
     -- ** FlatCurry files
-  , flatExt, extFlatExt, flatIntExt, xmlExt, xmlSuffix
+  , flatExt, extFlatExt, flatIntExt
 
     -- ** AbstractCurry files
   , acyExt, uacyExt
@@ -36,9 +36,8 @@ module Curry.Files.Filenames
   , sourceRepExt, sourceExts, moduleExts
 
     -- * Functions for computing file names
-  , interfName, flatName, extFlatName, flatIntName, xmlName
-  , acyName, uacyName
-  , sourceRepName
+  , interfName, flatName, extFlatName, flatIntName
+  , acyName, uacyName, sourceRepName
   ) where
 
 import System.FilePath
@@ -140,14 +139,6 @@ extFlatExt = ".efc"
 flatIntExt :: String
 flatIntExt = ".fint"
 
--- |Filename extension for extended-flat-curry xml files
-xmlExt :: String
-xmlExt = ".xml"
-
--- |Basename suffix for extended-flat-curry xml files
-xmlSuffix :: String
-xmlSuffix = "_flat"
-
 -- |Filename extension for abstract-curry files
 acyExt :: String
 acyExt = ".acy"
@@ -179,11 +170,6 @@ extFlatName = replaceExtensionWith extFlatExt
 -- |Compute the filename of the flat curry interface file for a source file
 flatIntName :: FilePath -> FilePath
 flatIntName = replaceExtensionWith flatIntExt
-
--- |Compute the filename of the flat curry xml file for a source file
-xmlName :: FilePath -> FilePath
-xmlName fn = replaceExtensionWith xmlExt
-           $ replaceBaseName fn (takeBaseName fn ++ xmlSuffix)
 
 -- |Compute the filename of the abstract curry file for a source file
 acyName :: FilePath -> FilePath
