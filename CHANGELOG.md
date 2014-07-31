@@ -4,6 +4,8 @@ Change log for curry-base
 Under Development
 =================
 
+  * Removed file name extensions for FlatCurry XML files.
+
   * Added syntax extension `NegativeLiterals` to translate negated literals
     into negative literals instead of a call to `Prelude.negate` and
     `Prelude.negateFloat`, respectively.
@@ -54,7 +56,7 @@ Version 0.3.9
 
     Note that, naturally, the curry-base library only recognizes the above
     mentioned pragmas, while the processing is up to the respective tool.
-    
+
     All other texts given in the pragma braces is ignored and treated as
     a nested comment.
 
@@ -113,7 +115,7 @@ Version 0.3.2
 =============
 
   * Improved pretty-printing of warnings and errors.
-  
+
   * Improved error message for missing precendence after fixity declaration.
 
   * Changed syntax of records to allow disambiguation of record selection
