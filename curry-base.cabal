@@ -45,7 +45,6 @@ Library
     Curry.AbstractCurry
     Curry.AbstractCurry.Files
     Curry.AbstractCurry.Type
-    Curry.Base.Equiv
     Curry.Base.Ident
     Curry.Base.LexComb
     Curry.Base.LLParseComb
@@ -55,7 +54,7 @@ Library
     Curry.ExtendedFlat.CurryArithmetics
     Curry.ExtendedFlat.EraseTypes
     Curry.ExtendedFlat.Goodies
-    Curry.ExtendedFlat.InterfaceEquality
+    Curry.ExtendedFlat.InterfaceEquivalence
     Curry.ExtendedFlat.LiftLetrec
     Curry.ExtendedFlat.MonadicGoodies
     Curry.ExtendedFlat.Type
@@ -71,6 +70,7 @@ Library
     Curry.FlatCurry.Type
     Curry.Syntax
     Curry.Syntax.Extension
+    Curry.Syntax.InterfaceEquivalence
     Curry.Syntax.Lexer
     Curry.Syntax.Parser
     Curry.Syntax.Pretty

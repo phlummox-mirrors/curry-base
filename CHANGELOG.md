@@ -4,6 +4,15 @@ Change log for curry-base
 Under Development
 =================
 
+  * Moved module `InterfaceEquivalence` (curry-frontend) to
+    `Curry.Syntax.InterfaceEquivalence` (curry-base)
+
+  * Removed module `Curry.Base.Equiv`
+
+  * Replaced module `Curry.ExtendedFlat.Interface.Equality` by
+    `Curry.ExtendedFlat.InterfaceEquivalence` using a type class to
+    implement equivalence of FlatCurry interfaces
+
   * Removed file name extensions for FlatCurry XML files.
 
   * Added syntax extension `NegativeLiterals` to translate negated literals
