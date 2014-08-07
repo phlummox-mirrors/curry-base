@@ -15,12 +15,6 @@
     entity has been changed, or an export was removed or added. The
     function 'intfEquiv' checks whether two interfaces are
     equivalent, i.e., whether they define the same entities.
-
-    /Note: There is deliberately no list instance for
-    'IntfEquiv' because the order of interface declarations is
-    irrelevant, whereas it is decisive for the constructor declarations
-    of a data type. By not providing a list instance, we cannot
-    inadvertently mix up these cases.
 -}
 module Curry.Syntax.InterfaceEquivalence (fixInterface, intfEquiv) where
 
@@ -30,63 +24,69 @@ import qualified Data.Set as Set
 import Curry.Base.Ident
 import Curry.Syntax
 
-infix 4 =~=, `eqvList`, `eqvSet`
+infix 4 =~=, `eqvSet`
 
+-- |Are two given interfaces equivalent?
 intfEquiv :: Interface -> Interface -> Bool
 intfEquiv = (=~=)
 
-class IntfEquiv a where
+-- |Type class to express the equivalence of two values
+class Equiv a where
   (=~=) :: a -> a -> Bool
 
-eqvList :: IntfEquiv a => [a] -> [a] -> Bool
-xs `eqvList` ys = length xs == length ys && and (zipWith (=~=) xs ys)
-
-eqvSet :: IntfEquiv a => [a] -> [a] -> Bool
-xs `eqvSet` ys = null (deleteFirstsBy (=~=) xs ys ++ deleteFirstsBy (=~=) ys xs)
-
-instance IntfEquiv a => IntfEquiv (Maybe a) where
+instance Equiv a => Equiv (Maybe a) where
   Nothing =~= Nothing = True
   Nothing =~= Just _  = False
   Just _  =~= Nothing = False
   Just x  =~= Just y  = x =~= y
 
-instance IntfEquiv Interface where
-  Interface m1 is1 ds1 =~= Interface m2 is2 ds2 =
-    m1 == m2 && is1 `eqvSet` is2 && ds1 `eqvSet` ds2
+instance Equiv a => Equiv [a] where
+  []     =~= []     = True
+  (x:xs) =~= (y:ys) = x =~= y && xs =~= ys
+  _      =~= _      = False
 
-instance IntfEquiv IImportDecl where
+eqvSet :: Equiv a => [a] -> [a] -> Bool
+xs `eqvSet` ys = null (deleteFirstsBy (=~=) xs ys ++ deleteFirstsBy (=~=) ys xs)
+
+instance Equiv Interface where
+  Interface m1 is1 ds1 =~= Interface m2 is2 ds2
+    = m1 == m2 && is1 `eqvSet` is2 && ds1 `eqvSet` ds2
+
+instance Equiv IImportDecl where
   IImportDecl _ m1 =~= IImportDecl _ m2 = m1 == m2
 
-instance IntfEquiv IDecl where
-  IInfixDecl _ fix1 p1 op1 =~= IInfixDecl _ fix2 p2 op2 =
-    fix1 == fix2 && p1 == p2 && op1 == op2
-  HidingDataDecl _ tc1 tvs1 =~= HidingDataDecl _ tc2 tvs2 =
-    tc1 == tc2 && tvs1 == tvs2
-  IDataDecl _ tc1 tvs1 cs1 =~= IDataDecl _ tc2 tvs2 cs2 =
-    tc1 == tc2 && tvs1 == tvs2 && cs1 `eqvList` cs2
-  INewtypeDecl _ tc1 tvs1 nc1 =~= INewtypeDecl _ tc2 tvs2 nc2 =
-    tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2
-  ITypeDecl _ tc1 tvs1 ty1 =~= ITypeDecl _ tc2 tvs2 ty2 =
-    tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2
-  IFunctionDecl _ f1 n1 ty1 =~= IFunctionDecl _ f2 n2 ty2 =
-    f1 == f2 && n1 == n2 && ty1 == ty2
+instance Equiv IDecl where
+  IInfixDecl _ fix1 p1 op1 =~= IInfixDecl _ fix2 p2 op2
+    = fix1 == fix2 && p1 == p2 && op1 == op2
+  HidingDataDecl _ tc1 tvs1 =~= HidingDataDecl _ tc2 tvs2
+    = tc1 == tc2 && tvs1 == tvs2
+  IDataDecl _ tc1 tvs1 cs1 =~= IDataDecl _ tc2 tvs2 cs2
+    = tc1 == tc2 && tvs1 == tvs2 && cs1 =~= cs2
+  INewtypeDecl _ tc1 tvs1 nc1 =~= INewtypeDecl _ tc2 tvs2 nc2
+    = tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2
+  ITypeDecl _ tc1 tvs1 ty1 =~= ITypeDecl _ tc2 tvs2 ty2
+    = tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2
+  IFunctionDecl _ f1 n1 ty1 =~= IFunctionDecl _ f2 n2 ty2
+    = f1 == f2 && n1 == n2 && ty1 == ty2
   _ =~= _ = False
 
-instance IntfEquiv ConstrDecl where
-  ConstrDecl _ evs1 c1 tys1 =~= ConstrDecl _ evs2 c2 tys2 =
-    c1 == c2 && evs1 == evs2 && tys1 == tys2
-  ConOpDecl _ evs1 ty11 op1 ty12 =~= ConOpDecl _ evs2 ty21 op2 ty22 =
-    op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
+instance Equiv ConstrDecl where
+  ConstrDecl _ evs1 c1 tys1 =~= ConstrDecl _ evs2 c2 tys2
+    = c1 == c2 && evs1 == evs2 && tys1 == tys2
+  ConOpDecl _ evs1 ty11 op1 ty12 =~= ConOpDecl _ evs2 ty21 op2 ty22
+    = op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
   _ =~= _ = False
 
-instance IntfEquiv NewConstrDecl where
-  NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2 =
-    c1 == c2 && evs1 == evs2 && ty1 == ty2
+instance Equiv NewConstrDecl where
+  NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2
+    = c1 == c2 && evs1 == evs2 && ty1 == ty2
 
 -- If we check for a change in the interface, we do not need to check the
 -- interface declarations, but still must disambiguate (nullary) type
 -- constructors and type variables in type expressions. This is handled
 -- by function 'fixInterface' and the associated type class 'FixInterface'.
+
+-- |Disambiguate nullary type constructors and type variables.
 fixInterface :: Interface -> Interface
 fixInterface (Interface m is ds) = Interface m is $
   fix (Set.fromList (typeConstructors ds)) ds
