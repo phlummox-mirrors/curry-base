@@ -4,6 +4,9 @@ Change log for curry-base
 Under Development
 =================
 
+  * Adapted Curry syntax and parser: Now declaration of operator precendence
+    in declarations of infix operators is optional
+
   * Moved module `InterfaceEquivalence` (curry-frontend) to
     `Curry.Syntax.InterfaceEquivalence` (curry-base)
 

@@ -289,9 +289,8 @@ valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
 infixDecl :: Parser Token Decl a
 infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
 
-infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
-infixDeclLhs f = f <$> position <*> tokenOps infixKW
-                   <*> (integer <?> "precedence level expected")
+infixDeclLhs :: (Position -> Infix -> Maybe Precedence -> a) -> Parser Token a b
+infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> option integer
   where
   infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 

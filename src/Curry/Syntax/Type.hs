@@ -11,7 +11,7 @@
     Portability :  non-portable (DeriveDataTypeable)
 
     This module provides the necessary data structures to maintain the
-    parsed representation of a Curry program.
+    parsed representation of a Curry pProgram.
 -}
 
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -26,9 +26,9 @@ module Curry.Syntax.Type
     -- ** Import declarations
   , ImportDecl (..), ImportSpec (..), Import (..), Qualified
     -- * Interface
-  , Interface (..), IImportDecl (..), IDecl (..)
+  , Interface (..), IImportDecl (..), Arity, IDecl (..)
     -- * Declarations
-  , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..)
+  , Decl (..), Precedence, Infix (..), ConstrDecl (..), NewConstrDecl (..)
   , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), Pattern (..), Expression (..), InfixOp (..)
@@ -109,14 +109,17 @@ data Interface = Interface ModuleIdent [IImportDecl] [IDecl]
 data IImportDecl = IImportDecl Position ModuleIdent
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Arity of a function
+type Arity = Int
+
 -- |Interface declaration
 data IDecl
-  = IInfixDecl     Position Infix Integer QualIdent
+  = IInfixDecl     Position Infix (Maybe Precedence) QualIdent
   | HidingDataDecl Position QualIdent [Ident]
   | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
-  | IFunctionDecl  Position QualIdent Int TypeExpr
+  | IFunctionDecl  Position QualIdent Arity   TypeExpr
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -125,7 +128,7 @@ data IDecl
 
 -- |Declaration in a module
 data Decl
-  = InfixDecl    Position Infix Integer [Ident]                  -- infixl 5 (op), `fun` -- TODO: Make precedence optional and change to int
+  = InfixDecl    Position Infix (Maybe Precedence) [Ident]       -- infixl 5 (op), `fun`
   | DataDecl     Position Ident [Ident] [ConstrDecl]             -- data C a b = C1 a | C2 b
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl            -- newtype C a b = C a b
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
@@ -140,6 +143,9 @@ data Decl
 -- ---------------------------------------------------------------------------
 -- Infix declaration
 -- ---------------------------------------------------------------------------
+
+-- |Operator precedence
+type Precedence = Integer
 
 -- |Fixity of operators
 data Infix
