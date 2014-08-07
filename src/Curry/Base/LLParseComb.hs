@@ -294,14 +294,7 @@ many p = many1 p `opt` []
 
 -- |Repeatedly apply a parser for 1 or more occurences
 many1 :: Symbol s => Parser s a b -> Parser s [a] b
--- many1 p = (:) <$> p <*> many p
-many1 p = (:) <$> p <*> (many1 p `opt` [])
--- The first definition of \texttt{many1} is commented out because it
--- does not compile under nhc. This is due to a -- known -- bug in the
--- type checker of nhc which expects a default declaration when compiling
--- mutually recursive functions with class constraints. However, no such
--- default can be given in the above case because neither of the types
--- involved is a numeric type.
+many1 p = (:) <$> p <*> many p
 
 -- |Parse a list with is separated by a seperator
 sepBy :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
@@ -315,7 +308,8 @@ p `sepBy1` q = (:) <$> p <*> many (q <-*> p)
 -- Returns a value produced by a *right* associative application of all
 -- functions returned by op. If there are no occurrences of @p@, @x@ is
 -- returned.
-chainr :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
+chainr :: Symbol s
+       => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
 chainr p op x = chainr1 p op `opt` x
 
 -- |Like 'chainr', but parses one or more occurrences of p.
@@ -326,7 +320,8 @@ chainr1 p op = r where r = p <**> (flip <$> op <*> r `opt` id)
 -- Returns a value produced by a *left* associative application of all
 -- functions returned by op. If there are no occurrences of @p@, @x@ is
 -- returned.
-chainl :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
+chainl :: Symbol s
+       => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
 chainl p op x = chainl1 p op `opt` x
 
 -- |Like 'chainl', but parses one or more occurrences of p.
