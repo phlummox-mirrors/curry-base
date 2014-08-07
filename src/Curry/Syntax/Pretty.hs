@@ -169,7 +169,7 @@ ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
 -- |Pretty print an interface declaration
 ppIDecl :: IDecl -> Doc
-ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix p <+> ppQInfixOp op
+ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix (Just p) <+> ppQInfixOp op
 ppIDecl (HidingDataDecl _ tc tvs) =
   text "hiding" <+> ppITypeDeclLhs "data" tc tvs
 ppIDecl (IDataDecl   _ tc tvs cs) =

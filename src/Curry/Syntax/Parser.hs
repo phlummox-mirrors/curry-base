@@ -145,7 +145,7 @@ intfDecl = choice [ iInfixDecl, iHidingDecl, iDataDecl, iNewtypeDecl
 
 -- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
-iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
+iInfixDecl = infixDeclLhs IInfixDecl <*> integer <*> qfunop
 
 -- |Parser for an interface hiding declaration
 iHidingDecl :: Parser Token IDecl a
@@ -287,12 +287,11 @@ valueDecls :: Parser Token [Decl] a
 valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
 
 infixDecl :: Parser Token Decl a
-infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
+infixDecl = infixDeclLhs InfixDecl <*> option integer <*> funop `sepBy1` comma
 
-infixDeclLhs :: (Position -> Infix -> Maybe Precedence -> a) -> Parser Token a b
-infixDeclLhs f = f <$> position <*> tokenOps infixKW <*> option integer
-  where
-  infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
+infixDeclLhs :: (Position -> Infix -> a) -> Parser Token a b
+infixDeclLhs f = f <$> position <*> tokenOps infixKW
+  where infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
 valueDecl :: Parser Token Decl a
 valueDecl = position <**> decl

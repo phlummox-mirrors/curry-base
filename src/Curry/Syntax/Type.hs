@@ -114,7 +114,7 @@ type Arity = Int
 
 -- |Interface declaration
 data IDecl
-  = IInfixDecl     Position Infix (Maybe Precedence) QualIdent
+  = IInfixDecl     Position Infix Precedence QualIdent
   | HidingDataDecl Position QualIdent [Ident]
   | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
