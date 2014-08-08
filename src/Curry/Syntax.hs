@@ -20,7 +20,7 @@ module Curry.Syntax
   ) where
 
 import           Curry.Base.Position          (Position)
-import           Curry.Base.Message           (MessageM)
+import           Curry.Base.Message           (Message, runMsg)
 import qualified Curry.Files.Unlit       as U (unlit)
 
 import qualified Curry.Syntax.Lexer      as L
@@ -31,40 +31,40 @@ import           Curry.Syntax.Type
 import           Curry.Syntax.Utils
 
 -- |Unliterate a LiterateCurry file, identity on normal Curry file.
-unlit :: FilePath -> String -> MessageM String
-unlit = U.unlit
+unlit :: FilePath -> String -> Either Message String
+unlit fn src = runMsg (U.unlit fn src)
 
 -- |Unliterate and return the result of a lexical analysis of the source
 -- program @src@.
 -- The result is a list of tuples consisting of a 'Position' and a 'Token'.
-unlitLexSource :: FilePath -> String -> MessageM [(Position, L.Token)]
-unlitLexSource fn src = unlit fn src >>= lexSource fn
+unlitLexSource :: FilePath -> String -> Either Message [(Position, L.Token)]
+unlitLexSource fn src = runMsg $ U.unlit fn src >>= L.lexSource fn
 
 -- |Unliterate and parse a Curry 'Module' header
-unlitParseHeader :: FilePath -> String -> MessageM Module
-unlitParseHeader fn src = unlit fn src >>= parseHeader fn
+unlitParseHeader :: FilePath -> String -> Either Message Module
+unlitParseHeader fn src = runMsg $ U.unlit fn src >>= P.parseHeader fn
 
 -- |Unliterate and parse a Curry 'Module'
-unlitParseModule :: FilePath -> String -> MessageM Module
-unlitParseModule fn src = unlit fn src >>= parseModule fn
+unlitParseModule :: FilePath -> String -> Either Message Module
+unlitParseModule fn src = runMsg $ U.unlit fn src >>= P.parseSource fn
 
 -- |Return the result of a lexical analysis of the source program @src@.
 -- The result is a list of tuples consisting of a 'Position' and a 'Token'.
-lexSource :: FilePath -> String -> MessageM [(Position, L.Token)]
-lexSource = L.lexSource
+lexSource :: FilePath -> String -> Either Message [(Position, L.Token)]
+lexSource fn src = runMsg $ L.lexSource fn src
 
 -- |Parse a Curry 'Interface'
-parseInterface :: FilePath -> String -> MessageM Interface
-parseInterface = P.parseInterface
+parseInterface :: FilePath -> String -> Either Message Interface
+parseInterface fn src = runMsg $ P.parseInterface fn src
 
 -- |Parse a Curry 'Module' header
-parseHeader :: FilePath -> String -> MessageM Module
-parseHeader = P.parseHeader
+parseHeader :: FilePath -> String -> Either Message Module
+parseHeader fn src = runMsg $ P.parseHeader fn src
 
 -- |Parse a Curry 'Module'
-parseModule :: FilePath -> String -> MessageM Module
-parseModule = P.parseSource
+parseModule :: FilePath -> String -> Either Message Module
+parseModule fn src = runMsg $ P.parseSource fn src
 
 -- |Parse a 'Goal', i.e. an expression with (optional) local declarations
-parseGoal :: String -> MessageM Goal
-parseGoal = P.parseGoal
+parseGoal :: String -> Either Message Goal
+parseGoal src = runMsg $ P.parseGoal src
