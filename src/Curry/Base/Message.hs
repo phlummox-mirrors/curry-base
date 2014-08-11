@@ -19,7 +19,7 @@
 module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
   , ppMessage, ppWarning, ppError, ppMessages
-  , MessageT, MessageM, failWithAt, runMsg, ok
+  , MessageM, failWithAt, runMsg
   ) where
 
 import Control.Monad.Error
@@ -99,33 +99,16 @@ ppMessages :: (Message -> Doc) -> [Message] -> Doc
 ppMessages ppFun = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppFun
 
 -- ---------------------------------------------------------------------------
--- Message Monad
--- ---------------------------------------------------------------------------
-
--- |Message monad transformer enabling the reporting of a 'Message'
--- as an error message.
-type MessageT m = ErrorT Message m
-
--- |Evaluate the value of a 'MessageT m a'
-runMessageT :: Monad m => MessageT m a -> m (Either Message a)
-runMessageT = runErrorT
-
--- |Abort the computation with an error message at a certain position
-failWithAt :: MonadError Message m => Position -> String -> m a
-failWithAt p msg = throwError $ posMessage p $ text msg
-
--- ---------------------------------------------------------------------------
 -- Simple Message Monad
 -- ---------------------------------------------------------------------------
 
 -- |Simple message monad
-type MessageM = MessageT Identity
+type MessageM = ErrorT Message Identity
 
 -- |Evaluate the value of a 'MessageM a'
 runMsg :: MessageM a -> Either Message a
-runMsg = runIdentity . runMessageT
+runMsg = runIdentity . runErrorT
 
--- |Directly evaluate to the success value of a 'MessageM a'.
--- Errors are converted in a call to the 'error' function.
-ok :: MessageM a -> a
-ok = either (error . showError) id . runMsg
+-- |Abort the computation with an error message at a certain position
+failWithAt :: Position -> String -> MessageM a
+failWithAt p msg = throwError $ posMessage p $ text msg
