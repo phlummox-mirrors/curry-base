@@ -19,8 +19,8 @@ module Curry.Syntax.Parser
   ) where
 
 import Curry.Base.Ident
+import Curry.Base.Monad       (CYM)
 import Curry.Base.Position    (Position, mk, mk')
-import Curry.Base.Message     (MessageM)
 import Curry.Base.LLParseComb
 
 import Curry.Syntax.Extension
@@ -29,23 +29,23 @@ import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, addSrcRefs)
 
 -- |Parse a 'Module'
-parseSource :: FilePath -> String -> MessageM Module
+parseSource :: FilePath -> String -> CYM Module
 parseSource fn
   = fmap addSrcRefs
   . fullParser (uncurry <$> moduleHeader <*> layout moduleDecls) lexer fn
 
 -- |Parse a 'Module' header
-parseHeader :: FilePath -> String -> MessageM Module
+parseHeader :: FilePath -> String -> CYM Module
 parseHeader
   = prefixParser (moduleHeader <*> startLayout importDecls <*> succeed []) lexer
   where importDecls = many (importDecl <*-> many semicolon)
 
 -- |Parse an 'Interface'
-parseInterface :: FilePath -> String -> MessageM Interface
+parseInterface :: FilePath -> String -> CYM Interface
 parseInterface = fullParser interface lexer
 
 -- |Parse a 'Goal'
-parseGoal :: String -> MessageM Goal
+parseGoal :: String -> CYM Goal
 parseGoal = fullParser goal lexer ""
 
 -- ---------------------------------------------------------------------------

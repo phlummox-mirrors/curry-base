@@ -4,6 +4,8 @@ Change log for curry-base
 Under Development
 =================
 
+  * Moved CYT monads to curry-base (Curry.Base.Monad) and removed MessageM monad
+
   * Adapted Curry syntax and parser: Now declaration of operator precendence
     in declarations of infix operators is optional
 

@@ -19,11 +19,9 @@
 module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
   , ppMessage, ppWarning, ppError, ppMessages
-  , MessageM, failWithAt, runMsg
   ) where
 
 import Control.Monad.Error
-import Control.Monad.Identity
 import Data.Maybe             (fromMaybe)
 
 import Curry.Base.Position
@@ -97,18 +95,3 @@ ppAs key (Message mbPos txt) = posPP <+> keyPP $$ nest 4 txt
 -- |Pretty print a list of 'Message's by vertical concatenation
 ppMessages :: (Message -> Doc) -> [Message] -> Doc
 ppMessages ppFun = foldr (\m ms -> text "" $+$ m $+$ ms) empty . map ppFun
-
--- ---------------------------------------------------------------------------
--- Simple Message Monad
--- ---------------------------------------------------------------------------
-
--- |Simple message monad
-type MessageM = ErrorT Message Identity
-
--- |Evaluate the value of a 'MessageM a'
-runMsg :: MessageM a -> Either Message a
-runMsg = runIdentity . runErrorT
-
--- |Abort the computation with an error message at a certain position
-failWithAt :: Position -> String -> MessageM a
-failWithAt p msg = throwError $ posMessage p $ text msg
