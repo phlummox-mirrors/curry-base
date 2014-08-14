@@ -249,7 +249,7 @@ ppPattern _ (RecordPattern     fs rt) = record (list (map ppFieldPatt fs)
 
 -- |Pretty print a record field pattern
 ppFieldPatt :: Field Pattern -> Doc
-ppFieldPatt (Field _ l t) = ppIdent l <> equals <> ppPattern 0 t
+ppFieldPatt (Field _ l t) = ppIdent l <+> equals <+> ppPattern 0 t
 
 -- ---------------------------------------------------------------------------
 -- Expressions
