@@ -26,7 +26,7 @@ Flag old-time
 
 Library
   hs-source-dirs: src
-  Build-Depends: base == 4.*, syb >= 0.3, either
+  Build-Depends: base == 4.*, syb >= 0.3, either >= 3.1
   if impl(ghc < 7.4)
     Build-Depends: either < 4, contravariant < 0.5, semigroupoids < 3.0.3
   if flag(broken-directory) {
