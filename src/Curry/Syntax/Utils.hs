@@ -1,9 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  Utility functions for Curry's abstract syntax
-    Copyright   :  (c) 1999-2004 Wolfgang Lux
-                       2005 Martin Engelke
-                       2011 Björn Peemöller
+    Copyright   :  (c) 1999 - 2004 Wolfgang Lux
+                       2005        Martin Engelke
+                       2011 - 2014 Björn Peemöller
                        2013 Matthias Böhm
     License     :  OtherLicense
 
@@ -14,10 +14,13 @@
     This module provides some utility functions for working with the
     abstract syntax tree of Curry.
 -}
+
 module Curry.Syntax.Utils
   ( isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl, isClassDecl
   , isInstanceDecl, isRecordDecl, isFunctionDecl, isPatternDecl, patchModuleId
   , flatLhs, mkInt, mkFloat, fieldLabel, fieldTerm, field2Tuple, opName
+  , hasLanguageExtension, knownExtensions
+  , isExternalDecl
   , typeVarsInTypeExpr, typeVarsInContext, typeVarsInSContext
   , addSrcRefs, simpleContextToContext
   , isDataDecl, isNewtypeDecl, arrowArityTyExpr
@@ -31,15 +34,24 @@ import Data.Maybe
 
 import Curry.Base.Ident
 import Curry.Base.Position
+import Curry.Files.Filenames (takeBaseName)
+import Curry.Syntax.Extension
 import Curry.Syntax.Type
 
-import Curry.Files.PathUtils
+-- |Check whether a 'Module' has a specific 'KnownExtension' enabled by a pragma
+hasLanguageExtension :: Module -> KnownExtension -> Bool
+hasLanguageExtension mdl ext = ext `elem` knownExtensions mdl
+
+-- |Extract all known extensions from a 'Module'
+knownExtensions :: Module -> [KnownExtension]
+knownExtensions (Module ps _ _ _ _) =
+  [ e | LanguagePragma _ exts <- ps, KnownExtension _ e <- exts]
 
 -- |Replace the generic module name @main@ with the module name derived
 -- from the 'FilePath' of the module.
 patchModuleId :: FilePath -> Module -> Module
-patchModuleId fn m@(Module mid es is ds)
-  | mid == mainMIdent = Module (mkMIdent [takeBaseName fn]) es is ds
+patchModuleId fn m@(Module ps mid es is ds)
+  | mid == mainMIdent = Module ps (mkMIdent [takeBaseName fn]) es is ds
   | otherwise         = m
 
 -- |Is the declaration an infix declaration?
@@ -67,12 +79,18 @@ isValueDecl (ForeignDecl  _ _ _ _ _) = True
 isValueDecl (ExternalDecl       _ _) = True
 isValueDecl (PatternDecl  _ _ _ _ _) = True
 isValueDecl (FreeDecl           _ _) = True
-isValueDecl _ = False
+isValueDecl _                       = False
 
 -- |Is the declaration a record declaration?
 isRecordDecl :: Decl -> Bool
 isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
 isRecordDecl _                                 = False
+
+-- |Is the declaration an external declaration?
+isExternalDecl :: Decl -> Bool
+isExternalDecl (ForeignDecl _ _ _ _ _) = True
+isExternalDecl (ExternalDecl      _ _) = True
+isExternalDecl _                       = False
 
 -- |Is the declaration a class declaration?
 isClassDecl :: Decl -> Bool

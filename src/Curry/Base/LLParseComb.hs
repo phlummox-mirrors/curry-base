@@ -20,6 +20,10 @@
     reported if the parser does not consume the whole string,
     whereas 'prefixParser' discards the rest of the input string in this case.
 -}
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 707 && __GLASGOW_HASKELL__ < 710
+{-# OPTIONS_GHC -fno-warn-amp #-}
+#endif
 module Curry.Base.LLParseComb
   ( -- * Data types
     Parser
@@ -40,6 +44,9 @@ module Curry.Base.LLParseComb
   , layoutOn, layoutOff, layoutEnd
   ) where
 
+#if __GLASGOW_HASKELL__ >= 710
+import Prelude hiding ((<*>))
+#endif
 import Control.Monad
 import qualified Data.Map as Map
 import Data.Maybe
@@ -79,7 +86,7 @@ instance Show s => Show (Parser s a b) where
 -- |Apply a parser and lexer to a 'String', whereas the 'FilePath' is used
 -- to identify the origin of the 'String' in case of parsing errors.
 fullParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
-           -> MessageM a
+           -> CYM a
 fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
   where successP x pos s
           | isEOF s   = returnP x
@@ -89,7 +96,7 @@ fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
 -- The 'FilePath' is used to identify the origin of the 'String' in case of
 -- parsing errors.
 prefixParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
-             -> MessageM a
+             -> CYM a
 prefixParser p lexer = parse (lexer (choose p lexer discardP failP) failP)
   where discardP x _ _ = returnP x
 
@@ -287,14 +294,7 @@ many p = many1 p `opt` []
 
 -- |Repeatedly apply a parser for 1 or more occurences
 many1 :: Symbol s => Parser s a b -> Parser s [a] b
--- many1 p = (:) <$> p <*> many p
-many1 p = (:) <$> p <*> (many1 p `opt` [])
--- The first definition of \texttt{many1} is commented out because it
--- does not compile under nhc. This is due to a -- known -- bug in the
--- type checker of nhc which expects a default declaration when compiling
--- mutually recursive functions with class constraints. However, no such
--- default can be given in the above case because neither of the types
--- involved is a numeric type.
+many1 p = (:) <$> p <*> many p
 
 -- |Parse a list with is separated by a seperator
 sepBy :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
@@ -308,7 +308,8 @@ p `sepBy1` q = (:) <$> p <*> many (q <-*> p)
 -- Returns a value produced by a *right* associative application of all
 -- functions returned by op. If there are no occurrences of @p@, @x@ is
 -- returned.
-chainr :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
+chainr :: Symbol s
+       => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
 chainr p op x = chainr1 p op `opt` x
 
 -- |Like 'chainr', but parses one or more occurrences of p.
@@ -319,7 +320,8 @@ chainr1 p op = r where r = p <**> (flip <$> op <*> r `opt` id)
 -- Returns a value produced by a *left* associative application of all
 -- functions returned by op. If there are no occurrences of @p@, @x@ is
 -- returned.
-chainl :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
+chainl :: Symbol s
+       => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
 chainl p op x = chainl1 p op `opt` x
 
 -- |Like 'chainl', but parses one or more occurrences of p.

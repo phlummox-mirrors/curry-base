@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  File names for several intermediate file formats.
-    Copyright   :  (c) Holger Siegel   2009
-                       Björn Peemöller 2013
+    Copyright   :  (c) 2009        Holger Siegel
+                       2013 - 2014 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -13,16 +13,21 @@
     in order to provide a unique accessing point for this functionality.
 -}
 module Curry.Files.Filenames
-  (
-    -- * Special directories
-    currySubdir
+  ( -- * Re-exports from 'System.FilePath'
+    FilePath, takeBaseName, dropExtension, takeExtension, takeFileName
+
+    -- * Conversion between 'ModuleIdent' and 'FilePath'
+  , moduleNameToFile, fileNameToModule, isCurryFilePath
+
+    -- * Curry sub-directory
+  , currySubdir, hasCurrySubdir, addCurrySubdir, ensureCurrySubdir
 
     -- * File name extensions
     -- ** Curry files
   , curryExt, lcurryExt, icurryExt
 
     -- ** FlatCurry files
-  , flatExt, extFlatExt, flatIntExt, xmlExt, xmlSuffix
+  , flatExt, extFlatExt, flatIntExt
 
     -- ** AbstractCurry files
   , acyExt, uacyExt
@@ -31,16 +36,67 @@ module Curry.Files.Filenames
   , sourceRepExt, sourceExts, moduleExts
 
     -- * Functions for computing file names
-  , interfName, flatName, extFlatName, flatIntName, xmlName
-  , acyName, uacyName
-  , sourceRepName
+  , interfName, flatName, extFlatName, flatIntName
+  , acyName, uacyName, sourceRepName
   ) where
 
-import System.FilePath (takeBaseName, replaceBaseName, replaceExtension)
+import System.FilePath
+
+import Curry.Base.Ident
+
+-- -----------------------------------------------------------------------------
+-- Conversion between ModuleIdent and FilePath
+-- -----------------------------------------------------------------------------
+
+-- |Create a 'FilePath' from a 'ModuleIdent' using the hierarchical module
+-- system
+moduleNameToFile :: ModuleIdent -> FilePath
+moduleNameToFile = foldr1 (</>) . midQualifiers
+
+-- |Extract the 'ModuleIdent' from a 'FilePath'
+fileNameToModule :: FilePath -> ModuleIdent
+fileNameToModule = mkMIdent . splitDirectories . dropExtension . dropDrive
+
+-- |Checks whether a 'String' represents a 'FilePath' to a Curry module
+isCurryFilePath :: String -> Bool
+isCurryFilePath str =  isValid str
+                    && takeExtension str `elem` ("" : moduleExts)
+
+-- -----------------------------------------------------------------------------
+-- Curry sub-directory
+-- -----------------------------------------------------------------------------
 
 -- |The standard hidden subdirectory for curry files
 currySubdir :: String
 currySubdir = ".curry"
+
+-- |Does the given 'FilePath' contain the 'currySubdir'
+-- as its last directory component?
+hasCurrySubdir :: FilePath -> Bool
+hasCurrySubdir f = not (null dirs) && last dirs == currySubdir
+  where dirs = splitDirectories $ takeDirectory f
+
+-- |Add the 'currySubdir' to the given 'FilePath' if the flag is 'True' and
+-- the path does not already contain it, otherwise leave the path untouched.
+addCurrySubdir :: Bool -> FilePath -> FilePath
+addCurrySubdir b fn = if b then ensureCurrySubdir fn else fn
+
+-- | Ensure that the 'currySubdir' is the last component of the
+-- directory structure of the given 'FilePath'. If the 'FilePath' already
+-- contains the sub-directory, it remains unchanged.
+ensureCurrySubdir :: FilePath -- ^ original 'FilePath'
+                  -> FilePath -- ^ new 'FilePath'
+ensureCurrySubdir f
+  = replaceDirectory f $ addSub (splitDirectories $ takeDirectory f)
+  where
+  addSub :: [String] -> String
+  addSub dirs | null dirs                = currySubdir
+              | last dirs == currySubdir = joinPath dirs
+              | otherwise                = joinPath dirs </> currySubdir
+
+-- -----------------------------------------------------------------------------
+-- File name extensions
+-- -----------------------------------------------------------------------------
 
 -- |Filename extension for non-literate curry files
 curryExt :: String
@@ -83,14 +139,6 @@ extFlatExt = ".efc"
 flatIntExt :: String
 flatIntExt = ".fint"
 
--- |Filename extension for extended-flat-curry xml files
-xmlExt :: String
-xmlExt = ".xml"
-
--- |Basename suffix for extended-flat-curry xml files
-xmlSuffix :: String
-xmlSuffix = "_flat"
-
 -- |Filename extension for abstract-curry files
 acyExt :: String
 acyExt = ".acy"
@@ -122,11 +170,6 @@ extFlatName = replaceExtensionWith extFlatExt
 -- |Compute the filename of the flat curry interface file for a source file
 flatIntName :: FilePath -> FilePath
 flatIntName = replaceExtensionWith flatIntExt
-
--- |Compute the filename of the flat curry xml file for a source file
-xmlName :: FilePath -> FilePath
-xmlName fn = replaceExtensionWith xmlExt
-           $ replaceBaseName fn (takeBaseName fn ++ xmlSuffix)
 
 -- |Compute the filename of the abstract curry file for a source file
 acyName :: FilePath -> FilePath

@@ -1,9 +1,9 @@
 {- |
     Module      : $Header$
     Description : Representation of FlatCurry.
-    Copyright   : (c) Michael Hanus 2003
+    Copyright   : (c) Michael Hanus  2003
                       Martin Engelke 2004
-                      Bernd Brassel 2005
+                      Bernd Brassel  2005
     License     : OtherLicense
 
     Maintainer  : bjp@informatik.uni-kiel.de
@@ -15,23 +15,14 @@
 -}
 
 module Curry.FlatCurry.Type
-  ( -- * Representation of qualified names and variables
-    QName, VarIndex
+  ( -- * Representation of qualified names and (type) variables
+    QName, VarIndex, TVarIndex
     -- * Data types for FlatCurry
   , Visibility (..), Prog (..), TypeDecl (..), TypeExpr (..)
-  , TVarIndex, ConsDecl (..), OpDecl (..), Fixity (..)
+  , ConsDecl (..), OpDecl (..), Fixity (..)
   , FuncDecl (..), Rule (..), Expr (..), Literal (..)
   , CombType (..), CaseType (..), BranchExpr (..), Pattern (..)
-    -- * Functions for reading and writing FlatCurry terms
-  , readFlatCurry, readFlatInterface, writeFlatCurry
   ) where
-
-import Control.Monad (liftM)
-import Data.Char (isSpace)
-import Data.List (intercalate)
-
-import Curry.Files.Filenames (flatName, flatIntName)
-import Curry.Files.PathUtils (writeModule, readModule)
 
 -- ---------------------------------------------------------------------------
 -- Qualified names
@@ -325,47 +316,3 @@ data Pattern
   = Pattern QName [VarIndex]
   | LPattern Literal
     deriving (Eq, Read, Show)
-
--- ---------------------------------------------------------------------------
--- Functions for reading and writing FlatCurry terms
--- ---------------------------------------------------------------------------
-
--- |Reads an ExtendedFlat file (extension ".efc") and eventually returns the
--- corresponding FlatCurry program term (type 'Prog').
-readFlatCurry :: FilePath -> IO (Maybe Prog)
-readFlatCurry = readFlat . flatName
-
--- |Reads a FlatInterface file (extension @.fint@) and returns the
--- corresponding term (type 'Prog') as a value of type 'Maybe'.
-readFlatInterface :: FilePath -> IO (Maybe Prog)
-readFlatInterface = readFlat . flatIntName
-
--- |Reads a Flat file and returns the corresponding term (type 'Prog') as
--- a value of type 'Maybe'.
--- Due to compatibility with PAKCS it is allowed to have a commentary
--- at the beginning of the file enclosed in {- ... -}.
-readFlat :: FilePath -> IO (Maybe Prog)
-readFlat = liftM (liftM (read . skipComment)) . readModule where
-  skipComment s = case dropWhile isSpace s of
-      '{' : '-' : s' -> dropComment s'
-      s'             -> s'
-  dropComment ('-' : '}' : xs) = xs
-  dropComment (_ : xs)         = dropComment xs
-  dropComment []               = []
-
--- |Writes a FlatCurry program term into a file.
-
--- If the flag is set, the file will be written into the hidden @.curry@
--- sub-directory.
-writeFlatCurry :: Bool -> FilePath -> Prog -> IO ()
-writeFlatCurry inHiddenSubdir filename
-  = writeModule inHiddenSubdir filename . showFlatCurry
-
--- |Shows FlatCurry program in a nicer way.
-showFlatCurry :: Prog -> String
-showFlatCurry (Prog mname imps types funcs ops)
-  =  "Prog " ++ show mname ++ "\n"
-  ++ " "  ++ show imps ++ "\n"
-  ++ " [" ++ intercalate ",\n  " (map show types) ++ "]\n"
-  ++ " [" ++ intercalate ",\n  " (map show funcs) ++ "]\n"
-  ++ " "  ++ show ops ++ "\n"

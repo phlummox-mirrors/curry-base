@@ -20,10 +20,11 @@ module Curry.Syntax.Parser
   ) where
 
 import Curry.Base.Ident
+import Curry.Base.Monad       (CYM)
 import Curry.Base.Position    (Position, mk, mk')
-import Curry.Base.Message     (MessageM)
 import Curry.Base.LLParseComb
 
+import Curry.Syntax.Extension
 import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, mkFloat, addSrcRefs)
@@ -34,23 +35,23 @@ import Data.Maybe
 import Data.List
 
 -- |Parse a 'Module'
-parseSource :: FilePath -> String -> MessageM Module
+parseSource :: FilePath -> String -> CYM Module
 parseSource fn
   = fmap addSrcRefs
   . fullParser (uncurry <$> moduleHeader <*> layout moduleDecls) lexer fn
 
 -- |Parse a 'Module' header
-parseHeader :: FilePath -> String -> MessageM Module
+parseHeader :: FilePath -> String -> CYM Module
 parseHeader
   = prefixParser (moduleHeader <*> startLayout importDecls <*> succeed []) lexer
   where importDecls = many (importDecl <*-> many semicolon)
 
 -- |Parse an 'Interface'
-parseInterface :: FilePath -> String -> MessageM [Interface]
+parseInterface :: FilePath -> String -> CYM [Interface]
 parseInterface = fullParser interfaces lexer
 
 -- |Parse a 'Goal'
-parseGoal :: String -> MessageM Goal
+parseGoal :: String -> CYM Goal
 parseGoal = fullParser goal lexer ""
 
 -- ---------------------------------------------------------------------------
@@ -59,10 +60,30 @@ parseGoal = fullParser goal lexer ""
 
 -- |Parser for a module header
 moduleHeader :: Parser Token ([ImportDecl] -> [Decl] -> Module) a
-moduleHeader =  Module <$-> token KW_module <*> modIdent
-                       <*>  option exportSpec
-                       <*-> expectWhere
-                `opt` Module mainMIdent Nothing
+moduleHeader = (\ps (m, es) -> Module ps m es)
+           <$> modulePragmas
+           <*> header
+  where header = (,) <$-> token KW_module <*> modIdent
+                     <*>  option exportSpec
+                     <*-> expectWhere
+                `opt` (mainMIdent, Nothing)
+
+modulePragmas :: Parser Token [ModulePragma] a
+modulePragmas = many (languagePragma <|> optionsPragma)
+
+languagePragma :: Parser Token ModulePragma a
+languagePragma =   LanguagePragma
+              <$>  tokenPos PragmaLanguage
+              <*>  (languageExtension `sepBy1` comma)
+              <*-> token PragmaEnd
+  where languageExtension = classifyExtension <$> ident
+
+optionsPragma :: Parser Token ModulePragma a
+optionsPragma = (\pos a -> OptionsPragma pos (fmap classifyTool $ toolVal a)
+                                             (toolArgs a))
+           <$>  position
+           <*>  token PragmaOptions
+           <*-> token PragmaEnd
 
 -- |Parser for an export specification
 exportSpec :: Parser Token ExportSpec a
@@ -137,7 +158,7 @@ intfDecl = choice [ iInfixDecl, iHidingDecl, iDataDecl, iNewtypeDecl
 
 -- |Parser for an interface infix declaration
 iInfixDecl :: Parser Token IDecl a
-iInfixDecl = infixDeclLhs IInfixDecl <*> qfunop
+iInfixDecl = infixDeclLhs IInfixDecl <*> integer <*> qfunop
 
 -- |Parser for an interface hiding declaration
 iHidingDecl :: Parser Token IDecl a
@@ -381,13 +402,11 @@ valueDecls :: Parser Token [Decl] a
 valueDecls  = choice [infixDecl, valueDecl, foreignDecl] `sepBy` semicolon
 
 infixDecl :: Parser Token Decl a
-infixDecl = infixDeclLhs InfixDecl <*> funop `sepBy1` comma
+infixDecl = infixDeclLhs InfixDecl <*> option integer <*> funop `sepBy1` comma
 
-infixDeclLhs :: (Position -> Infix -> Integer -> a) -> Parser Token a b
+infixDeclLhs :: (Position -> Infix -> a) -> Parser Token a b
 infixDeclLhs f = f <$> position <*> tokenOps infixKW
-                   <*> (integer <?> "precedence level expected")
-  where
-  infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
+  where infixKW = [(KW_infix, Infix), (KW_infixl, InfixL), (KW_infixr, InfixR)]
 
 valueDecl :: Parser Token Decl a
 valueDecl = position <**> decl
@@ -1049,7 +1068,7 @@ expectWhere :: Parser Token Attributes a
 expectWhere = token KW_where <?> "where expected"
 
 expectSelect :: Parser Token Attributes a
-expectSelect = token Select <?> ":-> expected"
+expectSelect = token Select <?> ":> expected"
 
 expectRightArrow :: Parser Token Attributes a
 expectRightArrow  = token RightArrow <?> "-> expected"

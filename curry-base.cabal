@@ -1,5 +1,5 @@
 Name:          curry-base
-Version:       0.3.8
+Version:       0.3.10
 Cabal-Version: >= 1.6
 Synopsis:      Functions for manipulating Curry programs
 Description:   This package serves as a foundation for Curry compilers.
@@ -16,10 +16,6 @@ Homepage:      http://curry-language.org
 Build-Type:    Simple
 Stability:     experimental
 
-Flag split-syb
-  Description: Has the syb functionality been split into the package syb?
-  Default:     True
-
 Flag broken-directory
   Description: Is the cabal configuration of directory incomplete?
   Default:     False
@@ -30,10 +26,9 @@ Flag old-time
 
 Library
   hs-source-dirs: src
-  if flag(split-syb)
-    Build-Depends: base == 4.*, syb
-  else
-    Build-Depends: base == 3.*
+  Build-Depends: base == 4.*, syb >= 0.3, either
+  if impl(ghc < 7.4)
+    Build-Depends: either < 4, contravariant < 0.5, semigroupoids < 3.0.3
   if flag(broken-directory) {
     Build-Depends: time, directory == 1.2.0.0, base >= 4.6
   } else  { if flag(old-time) {
@@ -50,30 +45,36 @@ Library
   ghc-options: -Wall
   Exposed-Modules:
     Curry.AbstractCurry
-    Curry.Base.Equiv
+    Curry.AbstractCurry.Files
+    Curry.AbstractCurry.Type
     Curry.Base.Ident
     Curry.Base.LexComb
     Curry.Base.LLParseComb
     Curry.Base.Message
+    Curry.Base.Monad
     Curry.Base.Position
     Curry.Base.Pretty
     Curry.ExtendedFlat.CurryArithmetics
     Curry.ExtendedFlat.Equality
     Curry.ExtendedFlat.EraseTypes
     Curry.ExtendedFlat.Goodies
-    Curry.ExtendedFlat.InterfaceEquality
+    Curry.ExtendedFlat.InterfaceEquivalence
     Curry.ExtendedFlat.LiftLetrec
     Curry.ExtendedFlat.MonadicGoodies
     Curry.ExtendedFlat.Type
     Curry.ExtendedFlat.TypeInference
     Curry.ExtendedFlat.UnMutual
-    Curry.FlatCurry.Goodies
-    Curry.FlatCurry.Pretty
-    Curry.FlatCurry.Type
     Curry.Files.Filenames
     Curry.Files.PathUtils
     Curry.Files.Unlit
+    Curry.FlatCurry
+    Curry.FlatCurry.Files
+    Curry.FlatCurry.Goodies
+    Curry.FlatCurry.Pretty
+    Curry.FlatCurry.Type
     Curry.Syntax
+    Curry.Syntax.Extension
+    Curry.Syntax.InterfaceEquivalence
     Curry.Syntax.Lexer
     Curry.Syntax.Parser
     Curry.Syntax.Pretty

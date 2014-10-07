@@ -431,14 +431,13 @@ readFlat = liftM (fmap read) . readModule
 -- If the flag is set, the file will be written into the hidden @.curry@
 -- sub-directory.
 writeFlatCurry :: Bool -> String -> Prog -> IO ()
-writeFlatCurry inHiddenSubdir filename prog
-  = writeModule inHiddenSubdir filename (showFlatCurry' False prog)
+writeFlatCurry subdir fn p = writeModule subdir fn (showFlatCurry' False p)
 
 -- |Writes a FlatCurry program term with source references into a file.
 -- If the flag is set, it will be the hidden @.curry@ sub directory.
 writeExtendedFlat :: Bool -> String -> Prog -> IO ()
-writeExtendedFlat inHiddenSubdir filename prog =
-  writeModule inHiddenSubdir (extFlatName filename) (showFlatCurry' True prog)
+writeExtendedFlat subdir fn p =
+  writeModule subdir (extFlatName fn) (showFlatCurry' True p)
 
 showFlatCurry' :: Bool -> Prog -> String
 showFlatCurry' b x = gshowsPrec b False x ""

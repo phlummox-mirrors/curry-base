@@ -3,7 +3,7 @@
     Description :  A lexer for Curry
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2012 Björn Peemöller
+                       2011 - 2013 Björn Peemöller
                        2013        Matthias Böhm
     License     :  OtherLicense
 
@@ -21,8 +21,8 @@ module Curry.Syntax.Lexer
 
 import Prelude hiding (fail)
 import Data.Char
-  ( chr, ord, isAlpha, isAlphaNum, isSpace, isUpper, isDigit
-  , isOctDigit, isHexDigit
+  ( chr, ord, isAlpha, isAlphaNum, isDigit, isHexDigit, isOctDigit
+  , isSpace, isUpper, toLower
   )
 import Data.List (intercalate)
 import qualified Data.Map as Map
@@ -137,6 +137,12 @@ data Category
   | SymMinus    -- -
   | SymMinusDot -- -.
 
+  -- pragmas
+  | PragmaLanguage -- {-# LANGUAGE
+  | PragmaOptions  -- {-# OPTIONS
+  | PragmaEnd      -- #-}
+
+
   -- comments (only for full lexer) inserted by men & bbr
   | LineComment
   | NestedComment
@@ -155,11 +161,12 @@ data Category
 -- |Attributes associated to a token
 data Attributes
   = NoAttributes
-  | CharAttributes    { cval     :: Char    , original :: String}
-  | IntAttributes     { ival     :: Integer , original :: String}
-  | FloatAttributes   { fval     :: Double  , original :: String}
-  | StringAttributes  { sval     :: String  , original :: String}
-  | IdentAttributes   { modulVal :: [String], sval     :: String}
+  | CharAttributes    { cval     :: Char        , original :: String }
+  | IntAttributes     { ival     :: Integer     , original :: String }
+  | FloatAttributes   { fval     :: Double      , original :: String }
+  | StringAttributes  { sval     :: String      , original :: String }
+  | IdentAttributes   { modulVal :: [String]    , sval     :: String }
+  | OptionsAttributes { toolVal  :: Maybe String, toolArgs :: String }
 
 instance Show Attributes where
   showsPrec _ NoAttributes             = showChar '_'
@@ -169,6 +176,10 @@ instance Show Attributes where
   showsPrec _ (StringAttributes  sv _) = shows sv
   showsPrec _ (IdentAttributes  mid i) = showsEscaped
                                        $ intercalate "." $ mid ++ [i]
+  showsPrec _ (OptionsAttributes mt s) = showsTool mt
+                                       . showChar ' ' . showString s
+    where showsTool = maybe id (\t -> showChar '_' . showString t)
+
 
 -- ---------------------------------------------------------------------------
 -- The 'Show' instance of 'Token' is designed to display all tokens in their
@@ -266,6 +277,10 @@ instance Show Token where
   showsPrec _ (Token Id_primitive       _) = showsSpecialIdent "primitive"
   showsPrec _ (Token Id_public          _) = showsSpecialIdent "public"
   showsPrec _ (Token Id_qualified       _) = showsSpecialIdent "qualified"
+  showsPrec _ (Token PragmaLanguage     _) = showString "{-# LANGUAGE"
+  showsPrec _ (Token PragmaOptions      a) = showString "{-# OPTIONS"
+                                           . shows a
+  showsPrec _ (Token PragmaEnd          _) = showString "#-}"
   showsPrec _ (Token LineComment        a) = shows a
   showsPrec _ (Token NestedComment      a) = shows a
   showsPrec _ (Token EOF                _) = showString "<end-of-file>"
@@ -302,6 +317,11 @@ stringTok cs s = Token StringTok StringAttributes { sval = cs, original = s }
 idTok :: Category -> [String] -> String -> Token
 idTok t mIdent ident = Token t
   IdentAttributes { modulVal = mIdent, sval = ident }
+
+-- TODO
+pragmaOptionsTok :: Maybe String -> String -> Token
+pragmaOptionsTok mbTool s = Token PragmaOptions
+  OptionsAttributes { toolVal = mbTool, toolArgs = s }
 
 -- |Construct a 'Token' for a line comment
 lineCommentTok :: String -> Token
@@ -386,6 +406,13 @@ keywordsSpecialIds = Map.union keywords $ Map.fromList
   , ("qualified", Id_qualified)
   ]
 
+pragmas :: Map.Map String Category
+pragmas = Map.fromList
+  [ ("language", PragmaLanguage)
+  , ("options" , PragmaOptions )
+  ]
+
+
 -- ---------------------------------------------------------------------------
 -- Character classes
 -- ---------------------------------------------------------------------------
@@ -403,7 +430,7 @@ isSymbolChar c = c `elem` "~!@#$%^&*+-=<>:?./|\\"
 -- ---------------------------------------------------------------------------
 
 -- |Lex source code
-lexSource :: FilePath -> String -> MessageM [(Position, Token)]
+lexSource :: FilePath -> String -> CYM [(Position, Token)]
 lexSource = parse (applyLexer fullLexer)
 
 -- |CPS-Lexer for Curry
@@ -419,22 +446,64 @@ fullLexer = skipWhiteSpace False -- lex comments
 skipWhiteSpace :: Bool -> Lexer Token a
 skipWhiteSpace skipComments suc fail = skip
   where
-  skip p   []          bol = suc p (tok EOF)                  p        [] bol
-  skip p c@('-':'-':_) _   = lexLineComment   sucComment fail p        c  True
-  skip p c@('{':'-':_) bol = lexNestedComment sucComment fail p        c  bol
-  skip p cs@(c:s)      bol
+  skip p   []              bol = suc p (tok EOF)                  p        [] bol
+  skip p c@('-':'-':_)     _   = lexLineComment   sucComment fail p        c  True
+  skip p c@('{':'-':'#':_) bol = lexPragma noPragma suc  fail p  c  bol
+  skip p c@('{':'-':_)     bol = lexNestedComment sucComment fail p        c  bol
+  skip p cs@(c:s)          bol
     | c == '\t'            = skip                             (tab  p) s  bol
     | c == '\n'            = skip                             (nl   p) s  True
     | isSpace c            = skip                             (next p) s  bol
     | bol                  = lexBOL   suc fail                p        cs bol
     | otherwise            = lexToken suc fail                p        cs bol
   sucComment = if skipComments then (\ _suc _fail -> skip) else suc
+  noPragma   = lexNestedComment sucComment fail
 
 -- Lex a line comment
 lexLineComment :: Lexer Token a
 lexLineComment suc _ p str = case break (== '\n') str of
 --   (_, []) -> fail p "Unterminated line comment" p                   []
   (c, s ) -> suc  p (lineCommentTok c)          (incr p $ length c) s
+
+lexPragma :: P a -> Lexer Token a
+lexPragma noPragma suc fail p0 str = pragma (incr p0 3) (drop 3 str)
+  where
+  skip = noPragma p0 str
+  pragma p []         = fail p0 "Unterminated pragma" p []
+  pragma p cs@(c : s)
+    | c == '\t' = pragma (tab  p) s
+    | c == '\n' = pragma (nl   p) s
+    | isSpace c = pragma (next p) s
+    | isAlpha c = case Map.lookup (map toLower prag) pragmas of
+        Nothing            -> skip
+        Just PragmaOptions -> lexOptionsPragma p0 suc fail p1 rest
+        Just t             -> suc p0 (tok t)               p1 rest
+    | otherwise = skip
+    where
+    (prag, rest) = span isAlphaNum cs
+    p1           = incr p (length prag)
+
+lexOptionsPragma :: Position -> Lexer Token a
+lexOptionsPragma p0 _   fail p [] = fail p0 "Unterminated Options pragma" p []
+lexOptionsPragma p0 suc fail p (c : s)
+  | c == '\t' = lexArgs Nothing (tab  p) s
+  | c == '\n' = lexArgs Nothing (nl   p) s
+  | isSpace c = lexArgs Nothing (next p) s
+  | c == '_'  = let (tool, s1) = span isIdentChar s
+                in  lexArgs (Just tool) (incr p (length tool)) s1
+  | otherwise = fail p0 "Malformed Options pragma" p s
+  where
+  lexArgs mbTool = lexRaw ""
+    where
+    lexRaw s0 p1 r = case hash of
+      []            -> fail p0 "End-of-file inside pragma" (incr p1 len) []
+      '#':'-':'}':_ -> token  (trim $ s0 ++ opts) (incr p1 len)       hash
+      _             -> lexRaw (s0 ++ opts ++ "#") (incr p1 (len + 1)) (drop 1 hash)
+      where
+      (opts, hash) = span (/= '#') r
+      len = length opts
+      token = suc p0 . pragmaOptionsTok mbTool
+      trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
 -- Lex a nested comment
 lexNestedComment :: Lexer Token a
@@ -465,22 +534,23 @@ lexBOL suc fail p s _ ctxt@(n:rest)
 lexToken :: Lexer Token a
 lexToken suc _    p []       = suc p (tok EOF) p []
 lexToken suc fail p cs@(c:s)
-  | c == '('       = token LeftParen
-  | c == ')'       = token RightParen
-  | c == ','       = token Comma
-  | c == ';'       = token Semicolon
-  | c == '['       = token LeftBracket
-  | c == ']'       = token RightBracket
-  | c == '_'       = token Underscore
-  | c == '`'       = token Backquote
-  | c == '{'       = lexLeftBrace  (suc p) (next p) s
-  | c == '}'       = lexRightBrace (suc p) (next p) s
-  | c == '\''      = lexChar   p suc fail  (next p) s
-  | c == '\"'      = lexString p suc fail  (next p) s
-  | isAlpha      c = lexIdent      (suc p) p        cs
-  | isSymbolChar c = lexSymbol     (suc p) p        cs
-  | isDigit      c = lexNumber     (suc p) p        cs
-  | otherwise      = fail p ("Illegal character " ++ show c) p s
+  | take 3 cs == "#-}" = suc p (tok PragmaEnd) (incr p 3) (drop 3 cs)
+  | c == '('           = token LeftParen
+  | c == ')'           = token RightParen
+  | c == ','           = token Comma
+  | c == ';'           = token Semicolon
+  | c == '['           = token LeftBracket
+  | c == ']'           = token RightBracket
+  | c == '_'           = token Underscore
+  | c == '`'           = token Backquote
+  | c == '{'           = lexLeftBrace  (suc p) (next p) s
+  | c == '}'           = lexRightBrace (suc p) (next p) s
+  | c == '\''          = lexChar   p suc fail  (next p) s
+  | c == '\"'          = lexString p suc fail  (next p) s
+  | isAlpha      c     = lexIdent      (suc p) p        cs
+  | isSymbolChar c     = lexSymbol     (suc p) p        cs
+  | isDigit      c     = lexNumber     (suc p) p        cs
+  | otherwise          = fail p ("Illegal character " ++ show c) p s
   where token t = suc p (tok t) (next p) s
 
 -- Lex either a left brace or a left brace semicolon

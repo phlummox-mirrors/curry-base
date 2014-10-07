@@ -30,7 +30,7 @@ module Curry.Base.Position
   , SrcRef (..), SrcRefOf (..), srcRef, noRef, mk, mk', incSrcRef
   ) where
 
-import Data.Generics     (Data(..), Typeable (..))
+import Data.Generics     (Data, Typeable)
 import System.FilePath
 
 import Curry.Base.Pretty
@@ -67,7 +67,12 @@ instance Read Position where
     [ (Position "" i j noRef, s') | ((i, j), s') <- readsPrec p s ]
 
 instance Show Position where
-  showsPrec _ = showString . show . ppPosition
+  showsPrec _ (Position f l c _) = showString "(Position "
+                                 . shows f . showChar ' '
+                                 . shows l . showChar ' '
+                                 . shows c . showChar ')'
+  showsPrec _ (AST            _) = showString "NoPos"
+  showsPrec _ NoPos              = showString "NoPos"
 
 instance HasPosition Position where
   getPosition = id

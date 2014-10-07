@@ -12,18 +12,24 @@
     Portability :  non-portable (DeriveDataTypeable)
 
     This module provides the necessary data structures to maintain the
-    parsed representation of a Curry program.
+    parsed representation of a Curry pProgram.
 -}
 
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Curry.Syntax.Type
   ( -- * Module header
-    Module (..), ExportSpec (..), Export (..)
+    Module (..)
+    -- ** Module pragmas
+  , ModulePragma (..), Extension (..), KnownExtension (..), Tool (..)
+    -- ** Export specification
+  , ExportSpec (..), Export (..)
+    -- ** Import declarations
   , ImportDecl (..), ImportSpec (..), Import (..), Qualified
     -- * Interface
-  , Interface (..), IImportDecl (..), IDecl (..)
+  , Interface (..), IImportDecl (..), Arity, IDecl (..)
     -- * Declarations
+  , Precedence
   , Decl (..), Infix (..), ConstrDecl (..), NewConstrDecl (..), Deriving (..)
   , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
@@ -38,17 +44,26 @@ module Curry.Syntax.Type
   , ConstrType_, Type_ (..), Context_ 
   ) where
 
-import Data.Generics (Data (..), Typeable (..))
+import Data.Generics          (Data, Typeable)
 
 import Curry.Base.Ident
 import Curry.Base.Position
+
+import Curry.Syntax.Extension
 
 -- ---------------------------------------------------------------------------
 -- Modules
 -- ---------------------------------------------------------------------------
 
 -- |Curry module
-data Module = Module ModuleIdent (Maybe ExportSpec) [ImportDecl] [Decl]
+data Module = Module [ModulePragma] ModuleIdent (Maybe ExportSpec)
+                     [ImportDecl] [Decl]
+    deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Module pragma
+data ModulePragma
+  = LanguagePragma Position [Extension]         -- ^ language pragma
+  | OptionsPragma  Position (Maybe Tool) String -- ^ options pragma
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Export specification
@@ -101,14 +116,17 @@ data Interface = Interface ModuleIdent [IImportDecl] [IDecl]
 data IImportDecl = IImportDecl Position ModuleIdent
     deriving (Eq, Read, Show, Data, Typeable)
 
+-- |Arity of a function
+type Arity = Int
+
 -- |Interface declaration
 data IDecl
-  = IInfixDecl     Position Infix Integer QualIdent
+  = IInfixDecl     Position Infix Precedence QualIdent
   | HidingDataDecl Position QualIdent [Ident]
   | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
-  | IFunctionDecl  Position QualIdent Int Context TypeExpr
+  | IFunctionDecl  Position QualIdent Arity Context TypeExpr
   -- | position, hidden?, super classes, class, type var, 
   -- class methods (public or hidden), default methods, dependencies
   | IClassDecl     Position Bool [QualIdent] QualIdent Ident [(Bool, IDecl)] [Ident] [QualIdent]
@@ -125,7 +143,7 @@ type Id = Int
 
 -- |Declaration in a module
 data Decl
-  = InfixDecl    Position Infix Integer [Ident]                  -- infixl 5 (op), `fun` -- TODO: Make precedence optional and change to int
+  = InfixDecl    Position Infix (Maybe Precedence) [Ident]       -- infixl 5 (op), `fun`
   | DataDecl     Position Ident [Ident] [ConstrDecl] (Maybe Deriving)  -- data C a b = C1 a | C2 b [deriving Eq]
   | NewtypeDecl  Position Ident [Ident] NewConstrDecl (Maybe Deriving) -- newtype C a b = C a b [deriving Eq]
   | TypeDecl     Position Ident [Ident] TypeExpr                 -- type C a b = D a b
@@ -153,6 +171,9 @@ data Deriving = Deriving [QualIdent]
 -- ---------------------------------------------------------------------------
 -- Infix declaration
 -- ---------------------------------------------------------------------------
+
+-- |Operator precedence
+type Precedence = Integer
 
 -- |Fixity of operators
 data Infix

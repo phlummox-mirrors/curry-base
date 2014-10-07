@@ -30,14 +30,30 @@ import Curry.Syntax.Utils (opName)
 
 -- |Pretty print a module
 ppModule :: Module -> Doc
-ppModule (Module m es is ds) = ppModuleHeader m es is $$ ppSepBlock ds
+ppModule (Module ps m es is ds) = ppModuleHeader ps m es is $$ ppSepBlock ds
 
-ppModuleHeader :: ModuleIdent -> Maybe ExportSpec -> [ImportDecl] -> Doc
-ppModuleHeader m es is
+ppModuleHeader :: [ModulePragma] -> ModuleIdent -> Maybe ExportSpec
+               -> [ImportDecl] -> Doc
+ppModuleHeader ps m es is
   | null is   = header
   | otherwise = header $+$ text "" $+$ (vcat $ map ppImportDecl is)
-  where header = text "module" <+> ppMIdent m
+  where header = (vcat $ map ppModulePragma ps)
+                 $+$ text "module" <+> ppMIdent m
                  <+> maybePP ppExportSpec es <+> text "where"
+
+ppModulePragma :: ModulePragma -> Doc
+ppModulePragma (LanguagePragma _      exts) = text "{-# LANGUAGE"
+  <+> list (map ppExtension exts) <+> text "#-}"
+ppModulePragma (OptionsPragma  _ tool args) = text "{-# OPTIONS"
+  <> maybe empty ((text "_" <>) . ppTool) tool <+> text args <+> text "#-}"
+
+ppExtension :: Extension -> Doc
+ppExtension (KnownExtension   _ e) = text (show e)
+ppExtension (UnknownExtension _ e) = text e
+
+ppTool :: Tool -> Doc
+ppTool (UnknownTool t) = text t
+ppTool t               = text (show t)
 
 ppExportSpec :: ExportSpec -> Doc
 ppExportSpec (Exporting _ es) = parenList (map ppExport es)
@@ -101,12 +117,16 @@ ppDecl (InstanceDecl _ cx c tc tvars decls) =
   text "where" $$
   vcat (map (indent . ppDecl) decls) 
 
-ppPrec :: Infix -> Integer -> Doc
+ppPrec :: Infix -> Maybe Precedence -> Doc
 ppPrec fix p = ppAssoc fix <+> ppPrio p
-  where ppAssoc InfixL = text "infixl"
-        ppAssoc InfixR = text "infixr"
-        ppAssoc Infix  = text "infix"
-        ppPrio p' = if p' < 0 then empty else integer p'
+  where
+    ppPrio Nothing   = empty
+    ppPrio (Just p') = integer p'
+
+ppAssoc :: Infix -> Doc
+ppAssoc InfixL = text "infixl"
+ppAssoc InfixR = text "infixr"
+ppAssoc Infix  = text "infix"
 
 ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
 ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)
@@ -166,7 +186,7 @@ ppIImportDecl (IImportDecl _ m) = text "import" <+> ppMIdent m
 
 -- |Pretty print an interface declaration
 ppIDecl :: IDecl -> Doc
-ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix p <+> ppQInfixOp op
+ppIDecl (IInfixDecl   _ fix p op) = ppPrec fix (Just p) <+> ppQInfixOp op
 ppIDecl (HidingDataDecl _ tc tvs) =
   text "hiding" <+> ppITypeDeclLhs "data" tc tvs
 ppIDecl (IDataDecl   _ tc tvs cs) =
@@ -275,7 +295,7 @@ ppPattern _ (RecordPattern     fs rt) = record (list (map ppFieldPatt fs)
 
 -- |Pretty print a record field pattern
 ppFieldPatt :: Field Pattern -> Doc
-ppFieldPatt (Field _ l t) = ppIdent l <> equals <> ppPattern 0 t
+ppFieldPatt (Field _ l t) = ppIdent l <+> equals <+> ppPattern 0 t
 
 -- ---------------------------------------------------------------------------
 -- Expressions

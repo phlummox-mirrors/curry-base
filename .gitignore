@@ -2,5 +2,5 @@ cabal-dev/
 dist/
 .curry/
 .dist-buildwrapper/
-.project
-.settings
+.cabal-sandbox/
+cabal.sandbox.config

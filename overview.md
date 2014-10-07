@@ -9,15 +9,15 @@ Module overview of package `curry-base`
       * `.Message`     : Error/Warning monad
       * `.Position`    : source code position
   * `Curry.ExtendedFlat`
-      * `.CurryArithmetics` :
-      * `.EraseTypes`       :
-      * `.Goodies`          :
-      * `.InterfaceEquality`:
-      * `.LiftLetrec`       :
-      * `.MonadicGoodies`   :
-      * `.Type`             : Definition of ExtendedFlatCurry
-      * `.TypeInference`    :
-      * `.UnMutual`         :
+      * `.CurryArithmetics`    :
+      * `.EraseTypes`          :
+      * `.Goodies`             :
+      * `.InterfaceEquivalence`: Check the equality of two FlatCurry interfaces
+      * `.LiftLetrec`          :
+      * `.MonadicGoodies`      :
+      * `.Type`                : Definition of ExtendedFlatCurry
+      * `.TypeInference`       :
+      * `.UnMutual`            :
   * `Curry.Files`
       * `.Filenames`: Curry file extensions and file name manipulation
       * `.PathUtils`: lookup/read/write of Curry files-Dateien
