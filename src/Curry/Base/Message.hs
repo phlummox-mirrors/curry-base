@@ -21,7 +21,7 @@ module Curry.Base.Message
   , ppMessage, ppWarning, ppError, ppMessages
   ) where
 
-import Control.Monad.Error
+-- import Control.Monad.Trans.Except
 import Data.Maybe             (fromMaybe)
 
 import Curry.Base.Position
@@ -46,9 +46,9 @@ instance Ord Message where
 instance Show Message where
   showsPrec _ = shows . ppMessage
 
-instance Error Message where
-  noMsg  = message (text "Failure!")
-  strMsg = message . text
+-- instance Error Message where
+--   noMsg  = message (text "Failure!")
+--   strMsg = message . text
 
 instance HasPosition Message where
   getPosition     = fromMaybe NoPos . msgPos
