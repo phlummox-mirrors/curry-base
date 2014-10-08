@@ -46,6 +46,7 @@ data KnownExtension
   | NegativeLiterals   -- ^ negative literals
   | NoImplicitPrelude  -- ^ no implicit import of the prelude
   | Records            -- ^ record syntax
+  | TypeClassExtensions
     deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
 
 -- |Classifies a 'String' as an 'Extension'
