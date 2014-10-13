@@ -28,7 +28,7 @@ module Curry.ExtendedFlat.Type
   , FuncDecl (..), Rule(..), Expr (..), Literal (..)
   , CombType (..), CaseType (..), BranchExpr (..), Pattern (..)
     -- * Functions for reading and writing FlatCurry terms
-  , readFlatCurry, readFlatInterface, readFlat
+  , readFlatCurry, readFlatInterface, readExtFlatCurry, readFlat
   , writeFlatCurry, writeExtendedFlat
   ) where
 
@@ -411,7 +411,7 @@ data Pattern
 -- Functions for reading and writing FlatCurry terms
 -- ---------------------------------------------------------------------------
 
--- |Reads an ExtendedFlat file (extension ".efc") and eventually returns the
+-- |Reads an FlatCurry file (extension ".fcy") and eventually returns the
 -- corresponding FlatCurry program term (type 'Prog').
 readFlatCurry :: FilePath -> IO (Maybe Prog)
 readFlatCurry = readFlat . flatName
@@ -421,23 +421,23 @@ readFlatCurry = readFlat . flatName
 readFlatInterface :: String -> IO (Maybe Prog)
 readFlatInterface = readFlat . flatIntName
 
+-- |Reads an Extended FlatCurry file (extension ".efc") and eventually
+-- returns the corresponding FlatCurry program term (type 'Prog').
+readExtFlatCurry :: FilePath -> IO (Maybe Prog)
+readExtFlatCurry = readFlat . extFlatName
+
 -- |Reads a Flat file and returns the corresponding term (type 'Prog') as
 -- a value of type 'Maybe'.
 readFlat :: FilePath -> IO (Maybe Prog)
 readFlat = liftM (fmap read) . readModule
 
 -- |Writes a FlatCurry program term into a file.
-
--- If the flag is set, the file will be written into the hidden @.curry@
--- sub-directory.
-writeFlatCurry :: Bool -> String -> Prog -> IO ()
-writeFlatCurry subdir fn p = writeModule subdir fn (showFlatCurry' False p)
+writeFlatCurry :: String -> Prog -> IO ()
+writeFlatCurry fn p = writeModule fn (showFlatCurry' False p)
 
 -- |Writes a FlatCurry program term with source references into a file.
--- If the flag is set, it will be the hidden @.curry@ sub directory.
-writeExtendedFlat :: Bool -> String -> Prog -> IO ()
-writeExtendedFlat subdir fn p =
-  writeModule subdir (extFlatName fn) (showFlatCurry' True p)
+writeExtendedFlat :: String -> Prog -> IO ()
+writeExtendedFlat fn p = writeModule fn (showFlatCurry' True p)
 
 showFlatCurry' :: Bool -> Prog -> String
 showFlatCurry' b x = gshowsPrec b False x ""

@@ -17,10 +17,11 @@ module Curry.Files.Filenames
     FilePath, takeBaseName, dropExtension, takeExtension, takeFileName
 
     -- * Conversion between 'ModuleIdent' and 'FilePath'
-  , moduleNameToFile, fileNameToModule, isCurryFilePath
+  , moduleNameToFile, fileNameToModule, splitModuleFileName, isCurryFilePath
 
     -- * Curry sub-directory
-  , currySubdir, hasCurrySubdir, addCurrySubdir, ensureCurrySubdir
+  , currySubdir, hasCurrySubdir, addCurrySubdir, addCurrySubdirModule
+  , ensureCurrySubdir
 
     -- * File name extensions
     -- ** Curry files
@@ -57,6 +58,17 @@ moduleNameToFile = foldr1 (</>) . midQualifiers
 fileNameToModule :: FilePath -> ModuleIdent
 fileNameToModule = mkMIdent . splitDirectories . dropExtension . dropDrive
 
+-- |Split a 'FilePath' into a prefix directory part and those part that
+-- corresponds to the 'ModuleIdent'. This is especially useful for
+-- hierarchically module names.
+splitModuleFileName :: ModuleIdent -> FilePath -> (FilePath, FilePath)
+splitModuleFileName m fn = case midQualifiers m of
+  [_] -> splitFileName fn
+  ms  -> let (base, ext) = splitExtension fn
+             dirs        = splitDirectories base
+             (pre, suf)  = splitAt (length dirs - length ms) dirs
+         in  (addTrailingPathSeparator (joinPath pre), joinPath suf <.> ext)
+
 -- |Checks whether a 'String' represents a 'FilePath' to a Curry module
 isCurryFilePath :: String -> Bool
 isCurryFilePath str =  isValid str
@@ -81,13 +93,23 @@ hasCurrySubdir f = not (null dirs) && last dirs == currySubdir
 addCurrySubdir :: Bool -> FilePath -> FilePath
 addCurrySubdir b fn = if b then ensureCurrySubdir fn else fn
 
+-- |Add the 'currySubdir' to the given 'FilePath' if the flag is 'True' and
+-- the path does not already contain it, otherwise leave the path untouched.
+addCurrySubdirModule :: Bool -> ModuleIdent -> FilePath -> FilePath
+addCurrySubdirModule b m fn
+  | b         = let (pre, file) = splitModuleFileName m fn
+                in  ensureCurrySubdir pre </> file
+  | otherwise = fn
+
 -- | Ensure that the 'currySubdir' is the last component of the
 -- directory structure of the given 'FilePath'. If the 'FilePath' already
 -- contains the sub-directory, it remains unchanged.
 ensureCurrySubdir :: FilePath -- ^ original 'FilePath'
                   -> FilePath -- ^ new 'FilePath'
 ensureCurrySubdir f
-  = replaceDirectory f $ addSub (splitDirectories $ takeDirectory f)
+  = normalise
+  $ addTrailingPathSeparator
+    $ addSub (splitDirectories $ takeDirectory f)
   where
   addSub :: [String] -> String
   addSub dirs | null dirs                = currySubdir

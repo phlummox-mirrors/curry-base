@@ -1,8 +1,8 @@
 {- |
     Module      :  $Header$
     Description :  Utility functions for reading and writing files
-    Copyright   :  (c) 1999-2003, Wolfgang Lux
-                       2011     , Björn Peemöller (bjp@informatik.uni-kiel.de)
+    Copyright   :  (c) 1999 - 2003, Wolfgang Lux
+                       2011 - 2014, Björn Peemöller (bjp@informatik.uni-kiel.de)
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -14,24 +14,26 @@
 
 module Curry.Files.PathUtils
   ( -- * Retrieving curry files
-    lookupCurryFileIn     , lookupCurryFile
-  , lookupCurryModuleIn   , lookupCurryModule
-  , lookupCurryInterfaceIn, lookupCurryInterface
-  , lookupFileIn          , lookupFile
+    lookupCurryFile
+  , lookupCurryModule
+  , lookupCurryInterface
+  , lookupFile
 
     -- * Reading and writing modules from files
-  , doesModuleExist, getModuleModTime, writeModule, readModule
+  , getModuleModTime
+  , writeModule
+  , readModule
   ) where
 
 import qualified Control.Exception as C (IOException, handle)
-import           Control.Monad          (liftM, liftM2)
+import           Control.Monad          (liftM)
 import           System.FilePath
 import           System.Directory
 
 #if MIN_VERSION_directory(1,2,0)
-import Data.Time (UTCTime)
+import Data.Time                        (UTCTime)
 #else
-import System.Time (ClockTime)
+import System.Time                      (ClockTime)
 #endif
 
 import Curry.Base.Ident
@@ -42,49 +44,30 @@ import Curry.Files.Filenames
 -- ---------------------------------------------------------------------------
 
 -- |Search in the given list of paths for the given 'FilePath' and eventually
--- return the file name and the path the file was found in.
+-- return the file name of the found file.
 --
 -- - If the file name already contains a directory, then the paths to search
 --   in are ignored.
 -- - If the file name has no extension, then a source file extension is
 --   assumed.
-lookupCurryFileIn :: [FilePath] -> FilePath -> IO (Maybe (FilePath, FilePath))
-lookupCurryFileIn paths fn = lookupFileIn ("." : paths') exts fn
+lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
+lookupCurryFile paths fn = lookupFile paths' exts fn
   where
-  paths' | pathSeparator `elem` fn = []
+  paths' | pathSeparator `elem` fn = ["."]
          | otherwise               = paths
   exts   | null fnExt              = sourceExts
          | otherwise               = [fnExt]
   fnExt                            = takeExtension fn
 
--- |Same as 'lookupCurryFileIn', but returns the complete 'FilePath'.
-lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
-lookupCurryFile paths fn = combineM $ lookupCurryFileIn paths fn
-
 -- |Search for a given curry module in the given source file and
 -- library paths. Note that the current directory is always searched first.
--- Returns the path as well as the file name without the path.
-lookupCurryModuleIn :: [FilePath]          -- ^ list of paths to source files
-                    -> [FilePath]          -- ^ list of paths to library files
-                    -> ModuleIdent         -- ^ module identifier
-                    -> IO (Maybe (FilePath, FilePath))
-lookupCurryModuleIn paths libPaths m =
-  lookupFileIn ("." : paths ++ libPaths) moduleExts (moduleNameToFile m)
-
--- |Same as 'lookupCurryModuleIn', but returns the complete 'FilePath'.
-lookupCurryModule :: [FilePath] -> [FilePath] -> ModuleIdent
+-- Returns the path of the found file.
+lookupCurryModule :: [FilePath]          -- ^ list of paths to source files
+                  -> [FilePath]          -- ^ list of paths to library files
+                  -> ModuleIdent         -- ^ module identifier
                   -> IO (Maybe FilePath)
-lookupCurryModule paths libPaths m = combineM
-                                   $ lookupCurryModuleIn paths libPaths m
-
--- |Search for an interface file in the import search path using the
--- interface extension 'icurryExt'. Note that the current directory is
--- always searched first.
-lookupCurryInterfaceIn :: [FilePath]          -- ^ list of paths to search in
-                       -> ModuleIdent         -- ^ module identifier
-                       -> IO (Maybe (FilePath, FilePath))
-lookupCurryInterfaceIn paths m =
-  lookupFileIn ("." : paths) [icurryExt] (moduleNameToFile m)
+lookupCurryModule paths libPaths m =
+  lookupFile (paths ++ libPaths) moduleExts (moduleNameToFile m)
 
 -- |Search for an interface file in the import search path using the
 -- interface extension 'icurryExt'. Note that the current directory is
@@ -92,60 +75,40 @@ lookupCurryInterfaceIn paths m =
 lookupCurryInterface :: [FilePath]          -- ^ list of paths to search in
                      -> ModuleIdent         -- ^ module identifier
                      -> IO (Maybe FilePath) -- ^ the file path if found
-lookupCurryInterface paths m = combineM $ lookupCurryInterfaceIn paths m
+lookupCurryInterface paths m = lookupFile paths [icurryExt] (moduleNameToFile m)
 
 -- |Search in the given directories for the file with the specified file
--- extensions and eventually return the containing directory as
--- well as the local 'FilePath' of the file.
-lookupFileIn :: [FilePath] -- ^ Directories to search in
-             -> [String]   -- ^ Accepted file extensions
-             -> FilePath   -- ^ Initial file name
-             -> IO (Maybe (FilePath, FilePath))
-lookupFileIn paths exts file = lookup' files
-  where
-  paths'    = concatMap (\p -> [p, ensureCurrySubdir p])
-            $ map (normalise . addTrailingPathSeparator) paths
-  baseNames = map (replaceExtension file) exts
-  files     = [ (p, f) | p <- paths', f <- baseNames ]
-
-  lookup' []         = return Nothing
-  lookup' (pf : pfs) = do
-    exists <- doesFileExist $ uncurry (</>) pf
-    if exists then return (Just pf) else lookup' pfs
-
--- |Search in the given directories for the file with the specified file
---  extensions and eventually return its 'FilePath'
+-- extensions and eventually return the 'FilePath' of the file.
 lookupFile :: [FilePath]          -- ^ Directories to search in
            -> [String]            -- ^ Accepted file extensions
            -> FilePath            -- ^ Initial file name
            -> IO (Maybe FilePath) -- ^ 'FilePath' of the file if found
-lookupFile paths exts file = combineM $ lookupFileIn paths exts file
+lookupFile paths exts file = lookup' files
+  where
+  files     = [ normalise (p </> f) | p <- paths, f <- baseNames ]
+  baseNames = map (replaceExtension file) exts
+
+  lookup' []       = return Nothing
+  lookup' (f : fs) = do
+    exists <- doesFileExist f
+    if exists then return (Just f) else lookup' fs
 
 -- ---------------------------------------------------------------------------
 -- Reading and writing files
 -- ---------------------------------------------------------------------------
 
--- | Write the content to a file in the given directory or in the
--- 'currySubdir' sub-directory if the first parameter is set to 'True'.
-writeModule :: Bool     -- ^ should the 'currySubdir' be included in the path?
-            -> FilePath -- ^ original path
+-- | Write the content to a file in the given directory.
+writeModule :: FilePath -- ^ original path
             -> String   -- ^ file content
             -> IO ()
-writeModule inSubdir fn contents = do
-  let fn' = addCurrySubdir inSubdir fn
-  createDirectoryIfMissing True $ takeDirectory fn'
-  writeFile fn' contents
+writeModule fn contents = do
+  createDirectoryIfMissing True $ takeDirectory fn
+  writeFile fn contents
 
 -- | Read the specified module and returns either 'Just String' if
 -- reading was successful or 'Nothing' otherwise.
 readModule :: FilePath -> IO (Maybe String)
 readModule = tryOnExistingFile readFile
-
--- | Check whether a module exists either in the given directory or in the
--- 'currySubdir'.
-doesModuleExist :: FilePath -> IO Bool
-doesModuleExist f = liftM2 (||) (doesFileExist f)
-                                (doesFileExist $ ensureCurrySubdir f)
 
 -- | Get the modification time of a file, if existent
 #if MIN_VERSION_directory(1,2,0)
@@ -159,20 +122,11 @@ getModuleModTime = tryOnExistingFile getModificationTime
 -- Helper functions
 -- ---------------------------------------------------------------------------
 
--- combine lifted into nested monads
-combineM :: (Monad m, Monad m1) => (m (m1 (FilePath, FilePath)))
-         -> (m (m1 FilePath))
-combineM = liftM (liftM $ uncurry combine)
-
 tryOnExistingFile :: (FilePath -> IO a) -> FilePath -> IO (Maybe a)
 tryOnExistingFile action fn = C.handle ignoreIOException $ do
   exists <- doesFileExist fn
   if exists then Just `liftM` action fn
-            else do
-                 let fn' = ensureCurrySubdir fn
-                 existsSub <- doesFileExist fn'
-                 if existsSub then Just `liftM` action fn'
-                              else return Nothing
+            else return Nothing
 
 ignoreIOException :: C.IOException -> IO (Maybe a)
 ignoreIOException _ = return Nothing
