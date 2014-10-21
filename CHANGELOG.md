@@ -4,6 +4,8 @@ Change log for curry-base
 Under Development
 =================
 
+  * Removed record type extensions
+
   * Moved `CYT` monads to `curry-base` (`Curry.Base.Monad`)
     and removed `MessageM` monad
 
