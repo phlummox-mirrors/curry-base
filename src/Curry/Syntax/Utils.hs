@@ -76,8 +76,8 @@ isValueDecl _                       = False
 
 -- |Is the declaration a record declaration?
 isRecordDecl :: Decl -> Bool
-isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
-isRecordDecl _                                 = False
+isRecordDecl (TypeDecl _ _ _ (RecordType _)) = True
+isRecordDecl _                               = False
 
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool

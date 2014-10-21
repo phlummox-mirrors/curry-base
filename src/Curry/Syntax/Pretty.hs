@@ -202,8 +202,7 @@ ppTypeExpr p (ArrowType ty1 ty2) = parenIf (p > 0)
   where
   ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
   ppArrowType ty                    = [ppTypeExpr 0 ty]
-ppTypeExpr _ (RecordType fs rty) = record (list (map ppTypedField fs)
-    <+> maybePP (\ty -> char '|' <+> ppTypeExpr 0 ty) rty)
+ppTypeExpr _ (RecordType fs) = record (list (map ppTypedField fs))
   where
   ppTypedField (ls,ty) = list (map ppIdent ls) <+> text "::" <+> ppTypeExpr 0 ty
 

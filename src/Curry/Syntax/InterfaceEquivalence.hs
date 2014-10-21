@@ -128,7 +128,7 @@ instance FixInterface TypeExpr where
   fix tcs (TupleType     tys) = TupleType  (fix tcs tys)
   fix tcs (ListType       ty) = ListType   (fix tcs ty)
   fix tcs (ArrowType ty1 ty2) = ArrowType  (fix tcs ty1) (fix tcs ty2)
-  fix tcs (RecordType fs mty) = RecordType (map fixField fs) (fix tcs mty)
+  fix tcs (RecordType     fs) = RecordType (map fixField fs)
    where fixField (lbl, ty) = (lbl, fix tcs ty)
 
 typeConstructors :: [IDecl] -> [Ident]

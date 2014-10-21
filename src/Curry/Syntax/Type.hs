@@ -177,7 +177,7 @@ data TypeExpr
   | TupleType       [TypeExpr]
   | ListType        TypeExpr
   | ArrowType       TypeExpr TypeExpr
-  | RecordType      [([Ident], TypeExpr)] (Maybe TypeExpr)
+  | RecordType      [([Ident], TypeExpr)]
     -- {l1 :: t1,...,ln :: tn | r}
     deriving (Eq, Read, Show, Data, Typeable)
 
