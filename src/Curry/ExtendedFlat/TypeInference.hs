@@ -22,14 +22,13 @@ module Curry.ExtendedFlat.TypeInference
   , genEquations
   ) where
 
-import Control.Monad.Reader
-import Control.Monad.State
-import qualified Data.IntMap as IntMap
-import Data.Maybe
-import Text.PrettyPrint.HughesPJ
+import           Control.Monad.Reader
+import           Control.Monad.State
+import qualified Data.IntMap                 as IntMap
+import           Text.PrettyPrint.HughesPJ
 
-import Curry.ExtendedFlat.Type
-import Curry.ExtendedFlat.Goodies
+import           Curry.ExtendedFlat.Type
+import           Curry.ExtendedFlat.Goodies
 
 -- import Debug.Trace
 
@@ -179,7 +178,11 @@ labelVarsWithTypes = updProgFuncs updateFunc
                return qn{typeofQName = Just t }
 
       withVS :: MonadReader TypeMap m => [VarIndex] -> m a -> m a
-      withVS vs = local (\ m -> foldr (\ v -> IntMap.insert (idxOf v) (fromJust $ typeofVar v)) m vs)
+      withVS vs = local (\ m -> foldr add m vs)
+        where
+        add v m = case typeofVar v of
+                    Nothing -> error "Curry.ExtendedFlat.TypeInference.withVS"
+                    Just ty -> IntMap.insert (idxOf v) ty m
 
 -- ----------------------------------------------------------------------
 -- ----------------------------------------------------------------------
