@@ -190,6 +190,13 @@ showsConsDecl (ConOpDecl pos idents ty1 ident ty2)
   . showsIdent ident . space
   . showsTypeExpr ty2
   . showsString ")"
+showsConsDecl (RecordDecl pos idents ident fs)
+  = showsString "(RecordDecl "
+  . showsPosition pos . space
+  . showsList showsIdent idents . space
+  . showsIdent ident . space
+  . showsList (showsPair (showsList showsIdent) showsTypeExpr) fs
+  . showsString ")"
 
 showsNewConsDecl :: NewConstrDecl -> ShowS
 showsNewConsDecl (NewConstrDecl pos idents ident typ)

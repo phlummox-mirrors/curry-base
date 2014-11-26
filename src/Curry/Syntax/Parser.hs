@@ -218,7 +218,8 @@ constrDecl = position <**> (existVars <**> constr)
   constr =  conId     <**> identDecl
         <|> leftParen <-*> parenDecl
         <|> type1 False <\> conId <\> leftParen <**> opDecl
-  identDecl = many (type2 False) <**> (conType <$> opDecl `opt` conDecl)
+  identDecl =  many (type2 False) <**> (conType <$> opDecl `opt` conDecl)
+           <|> recDecl <$> recordFields
   parenDecl =  conOpDeclPrefix
            <$> conSym    <*-> rightParen <*> type2 False <*> type2 False
            <|> tupleType False <*-> rightParen <**> opDecl
@@ -227,6 +228,7 @@ constrDecl = position <**> (existVars <**> constr)
   conDecl tys c tvs p              = ConstrDecl p tvs c tys
   conOpDecl op ty2 ty1 tvs p       = ConOpDecl p tvs ty1 op ty2
   conOpDeclPrefix op ty1 ty2 tvs p = ConOpDecl p tvs ty1 op ty2
+  recDecl fs c tvs p               = RecordDecl p tvs c fs
 
 newConstrDecl :: Parser Token NewConstrDecl a
 newConstrDecl = NewConstrDecl <$> position <*> existVars <*> con <*> type2 False
@@ -377,7 +379,10 @@ listType withRecordType = ListType <$> brackets (type0 withRecordType)
 
 -- listType ::= '{' labelDecls '}'
 recordType :: Parser Token TypeExpr a
-recordType = RecordType <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
+recordType = RecordType <$> recordFields
+
+recordFields :: Parser Token [([Ident], TypeExpr)] a
+recordFields = layoutOff <-*> braces (labelDecls `sepBy` comma)
 
 -- labelDecls ::= labId '::' type0 [',' labelDecls]
 labelDecls :: Parser Token ([Ident], TypeExpr) a

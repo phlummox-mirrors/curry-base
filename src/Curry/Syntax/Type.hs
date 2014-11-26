@@ -158,6 +158,7 @@ data Infix
 data ConstrDecl
   = ConstrDecl Position [Ident] Ident [TypeExpr]
   | ConOpDecl  Position [Ident] TypeExpr Ident TypeExpr
+  | RecordDecl Position [Ident] Ident [([Ident], TypeExpr)]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Constructor declaration for renaming types (newtypes)

@@ -76,8 +76,14 @@ isValueDecl _                       = False
 
 -- |Is the declaration a record declaration?
 isRecordDecl :: Decl -> Bool
+isRecordDecl (DataDecl _ _ _ cs)             = any isRecordCons cs
 isRecordDecl (TypeDecl _ _ _ (RecordType _)) = True
 isRecordDecl _                               = False
+
+-- |Is the constructor declaration a record declaration?
+isRecordCons :: ConstrDecl -> Bool
+isRecordCons (RecordDecl _ _ _ _) = True
+isRecordCons _                    = False
 
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool

@@ -75,6 +75,8 @@ instance Equiv ConstrDecl where
     = c1 == c2 && evs1 == evs2 && tys1 == tys2
   ConOpDecl _ evs1 ty11 op1 ty12 =~= ConOpDecl _ evs2 ty21 op2 ty22
     = op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
+  RecordDecl _ evs1 c1 fs1 =~= RecordDecl _ evs2 c2 fs2
+    = c1 == c2 && evs1 == evs2 && fs1 == fs2
   _ =~= _ = False
 
 instance Equiv NewConstrDecl where
@@ -111,6 +113,8 @@ instance FixInterface ConstrDecl where
   fix tcs (ConstrDecl p evs      c tys) = ConstrDecl p evs c (fix tcs tys)
   fix tcs (ConOpDecl  p evs ty1 op ty2) =
     ConOpDecl p evs (fix tcs ty1) op (fix tcs ty2)
+  fix tcs (RecordDecl p evs c fs)       =
+    RecordDecl p evs c (map (\(tvs, ty) -> (tvs, fix tcs ty)) fs)
 
 instance FixInterface NewConstrDecl where
   fix tcs (NewConstrDecl p evs c ty) = NewConstrDecl p evs c (fix tcs ty)

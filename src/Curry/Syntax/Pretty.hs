@@ -124,6 +124,8 @@ ppConstr (ConstrDecl     _ tvs c tys) =
   sep [ppExistVars tvs, ppIdent c <+> fsep (map (ppTypeExpr 2) tys)]
 ppConstr (ConOpDecl _ tvs ty1 op ty2) =
   sep [ppExistVars tvs, ppTypeExpr 1 ty1, ppInfixOp op <+> ppTypeExpr 1 ty2]
+ppConstr (RecordDecl _ tvs c fs) =
+  sep [ppExistVars tvs, ppIdent c <+> record (list (map ppTypedField fs))]
 
 ppNewConstr :: NewConstrDecl -> Doc
 ppNewConstr (NewConstrDecl _ tvs c ty) =
@@ -203,8 +205,9 @@ ppTypeExpr p (ArrowType ty1 ty2) = parenIf (p > 0)
   ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
   ppArrowType ty                    = [ppTypeExpr 0 ty]
 ppTypeExpr _ (RecordType fs) = record (list (map ppTypedField fs))
-  where
-  ppTypedField (ls,ty) = list (map ppIdent ls) <+> text "::" <+> ppTypeExpr 0 ty
+
+ppTypedField :: ([Ident], TypeExpr) -> Doc
+ppTypedField (ls,ty) = list (map ppIdent ls) <+> text "::" <+> ppTypeExpr 0 ty
 
 -- ---------------------------------------------------------------------------
 -- Literals
