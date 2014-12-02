@@ -251,10 +251,9 @@ showsTypeExpr (ArrowType dom ran)
   . showsTypeExpr dom . space
   . showsTypeExpr ran
   . showsString ")"
-showsTypeExpr (RecordType fieldts mtyp)
+showsTypeExpr (RecordType fieldts)
   = showsString "(RecordType "
-  . showsList (showsPair (showsList showsIdent) showsTypeExpr) fieldts . space
-  . showsMaybe showsTypeExpr mtyp
+  . showsList (showsPair (showsList showsIdent) showsTypeExpr) fieldts
   . showsString ")"
 
 showsEquation :: Equation -> ShowS

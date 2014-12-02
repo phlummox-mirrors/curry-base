@@ -67,7 +67,9 @@ splitModuleFileName m fn = case midQualifiers m of
   ms  -> let (base, ext) = splitExtension fn
              dirs        = splitDirectories base
              (pre, suf)  = splitAt (length dirs - length ms) dirs
-         in  (addTrailingPathSeparator (joinPath pre), joinPath suf <.> ext)
+             path        = if null pre then ""
+                                       else addTrailingPathSeparator (joinPath pre)
+         in  (path, joinPath suf <.> ext)
 
 -- |Checks whether a 'String' represents a 'FilePath' to a Curry module
 isCurryFilePath :: String -> Bool

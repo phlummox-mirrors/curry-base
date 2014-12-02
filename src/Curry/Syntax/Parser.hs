@@ -540,8 +540,7 @@ listType withRecordType = ListType <$> brackets (type0 withRecordType)
 
 -- listType ::= '{' labelDecls '}'
 recordType :: Parser Token TypeExpr a
-recordType =  flip RecordType Nothing
-          <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
+recordType = RecordType <$> (layoutOff <-*> braces (labelDecls `sepBy` comma))
 
 -- labelDecls ::= labId '::' type0 [',' labelDecls]
 labelDecls :: Parser Token ([Ident], TypeExpr) a

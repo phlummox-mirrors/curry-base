@@ -30,7 +30,6 @@ module Curry.Syntax.Utils
 
 import Control.Monad.State
 import Data.Generics
-import Data.Maybe
 
 import Curry.Base.Ident
 import Curry.Base.Position
@@ -83,8 +82,8 @@ isValueDecl _                       = False
 
 -- |Is the declaration a record declaration?
 isRecordDecl :: Decl -> Bool
-isRecordDecl (TypeDecl _ _ _ (RecordType _ _)) = True
-isRecordDecl _                                 = False
+isRecordDecl (TypeDecl _ _ _ (RecordType _)) = True
+isRecordDecl _                               = False
 
 -- |Is the declaration an external declaration?
 isExternalDecl :: Decl -> Bool
@@ -167,9 +166,7 @@ typeVarsInTypeExpr (VariableType t) = [t]
 typeVarsInTypeExpr (TupleType ts) = concatMap typeVarsInTypeExpr ts
 typeVarsInTypeExpr (ListType t) = typeVarsInTypeExpr t
 typeVarsInTypeExpr (ArrowType t1 t2) = typeVarsInTypeExpr t1 ++ typeVarsInTypeExpr t2
-typeVarsInTypeExpr (RecordType fs mt) = 
-  concatMap (typeVarsInTypeExpr . snd) fs 
-  ++ concatMap typeVarsInTypeExpr (maybeToList mt) 
+typeVarsInTypeExpr (RecordType fs) = concatMap (typeVarsInTypeExpr . snd) fs
 
 -- |Extract all type variables from a context
 typeVarsInContext :: Context -> [Ident]
@@ -224,38 +221,36 @@ toTypeConstructor ty
 
 -- |qualifies a given type expression
 qualifyTypeExpr :: ModuleIdent -> TypeExpr -> TypeExpr
-qualifyTypeExpr m (ConstructorType qid tys) = 
+qualifyTypeExpr m (ConstructorType qid tys) =
   ConstructorType (qualQualify m qid) (map (qualifyTypeExpr m) tys)
 qualifyTypeExpr _m v@(VariableType _) = v
 qualifyTypeExpr m (TupleType tys) = TupleType (map (qualifyTypeExpr m) tys)
 qualifyTypeExpr m (ListType ty) = ListType (qualifyTypeExpr m ty)
-qualifyTypeExpr m (ArrowType ty1 ty2) = 
+qualifyTypeExpr m (ArrowType ty1 ty2) =
   ArrowType (qualifyTypeExpr m ty1) (qualifyTypeExpr m ty2)
-qualifyTypeExpr m (RecordType rs mty) = 
+qualifyTypeExpr m (RecordType rs) =
   RecordType (map (\(ids, ty) -> (ids, qualifyTypeExpr m ty)) rs)
-             (fmap (qualifyTypeExpr m) mty)   
-qualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) =  
+qualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) =
   SpecialConstructorType (QualTC $ qualQualify m qid)
     (map (qualifyTypeExpr m) tys)
-qualifyTypeExpr m (SpecialConstructorType c tys) = 
+qualifyTypeExpr m (SpecialConstructorType c tys) =
   SpecialConstructorType c (map (qualifyTypeExpr m) tys)
 
 -- |unqualify a given type expression
 unqualifyTypeExpr :: ModuleIdent -> TypeExpr -> TypeExpr
-unqualifyTypeExpr m (ConstructorType qid tys) = 
+unqualifyTypeExpr m (ConstructorType qid tys) =
   ConstructorType (qualUnqualify m qid) (map (unqualifyTypeExpr m) tys)
 unqualifyTypeExpr _m v@(VariableType _) = v
 unqualifyTypeExpr m (TupleType tys) = TupleType (map (unqualifyTypeExpr m) tys)
 unqualifyTypeExpr m (ListType ty) = ListType (unqualifyTypeExpr m ty)
-unqualifyTypeExpr m (ArrowType ty1 ty2) = 
+unqualifyTypeExpr m (ArrowType ty1 ty2) =
   ArrowType (unqualifyTypeExpr m ty1) (unqualifyTypeExpr m ty2)
-unqualifyTypeExpr m (RecordType rs mty) = 
+unqualifyTypeExpr m (RecordType rs) =
   RecordType (map (\(ids, ty) -> (ids, unqualifyTypeExpr m ty)) rs)
-             (fmap (unqualifyTypeExpr m) mty)
-unqualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) = 
+unqualifyTypeExpr m (SpecialConstructorType (QualTC qid) tys) =
   SpecialConstructorType (QualTC $ qualUnqualify m qid)
     (map (unqualifyTypeExpr m) tys)
-unqualifyTypeExpr m (SpecialConstructorType c tys) = 
+unqualifyTypeExpr m (SpecialConstructorType c tys) =
   SpecialConstructorType c (map (unqualifyTypeExpr m) tys)
 
 ---------------------------
