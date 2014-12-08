@@ -162,7 +162,9 @@ data ConstrDecl
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Constructor declaration for renaming types (newtypes)
-data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
+data NewConstrDecl
+  = NewConstrDecl Position [Ident] Ident TypeExpr
+  | NewRecordDecl Position [Ident] Ident (Ident, TypeExpr)
    deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Calling convention for C code
@@ -179,7 +181,7 @@ data TypeExpr
   | ListType        TypeExpr
   | ArrowType       TypeExpr TypeExpr
   | RecordType      [([Ident], TypeExpr)]
-    -- {l1 :: t1,...,ln :: tn | r}
+    -- {l1 :: t1,...,ln :: tn}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -235,7 +237,8 @@ data Pattern
   | FunctionPattern    QualIdent [Pattern]
   | InfixFuncPattern   Pattern QualIdent Pattern
   | RecordPattern      [Field Pattern] (Maybe Pattern)
-        -- {l1 = p1, ..., ln = pn | p}
+       -- {l1 = p1, ..., ln = pn | p}
+  | HsRecordPattern    QualIdent [Field Pattern] -- C { l1 = p1, ..., ln = pn }
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Expression
@@ -265,6 +268,8 @@ data Expression
   | RecordConstr    [Field Expression]            -- {l1 := e1,...,ln := en}
   | RecordSelection Expression Ident              -- e :> l
   | RecordUpdate    [Field Expression] Expression -- {l1 := e1,...,ln := en | e}
+  | HsRecordConstr  QualIdent  [Field Expression]  -- C { l1 = e1,..., ln = en }
+  | HsRecordUpdate  Expression [Field Expression]  -- e { l1 = e1,..., ln = en }
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Infix operation
@@ -322,6 +327,7 @@ instance SrcRefOf Pattern where
   srcRefOf (InfixFuncPattern _ i _) = srcRefOf i
   srcRefOf (RecordPattern      _ _)
     = error "record pattern has several source refs"
+  srcRefOf (HsRecordPattern    i _) = srcRefOf i
 
 instance SrcRefOf Literal where
   srcRefOf (Char   s _) = s

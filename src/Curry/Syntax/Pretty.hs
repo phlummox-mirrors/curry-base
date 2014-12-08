@@ -130,6 +130,10 @@ ppConstr (RecordDecl _ tvs c fs) =
 ppNewConstr :: NewConstrDecl -> Doc
 ppNewConstr (NewConstrDecl _ tvs c ty) =
   sep [ppExistVars tvs,ppIdent c <+> ppTypeExpr 2 ty]
+ppNewConstr (NewRecordDecl _ tvs c (i,ty)) = sep
+  [ ppExistVars tvs
+  , ppIdent c <+> record (ppIdent i <+> text "::" <+> ppTypeExpr 0 ty)
+  ]
 
 ppExistVars :: [Ident] -> Doc
 ppExistVars tvs
@@ -248,6 +252,8 @@ ppPattern p (InfixFuncPattern t1 f t2) = parenIf (p > 0)
   (sep [ppPattern 1 t1 <+> ppQInfixOp f, indent (ppPattern 0 t2)])
 ppPattern _ (RecordPattern     fs rt) = record (list (map ppFieldPatt fs)
   <+> (maybePP (\t -> char '|' <+> ppPattern 0 t) rt))
+ppPattern p (HsRecordPattern c fs) = parenIf (p > 1)
+  (ppQIdent c <+> record (list (map ppFieldPatt fs)))
 
 -- |Pretty print a record field pattern
 ppFieldPatt :: Field Pattern -> Doc
@@ -303,12 +309,15 @@ ppExpr p (IfThenElse _ e1 e2 e3) = parenIf (p > 0)
 ppExpr p (Case    _ ct e alts) = parenIf (p > 0)
            (ppCaseType ct <+> ppExpr 0 e <+> text "of" $$
             indent (vcat (map ppAlt alts)))
-ppExpr _ (RecordConstr     fs) = braces
-                               $ space <> list (map ppFieldExpr fs) <> space
+ppExpr _ (RecordConstr     fs) = record (list (map ppFieldExpr fs))
 ppExpr p (RecordSelection e l) = parenIf (p > 0)
                                  (ppExpr 1 e <+> recSelect <+> ppIdent l)
-ppExpr _ (RecordUpdate   fs e) = braces
-  (space <> list (map ppFieldExpr fs) <+> char '|' <+> ppExpr 0 e <> space)
+ppExpr _ (RecordUpdate   fs e) = record $
+  list (map ppFieldExpr fs) <+> char '|' <+> ppExpr 0 e
+ppExpr p (HsRecordConstr c fs) = parenIf (p > 0)
+  (ppQIdent c <+> record (list (map ppFieldExprHs fs)))
+ppExpr _ (HsRecordUpdate e fs) =
+  ppExpr 0 e <+> record (list (map ppFieldExprHs fs))
 
 -- |Pretty print a statement
 ppStmt :: Statement -> Doc
@@ -324,9 +333,13 @@ ppCaseType Flex  = text "fcase"
 ppAlt :: Alt -> Doc
 ppAlt (Alt _ t rhs) = ppRule (ppPattern 0 t) rarrow rhs
 
--- |Pretty print a record field expression
+-- |Pretty print a record field expression (Curry syntax)
 ppFieldExpr :: Field Expression -> Doc
 ppFieldExpr (Field _ l e) = ppIdent l <+> recBind <+> ppExpr 0 e
+
+-- |Pretty print a record field expression (Haskell syntax)
+ppFieldExprHs :: Field Expression -> Doc
+ppFieldExprHs (Field _ l e) = ppIdent l <+> equals <+> ppExpr 0 e
 
 -- |Pretty print an operator
 ppOp :: InfixOp -> Doc

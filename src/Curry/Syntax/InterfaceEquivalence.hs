@@ -82,6 +82,9 @@ instance Equiv ConstrDecl where
 instance Equiv NewConstrDecl where
   NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2
     = c1 == c2 && evs1 == evs2 && ty1 == ty2
+  NewRecordDecl _ evs1 c1 fld1 =~= NewRecordDecl _ evs2 c2 fld2
+    = c1 == c2 && evs1 == evs2 && fld1 == fld2
+  _ =~= _ = False
 
 -- If we check for a change in the interface, we do not need to check the
 -- interface declarations, but still must disambiguate (nullary) type
@@ -117,7 +120,8 @@ instance FixInterface ConstrDecl where
     RecordDecl p evs c (map (\(tvs, ty) -> (tvs, fix tcs ty)) fs)
 
 instance FixInterface NewConstrDecl where
-  fix tcs (NewConstrDecl p evs c ty) = NewConstrDecl p evs c (fix tcs ty)
+  fix tcs (NewConstrDecl p evs c ty    ) = NewConstrDecl p evs c (fix tcs ty)
+  fix tcs (NewRecordDecl p evs c (i,ty)) = NewRecordDecl p evs c (i,fix tcs ty)
 
 instance FixInterface TypeExpr where
   fix tcs (ConstructorType tc tys)

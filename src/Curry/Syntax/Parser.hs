@@ -231,8 +231,15 @@ constrDecl = position <**> (existVars <**> constr)
   recDecl fs c tvs p               = RecordDecl p tvs c fs
 
 newConstrDecl :: Parser Token NewConstrDecl a
-newConstrDecl = NewConstrDecl <$> position <*> existVars <*> con <*> type2 False
+newConstrDecl = position <**> (existVars <**> (con <**> newCon))
+  where newCon =  (\ tys c vs p -> NewConstrDecl p vs c tys) <$> type2 False
+              <|> (\ fld c vs p -> NewRecordDecl p vs c fld) <$> recordField
 
+recordField :: Parser Token (Ident, TypeExpr) a
+recordField = layoutOff <-*> braces labelDecl
+  where labelDecl = (,) <$> labId <*-> token DoubleColon <*> type0 True
+
+-- Parsing of existential variables (currently disabled)
 existVars :: Parser Token [Ident] a
 {-
 existVars flat
@@ -343,7 +350,7 @@ type1 withRecordType = ConstructorType <$> qtycon <*> many type2'
     <|> type2' <\> qtycon
   where type2' = type2 withRecordType
 
--- type2 ::= anonType | identType | parenType | listType
+-- type2 ::= anonType | identType | parenType | listType | recordType
 type2 :: Bool -> Parser Token TypeExpr a
 type2 withRecordType
   | withRecordType = anonType <|> identType <|> parenType True
@@ -377,10 +384,11 @@ tupleType withRecordType = type0 withRecordType <??>
 listType :: Bool -> Parser Token TypeExpr a
 listType withRecordType = ListType <$> brackets (type0 withRecordType)
 
--- listType ::= '{' labelDecls '}'
+-- recordType ::= recordFields
 recordType :: Parser Token TypeExpr a
 recordType = RecordType <$> recordFields
 
+-- recordFields ::= '{' labelDecls '}'
 recordFields :: Parser Token [([Ident], TypeExpr)] a
 recordFields = layoutOff <-*> braces (labelDecls `sepBy` comma)
 
@@ -394,6 +402,7 @@ labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0 True
 
 -- literal ::= '\'' <escaped character> '\''
 --          |  <integer>
+--          |  <float>
 --          |  '"' <escaped string> '"'
 literal :: Parser Token Literal a
 literal = mk Char   <$> char
@@ -468,9 +477,13 @@ parenPattern = leftParen <-*> parenPattern'
   minusPattern p = rightParen <-*> optAsPattern
                 <|> parenMinusPattern p <*-> rightParen
 
+-- listPattern ::= '[' pattern0s ']'
+-- pattern0s   ::= {- empty -}
+--              |  pattern0 ',' pattern0s
 listPattern :: Parser Token Pattern a
 listPattern = mk' ListPattern <$> brackets (pattern0 `sepBy` comma)
 
+-- lazyPattern ::= '~' pattern2
 lazyPattern :: Parser Token Pattern a
 lazyPattern = mk LazyPattern <$-> token Tilde <*> pattern2
 
@@ -542,7 +555,8 @@ expr1 =  UnaryMinus <$> (minus <|> fminus) <*> expr2
 -- expr2 ::= lambdaExpr | letExpr | doExpr | ifExpr | caseExpr | expr3
 expr2 :: Parser Token Expression a
 expr2 = choice [ lambdaExpr, letExpr, doExpr, ifExpr, caseExpr
-               , expr3 <**> (recordSelect <|?> application) ]
+               , expr3 <**> (recordSelect <|?> hsRecordExpr <|?> application)
+               ]
   where
   recordSelect = (flip (foldl RecordSelection))
               <$> many1 (expectSelect <-*> labId)
@@ -616,6 +630,12 @@ recordExpr = layoutOff <-*> braces content
   fieldAccess    = Field <$> position <*> labId <*-> expectBind <*> expr
   constrOpUpdate = flip RecordUpdate <$-> expectBar <*> expr
                    `opt` RecordConstr
+
+hsRecordExpr :: Parser Token (Expression -> Expression) a
+hsRecordExpr = flip HsRecordUpdate <$> (layoutOff <-*> braces content)
+  where
+  content     = fieldAccess `sepBy` comma
+  fieldAccess = Field <$> position <*> labId <*-> expectEquals <*> expr
 
 lambdaExpr :: Parser Token Expression a
 lambdaExpr = mk Lambda <$-> token Backslash <*> many1 pattern2

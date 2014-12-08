@@ -206,6 +206,13 @@ showsNewConsDecl (NewConstrDecl pos idents ident typ)
   . showsIdent ident . space
   . showsTypeExpr typ
   . showsString ")"
+showsNewConsDecl (NewRecordDecl pos idents ident fld)
+  = showsString "(NewRecordDecl "
+  . showsPosition pos . space
+  . showsList showsIdent idents . space
+  . showsIdent ident . space
+  . showsPair showsIdent showsTypeExpr fld
+  . showsString ")"
 
 showsTypeExpr :: TypeExpr -> ShowS
 showsTypeExpr (ConstructorType qident types)
@@ -363,6 +370,11 @@ showsConsTerm (RecordPattern cfields mcons)
   . showsList (showsField showsConsTerm) cfields . space
   . showsMaybe showsConsTerm mcons
   . showsString ")"
+showsConsTerm (HsRecordPattern qident cfields)
+  = showsString "(HsRecordPattern "
+  . showsQualIdent qident . space
+  . showsList (showsField showsConsTerm) cfields . space
+  . showsString ")"
 
 showsExpression :: Expression -> ShowS
 showsExpression (Literal lit)
@@ -485,6 +497,16 @@ showsExpression (RecordUpdate efields expr)
   = showsString "(RecordUpdate "
   . showsList (showsField showsExpression) efields . space
   . showsExpression expr
+  . showsString ")"
+showsExpression (HsRecordUpdate expr efields)
+  = showsString "(HsRecordUpdate "
+  . showsExpression expr . space
+  . showsList (showsField showsExpression) efields
+  . showsString ")"
+showsExpression (HsRecordConstr qident efields)
+  = showsString "(HsRecordConstr "
+  . showsQualIdent qident . space
+  . showsList (showsField showsExpression) efields
   . showsString ")"
 
 showsInfixOp :: InfixOp -> ShowS
