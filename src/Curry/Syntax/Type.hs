@@ -242,6 +242,9 @@ data CondExpr = CondExpr Position Expression Expression
 -- an integer number or as a floating-point number depending on its context.
 -- The compiler uses the identifier of the @Int@ literal for maintaining its
 -- type.
+-- The 'Ident' argument of a @Float@ literal is used to calculate the
+-- needed type class contexts (i.e. Fractional); this ident is used by
+-- the type checker.
 data Literal
   = Char   SrcRef Char
   | Int    Ident  Integer
