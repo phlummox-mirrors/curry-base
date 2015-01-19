@@ -45,7 +45,6 @@ data KnownExtension
   | FunctionalPatterns -- ^ functional patterns
   | NegativeLiterals   -- ^ negative literals
   | NoImplicitPrelude  -- ^ no implicit import of the prelude
-  | Records            -- ^ record syntax
     deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
 
 -- |Classifies a 'String' as an 'Extension'
@@ -57,7 +56,7 @@ classifyExtension i = case reads extName of
 
 -- |'Extension's available by Kiel's Curry compilers.
 kielExtensions :: [KnownExtension]
-kielExtensions = [AnonFreeVars, FunctionalPatterns, Records]
+kielExtensions = [AnonFreeVars, FunctionalPatterns]
 
 -- |Different Curry tools which may accept compiler options.
 data Tool = KICS2 | PAKCS | CYMAKE | UnknownTool String

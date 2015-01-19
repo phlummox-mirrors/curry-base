@@ -195,7 +195,15 @@ showsConsDecl (RecordDecl pos idents ident fs)
   . showsPosition pos . space
   . showsList showsIdent idents . space
   . showsIdent ident . space
-  . showsList (showsPair (showsList showsIdent) showsTypeExpr) fs
+  . showsList showsFieldDecl fs
+  . showsString ")"
+
+showsFieldDecl :: FieldDecl -> ShowS
+showsFieldDecl (FieldDecl pos labels ty)
+  = showsString "(FieldDecl "
+  . showsPosition pos . space
+  . showsList showsIdent labels . space
+  . showsTypeExpr ty
   . showsString ")"
 
 showsNewConsDecl :: NewConstrDecl -> ShowS
@@ -236,10 +244,6 @@ showsTypeExpr (ArrowType dom ran)
   = showsString "(ArrowType "
   . showsTypeExpr dom . space
   . showsTypeExpr ran
-  . showsString ")"
-showsTypeExpr (RecordType fieldts)
-  = showsString "(RecordType "
-  . showsList (showsPair (showsList showsIdent) showsTypeExpr) fieldts
   . showsString ")"
 
 showsEquation :: Equation -> ShowS
@@ -365,13 +369,8 @@ showsConsTerm (InfixFuncPattern cons1 qident cons2)
   . showsQualIdent qident . space
   . showsConsTerm cons2
   . showsString ")"
-showsConsTerm (RecordPattern cfields mcons)
-  = shows "(RecordPattern "
-  . showsList (showsField showsConsTerm) cfields . space
-  . showsMaybe showsConsTerm mcons
-  . showsString ")"
-showsConsTerm (HsRecordPattern qident cfields)
-  = showsString "(HsRecordPattern "
+showsConsTerm (RecordPattern qident cfields)
+  = showsString "(RecordPattern "
   . showsQualIdent qident . space
   . showsList (showsField showsConsTerm) cfields . space
   . showsString ")"
@@ -484,26 +483,12 @@ showsExpression (Case _ ct expr alts)
   . showsExpression expr . space
   . showsList showsAlt alts
   . showsString ")"
-showsExpression (RecordConstr efields)
-  = showsString "(RecordConstr "
-  . showsList (showsField showsExpression) efields
-  . showsString ")"
-showsExpression (RecordSelection expr ident)
-  = showsString "(RecordSelection "
-  . showsExpression expr . space
-  . showsIdent ident
-  . showsString ")"
-showsExpression (RecordUpdate efields expr)
-  = showsString "(RecordUpdate "
-  . showsList (showsField showsExpression) efields . space
-  . showsExpression expr
-  . showsString ")"
-showsExpression (HsRecordUpdate expr efields)
+showsExpression (RecordUpdate expr efields)
   = showsString "(HsRecordUpdate "
   . showsExpression expr . space
   . showsList (showsField showsExpression) efields
   . showsString ")"
-showsExpression (HsRecordConstr qident efields)
+showsExpression (RecordConstr qident efields)
   = showsString "(HsRecordConstr "
   . showsQualIdent qident . space
   . showsList (showsField showsExpression) efields

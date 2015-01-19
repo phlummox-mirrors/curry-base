@@ -152,7 +152,7 @@ iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
   where
   hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
-  hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> type0 True
+  hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> type0
   hiddenData tc tvs p = HidingDataDecl p tc tvs
   -- TODO: 0 was inserted to type check, but what is the meaning of this field?
   hidingFunc a ty p = IFunctionDecl p (qualify (mkIdent "hiding")) a ty
@@ -172,12 +172,12 @@ iNewtypeDecl = iTypeDeclLhs INewtypeDecl KW_newtype
 -- |Parser for an interface type synonym declaration
 iTypeDecl :: Parser Token IDecl a
 iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
-            <*-> equals <*> type0 True
+            <*-> equals <*> type0
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
 iFunctionDecl =  IFunctionDecl <$> position <*> qfun <*> arity
-            <*-> token DoubleColon <*> type0 True
+            <*-> token DoubleColon <*> type0
 
 -- |Parser for function's arity
 arity :: Parser Token Int a
@@ -206,7 +206,7 @@ newtypeDecl :: Parser Token Decl a
 newtypeDecl = typeDeclLhs NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
 
 typeDecl :: Parser Token Decl a
-typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> type0 True
+typeDecl = typeDeclLhs TypeDecl KW_type <*-> equals <*> type0
 
 typeDeclLhs :: (Position -> Ident -> [Ident] -> a) -> Category
             -> Parser Token a b
@@ -217,28 +217,36 @@ constrDecl = position <**> (existVars <**> constr)
   where
   constr =  conId     <**> identDecl
         <|> leftParen <-*> parenDecl
-        <|> type1 False <\> conId <\> leftParen <**> opDecl
-  identDecl =  many (type2 False) <**> (conType <$> opDecl `opt` conDecl)
-           <|> recDecl <$> recordFields
+        <|> type1 <\> conId <\> leftParen <**> opDecl
+  identDecl =  many type2 <**> (conType <$> opDecl `opt` conDecl)
+           <|> recDecl <$> recFields
   parenDecl =  conOpDeclPrefix
-           <$> conSym    <*-> rightParen <*> type2 False <*> type2 False
-           <|> tupleType False <*-> rightParen <**> opDecl
-  opDecl = conOpDecl <$> conop <*> type1 False
+           <$> conSym    <*-> rightParen <*> type2 <*> type2
+           <|> tupleType <*-> rightParen <**> opDecl
+  opDecl = conOpDecl <$> conop <*> type1
+  recFields                        = layoutOff <-*> braces
+                                       (fieldDecl `sepBy` comma)
   conType f tys c                  = f $ ConstructorType (qualify c) tys
   conDecl tys c tvs p              = ConstrDecl p tvs c tys
   conOpDecl op ty2 ty1 tvs p       = ConOpDecl p tvs ty1 op ty2
   conOpDeclPrefix op ty1 ty2 tvs p = ConOpDecl p tvs ty1 op ty2
   recDecl fs c tvs p               = RecordDecl p tvs c fs
 
+fieldDecl :: Parser Token FieldDecl a
+fieldDecl = FieldDecl <$> position <*> labels <*-> token DoubleColon <*> type0
+  where labels = labId `sepBy1` comma
+  
 newConstrDecl :: Parser Token NewConstrDecl a
-newConstrDecl = position <**> (existVars <**> (con <**> newCon))
-  where newCon =  (\ tys c vs p -> NewConstrDecl p vs c tys) <$> type2 False
-              <|> (\ fld c vs p -> NewRecordDecl p vs c fld) <$> recordField
+newConstrDecl = position <**> (existVars <**> (con <**> newConstr))
+  where newConstr =  newConDecl <$> type2
+                 <|> newRecDecl <$> newFieldDecl
+        newConDecl ty  c vs p = NewConstrDecl p vs c ty
+        newRecDecl fld c vs p = NewRecordDecl p vs c fld
 
-recordField :: Parser Token (Ident, TypeExpr) a
-recordField = layoutOff <-*> braces labelDecl
-  where labelDecl = (,) <$> labId <*-> token DoubleColon <*> type0 True
-
+newFieldDecl :: Parser Token (Ident, TypeExpr) a
+newFieldDecl = layoutOff <-*> braces labelDecl
+  where labelDecl = (,) <$> labId <*-> token DoubleColon <*> type0
+              
 -- Parsing of existential variables (currently disabled)
 existVars :: Parser Token [Ident] a
 {-
@@ -256,7 +264,7 @@ functionDecl = position <**> decl
   lhs = (\f -> (f, FunLhs f [])) <$> fun <|?> funLhs
 
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
-funListDecl =  typeSig           <$-> token DoubleColon <*> type0 False
+funListDecl =  typeSig           <$-> token DoubleColon <*> type0
            <|> flip ExternalDecl <$-> token KW_external
   where typeSig ty vs p = TypeSig p vs ty
 
@@ -330,7 +338,7 @@ foreignDecl :: Parser Token Decl a
 foreignDecl = ForeignDecl
           <$> tokenPos KW_foreign
           <*> callConv <*> (option string)
-          <*> fun <*-> token DoubleColon <*> type0 False
+          <*> fun <*-> token DoubleColon <*> type0
   where callConv =  CallConvPrimitive <$-> token Id_primitive
                 <|> CallConvCCall     <$-> token Id_ccall
                 <?> "Unsupported calling convention"
@@ -340,23 +348,17 @@ foreignDecl = ForeignDecl
 -- ---------------------------------------------------------------------------
 
 -- type0 ::= type1 ['->' type0]
-type0 :: Bool -> Parser Token TypeExpr a
-type0 withRecordType = type1 withRecordType `chainr1`
-                       (ArrowType <$-> token RightArrow)
+type0 :: Parser Token TypeExpr a
+type0 = type1 `chainr1` (ArrowType <$-> token RightArrow)
 
 -- type1 ::= QTyCon { type2 } | type2
-type1 :: Bool -> Parser Token TypeExpr a
-type1 withRecordType = ConstructorType <$> qtycon <*> many type2'
-    <|> type2' <\> qtycon
-  where type2' = type2 withRecordType
+type1 :: Parser Token TypeExpr a
+type1 = ConstructorType <$> qtycon <*> many type2
+     <|> type2 <\> qtycon
 
--- type2 ::= anonType | identType | parenType | listType | recordType
-type2 :: Bool -> Parser Token TypeExpr a
-type2 withRecordType
-  | withRecordType = anonType <|> identType <|> parenType True
-                  <|> listType True <|> recordType
-  | otherwise      = anonType <|> identType <|> parenType False
-                  <|> listType False
+-- type2 ::= anonType | identType | parenType | listType
+type2 :: Parser Token TypeExpr a
+type2 = anonType <|> identType <|> parenType <|> listType
 
 -- anonType ::= '_'
 anonType :: Parser Token TypeExpr a
@@ -368,33 +370,20 @@ identType = VariableType <$> tyvar
         <|> flip ConstructorType [] <$> qtycon <\> tyvar
 
 -- parenType ::= '(' tupleType ')'
-parenType :: Bool -> Parser Token TypeExpr a
-parenType withRecordType = parens (tupleType withRecordType)
+parenType :: Parser Token TypeExpr a
+parenType = parens tupleType
 
 -- tupleType ::= type0                         (parenthesized type)
 --            |  type0 ',' type0 { ',' type0 } (tuple type)
 --            |                                (unit type)
-tupleType :: Bool -> Parser Token TypeExpr a
-tupleType withRecordType = type0 withRecordType <??>
-                           (tuple <$> many1 (comma <-*> type0 withRecordType))
+tupleType :: Parser Token TypeExpr a
+tupleType = type0 <??> (tuple <$> many1 (comma <-*> type0))
                            `opt` TupleType []
   where tuple tys ty = TupleType (ty : tys)
 
 -- listType ::= '[' type0 ']'
-listType :: Bool -> Parser Token TypeExpr a
-listType withRecordType = ListType <$> brackets (type0 withRecordType)
-
--- recordType ::= recordFields
-recordType :: Parser Token TypeExpr a
-recordType = RecordType <$> recordFields
-
--- recordFields ::= '{' labelDecls '}'
-recordFields :: Parser Token [([Ident], TypeExpr)] a
-recordFields = layoutOff <-*> braces (labelDecls `sepBy` comma)
-
--- labelDecls ::= labId '::' type0 [',' labelDecls]
-labelDecls :: Parser Token ([Ident], TypeExpr) a
-labelDecls = (,) <$> labId `sepBy1` comma <*-> token DoubleColon <*> type0 True
+listType :: Parser Token TypeExpr a
+listType = ListType <$> brackets type0
 
 -- ---------------------------------------------------------------------------
 -- Literals
@@ -425,16 +414,20 @@ pattern0 = pattern1 `chainr1` (flip InfixPattern <$> gconop)
 --           |  '(' parenPattern'
 --           | pattern2
 pattern1 :: Parser Token Pattern a
-pattern1 =  varId <**> identPattern'
-        <|> ConstructorPattern <$> qConId <\> varId <*> many pattern2
-        <|> minus  <**> negNum
-        <|> fminus <**> negFloat
+pattern1 =  varId <**> identPattern'            -- unqualified
+        <|> qConId <\> varId <**> constrPattern -- qualified
+        <|> minus     <**> negNum
+        <|> fminus    <**> negFloat
         <|> leftParen <-*> parenPattern'
-        <|> pattern2 <\> qConId <\> leftParen
+        <|> pattern2  <\> qConId <\> leftParen
   where
-  identPattern' =  optAsPattern
-               <|> mkConsPattern <$> many1 pattern2
-  mkConsPattern ts c = ConstructorPattern (qualify c) ts
+  identPattern' =  optAsRecPattern
+               <|> mkConsPattern qualify <$> many1 pattern2
+
+  constrPattern =  mkConsPattern id <$> many1 pattern2
+               <|> optRecPattern
+
+  mkConsPattern f ts c = ConstructorPattern (f c) ts
 
   parenPattern' =  minus  <**> minusPattern negNum
                <|> fminus <**> minusPattern negFloat
@@ -442,29 +435,30 @@ pattern1 =  varId <**> identPattern'
                <|> funSym <\> minus <\> fminus <*-> rightParen
                                                <**> identPattern'
                <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
-  minusPattern p = rightParen <-*> identPattern' -- (-) and (-.) as Constructors
+  minusPattern p = rightParen           <-*> identPattern' -- (-) and (-.) as variables
                 <|> parenMinusPattern p <*-> rightParen
   gconPattern = ConstructorPattern <$> gconId <*-> rightParen
-                                    <*> many pattern2
+                                   <*> many pattern2
 
 pattern2 :: Parser Token Pattern a
 pattern2 =  literalPattern <|> anonPattern <|> identPattern
         <|> parenPattern   <|> listPattern <|> lazyPattern
-        <|> recordPattern
 
+-- literalPattern ::= <integer> | <char> | <float> | <string>
 literalPattern :: Parser Token Pattern a
 literalPattern = LiteralPattern <$> literal
 
+-- anonPattern ::= '_'
 anonPattern :: Parser Token Pattern a
 anonPattern = VariablePattern <$> anonIdent
 
--- identPattern ::= Variable
---               |  Variable @ pattern2
---               |  qConId
+-- identPattern ::= Variable [ '@' pattern2 | '{' fields '}'
+--               |  qConId   [ '{' fields '}' ]
 identPattern :: Parser Token Pattern a
-identPattern =  varId <**> optAsPattern
-            <|> flip ConstructorPattern [] <$> qConId <\> varId
+identPattern =  varId <**> optAsRecPattern -- unqualified
+            <|> qConId <\> varId <**> optRecPattern               -- qualified
 
+-- TODO: document me!
 parenPattern :: Parser Token Pattern a
 parenPattern = leftParen <-*> parenPattern'
   where
@@ -472,9 +466,9 @@ parenPattern = leftParen <-*> parenPattern'
               <|> fminus <**> minusPattern negFloat
               <|> flip ConstructorPattern [] <$> gconId <*-> rightParen
               <|> funSym <\> minus <\> fminus <*-> rightParen
-                                              <**> optAsPattern
+                                              <**> optAsRecPattern
               <|> parenTuplePattern <\> minus <\> fminus <*-> rightParen
-  minusPattern p = rightParen <-*> optAsPattern
+  minusPattern p = rightParen <-*> optAsRecPattern
                 <|> parenMinusPattern p <*-> rightParen
 
 -- listPattern ::= '[' pattern0s ']'
@@ -487,12 +481,12 @@ listPattern = mk' ListPattern <$> brackets (pattern0 `sepBy` comma)
 lazyPattern :: Parser Token Pattern a
 lazyPattern = mk LazyPattern <$-> token Tilde <*> pattern2
 
-recordPattern :: Parser Token Pattern a
-recordPattern = layoutOff <-*> braces content
+-- optRecPattern ::= [ '{' fields '}' ]
+optRecPattern :: Parser Token (QualIdent -> Pattern) a
+optRecPattern = mkRecPattern <$> fields pattern0 `opt` mkConPattern
   where
-  content   = RecordPattern <$> (fieldPatt `sepBy` comma) <*> record
-  fieldPatt = Field <$> position <*> labId <*-> expectEquals <*> pattern0
-  record    = option (expectBar <-*> pattern2)
+  mkRecPattern fs c = RecordPattern c fs
+  mkConPattern c    = ConstructorPattern c []
 
 -- ---------------------------------------------------------------------------
 -- Partial patterns used in the combinators above, but also for parsing
@@ -509,9 +503,11 @@ negFloat :: Parser Token (Ident -> Pattern) a
 negFloat = flip NegativePattern . mk Float
            <$> (fromIntegral <$> integer <|> float)
 
-optAsPattern :: Parser Token (Ident -> Pattern) a
-optAsPattern = flip AsPattern <$-> token At <*> pattern2
-         `opt` VariablePattern
+optAsRecPattern :: Parser Token (Ident -> Pattern) a
+optAsRecPattern =  flip AsPattern <$-> token At <*> pattern2
+               <|> recPattern     <$>  fields pattern0
+               `opt` VariablePattern
+  where recPattern fs v = RecordPattern (qualify v) fs
 
 optInfixPattern :: Parser Token (Pattern -> Pattern) a
 optInfixPattern = mkInfixPat <$> gconop <*> pattern0
@@ -541,7 +537,7 @@ condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 
 -- expr ::= expr0 [ '::' type0 ]
 expr :: Parser Token Expression a
-expr = expr0 <??> (flip Typed <$-> token DoubleColon <*> type0 False)
+expr = expr0 <??> (flip Typed <$-> token DoubleColon <*> type0)
 
 -- expr0 ::= expr1 { infixOp expr1 }
 expr0 :: Parser Token Expression a
@@ -555,16 +551,16 @@ expr1 =  UnaryMinus <$> (minus <|> fminus) <*> expr2
 -- expr2 ::= lambdaExpr | letExpr | doExpr | ifExpr | caseExpr | expr3
 expr2 :: Parser Token Expression a
 expr2 = choice [ lambdaExpr, letExpr, doExpr, ifExpr, caseExpr
-               , expr3 <**> (recordSelect <|?> hsRecordExpr <|?> application)
+               , foldl1 Apply <$> many1 expr3
                ]
-  where
-  recordSelect = (flip (foldl RecordSelection))
-              <$> many1 (expectSelect <-*> labId)
-  application  = (\es e -> foldl1 Apply (e:es)) <$> many expr3
 
 expr3 :: Parser Token Expression a
-expr3 = choice
-  [constant, anonFreeVariable, variable, parenExpr, listExpr, recordExpr]
+expr3 = foldl RecordUpdate <$> expr4 <*> many recUpdate
+  where recUpdate = layoutOff <-*> braces (field expr0 `sepBy1` comma)
+  
+expr4 :: Parser Token Expression a
+expr4 = choice
+  [constant, anonFreeVariable, variable, parenExpr, listExpr]
 
 constant :: Parser Token Expression a
 constant = Literal <$> literal
@@ -574,7 +570,8 @@ anonFreeVariable =  (\ p v -> Variable $ qualify $ addPositionIdent p v)
                 <$> position <*> anonIdent
 
 variable :: Parser Token Expression a
-variable = Variable <$> qFunId
+variable = qFunId <**> optRecord
+  where optRecord = flip RecordConstr <$> fields expr0 `opt` Variable
 
 parenExpr :: Parser Token Expression a
 parenExpr = parens pExpr
@@ -592,7 +589,7 @@ parenExpr = parens pExpr
               <|> (.) <$> (optType <.> tupleExpr)
   leftSectionOrExp = expr1 <**> (infixApp <$> infixOrTuple')
                 `opt` leftSection
-  optType   = flip Typed <$-> token DoubleColon <*> type0 False `opt` id
+  optType   = flip Typed <$-> token DoubleColon <*> type0 `opt` id
   tupleExpr = tuple <$> many1 (comma <-*> expr) `opt` Paren
   opOrRightSection =  qFunSym <**> optRightSection
                   <|> colon   <**> optCRightSection
@@ -623,20 +620,6 @@ listExpr = brackets (elements `opt` mk' List [])
   list es e2 e1 = mk' List (e1:e2:es)
   flip3 f x y z = f z y x
 
-recordExpr :: Parser Token Expression a
-recordExpr = layoutOff <-*> braces content
-  where
-  content        = fieldAccess `sepBy` comma <**> constrOpUpdate
-  fieldAccess    = Field <$> position <*> labId <*-> expectBind <*> expr
-  constrOpUpdate = flip RecordUpdate <$-> expectBar <*> expr
-                   `opt` RecordConstr
-
-hsRecordExpr :: Parser Token (Expression -> Expression) a
-hsRecordExpr = flip HsRecordUpdate <$> (layoutOff <-*> braces content)
-  where
-  content     = fieldAccess `sepBy` comma
-  fieldAccess = Field <$> position <*> labId <*-> expectEquals <*> expr
-
 lambdaExpr :: Parser Token Expression a
 lambdaExpr = mk Lambda <$-> token Backslash <*> many1 pattern2
                        <*-> expectRightArrow <*> expr
@@ -662,6 +645,12 @@ caseExpr = keyword <*> expr
 
 alt :: Parser Token Alt a
 alt = Alt <$> position <*> pattern0 <*> rhs expectRightArrow
+
+fields :: Parser Token a b -> Parser Token [Field a] b
+fields p = layoutOff <-*> braces (field p `sepBy` comma)
+
+field :: Parser Token a b -> Parser Token (Field a) b
+field p = Field <$> position <*> labId <*-> expectEquals <*> p
 
 -- ---------------------------------------------------------------------------
 -- \paragraph{Statements in list comprehensions and \texttt{do} expressions}
@@ -901,9 +890,6 @@ semicolon = token Semicolon <|> token VSemicolon
 bar :: Parser Token Attributes a
 bar = token Bar
 
-expectBar :: Parser Token Attributes a
-expectBar = bar <?> "| expected"
-
 equals :: Parser Token Attributes a
 equals = token Equals
 
@@ -913,14 +899,8 @@ expectEquals = equals <?> "= expected"
 expectWhere :: Parser Token Attributes a
 expectWhere = token KW_where <?> "where expected"
 
-expectSelect :: Parser Token Attributes a
-expectSelect = token Select <?> ":> expected"
-
 expectRightArrow :: Parser Token Attributes a
 expectRightArrow  = token RightArrow <?> "-> expected"
-
-expectBind :: Parser Token Attributes a
-expectBind = token Bind <?> ":= expected"
 
 backquote :: Parser Token Attributes a
 backquote = token Backquote

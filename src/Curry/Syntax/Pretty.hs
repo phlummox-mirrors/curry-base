@@ -125,7 +125,11 @@ ppConstr (ConstrDecl     _ tvs c tys) =
 ppConstr (ConOpDecl _ tvs ty1 op ty2) =
   sep [ppExistVars tvs, ppTypeExpr 1 ty1, ppInfixOp op <+> ppTypeExpr 1 ty2]
 ppConstr (RecordDecl _ tvs c fs) =
-  sep [ppExistVars tvs, ppIdent c <+> record (list (map ppTypedField fs))]
+  sep [ppExistVars tvs, ppIdent c <+> record (list (map ppFieldDecl fs))]
+
+ppFieldDecl :: FieldDecl -> Doc
+ppFieldDecl (FieldDecl _ ls ty) = list (map ppIdent ls)
+                               <+> text "::" <+> ppTypeExpr 0 ty
 
 ppNewConstr :: NewConstrDecl -> Doc
 ppNewConstr (NewConstrDecl _ tvs c ty) =
@@ -208,10 +212,6 @@ ppTypeExpr p (ArrowType ty1 ty2) = parenIf (p > 0)
   where
   ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
   ppArrowType ty                    = [ppTypeExpr 0 ty]
-ppTypeExpr _ (RecordType fs) = record (list (map ppTypedField fs))
-
-ppTypedField :: ([Ident], TypeExpr) -> Doc
-ppTypedField (ls,ty) = list (map ppIdent ls) <+> text "::" <+> ppTypeExpr 0 ty
 
 -- ---------------------------------------------------------------------------
 -- Literals
@@ -250,9 +250,7 @@ ppPattern p (FunctionPattern    f ts) = parenIf (p > 1 && not (null ts))
   (ppQIdent f <+> fsep (map (ppPattern 2) ts))
 ppPattern p (InfixFuncPattern t1 f t2) = parenIf (p > 0)
   (sep [ppPattern 1 t1 <+> ppQInfixOp f, indent (ppPattern 0 t2)])
-ppPattern _ (RecordPattern     fs rt) = record (list (map ppFieldPatt fs)
-  <+> (maybePP (\t -> char '|' <+> ppPattern 0 t) rt))
-ppPattern p (HsRecordPattern c fs) = parenIf (p > 1)
+ppPattern p (RecordPattern c fs) = parenIf (p > 1)
   (ppQIdent c <+> record (list (map ppFieldPatt fs)))
 
 -- |Pretty print a record field pattern
@@ -309,15 +307,10 @@ ppExpr p (IfThenElse _ e1 e2 e3) = parenIf (p > 0)
 ppExpr p (Case    _ ct e alts) = parenIf (p > 0)
            (ppCaseType ct <+> ppExpr 0 e <+> text "of" $$
             indent (vcat (map ppAlt alts)))
-ppExpr _ (RecordConstr     fs) = record (list (map ppFieldExpr fs))
-ppExpr p (RecordSelection e l) = parenIf (p > 0)
-                                 (ppExpr 1 e <+> recSelect <+> ppIdent l)
-ppExpr _ (RecordUpdate   fs e) = record $
-  list (map ppFieldExpr fs) <+> char '|' <+> ppExpr 0 e
-ppExpr p (HsRecordConstr c fs) = parenIf (p > 0)
-  (ppQIdent c <+> record (list (map ppFieldExprHs fs)))
-ppExpr _ (HsRecordUpdate e fs) =
-  ppExpr 0 e <+> record (list (map ppFieldExprHs fs))
+ppExpr p (RecordConstr c fs) = parenIf (p > 0)
+  (ppQIdent c <+> record (list (map ppFieldExpr fs)))
+ppExpr _ (RecordUpdate e fs) =
+  ppExpr 0 e <+> record (list (map ppFieldExpr fs))
 
 -- |Pretty print a statement
 ppStmt :: Statement -> Doc
@@ -333,13 +326,9 @@ ppCaseType Flex  = text "fcase"
 ppAlt :: Alt -> Doc
 ppAlt (Alt _ t rhs) = ppRule (ppPattern 0 t) rarrow rhs
 
--- |Pretty print a record field expression (Curry syntax)
-ppFieldExpr :: Field Expression -> Doc
-ppFieldExpr (Field _ l e) = ppIdent l <+> recBind <+> ppExpr 0 e
-
 -- |Pretty print a record field expression (Haskell syntax)
-ppFieldExprHs :: Field Expression -> Doc
-ppFieldExprHs (Field _ l e) = ppIdent l <+> equals <+> ppExpr 0 e
+ppFieldExpr :: Field Expression -> Doc
+ppFieldExpr (Field _ l e) = ppIdent l <+> equals <+> ppExpr 0 e
 
 -- |Pretty print an operator
 ppOp :: InfixOp -> Doc
@@ -402,9 +391,3 @@ rarrow = text "->"
 
 larrow :: Doc
 larrow = text "<-"
-
-recBind :: Doc
-recBind = text ":="
-
-recSelect :: Doc
-recSelect = text ":>"

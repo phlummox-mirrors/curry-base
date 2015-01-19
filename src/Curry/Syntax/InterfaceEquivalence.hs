@@ -45,7 +45,8 @@ instance Equiv a => Equiv [a] where
   (x:xs) =~= (y:ys) = x =~= y && xs =~= ys
   _      =~= _      = False
 
-eqvSet :: Equiv a => [a] -> [a] -> Bool
+eqvList, eqvSet :: Equiv a => [a] -> [a] -> Bool
+xs `eqvList` ys = length xs == length ys && and (zipWith (=~=) xs ys)
 xs `eqvSet` ys = null (deleteFirstsBy (=~=) xs ys ++ deleteFirstsBy (=~=) ys xs)
 
 instance Equiv Interface where
@@ -76,8 +77,11 @@ instance Equiv ConstrDecl where
   ConOpDecl _ evs1 ty11 op1 ty12 =~= ConOpDecl _ evs2 ty21 op2 ty22
     = op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
   RecordDecl _ evs1 c1 fs1 =~= RecordDecl _ evs2 c2 fs2
-    = c1 == c2 && evs1 == evs2 && fs1 == fs2
+    = c1 == c2 && evs1 == evs2 && fs1 `eqvList` fs2
   _ =~= _ = False
+
+instance Equiv FieldDecl where
+  FieldDecl _ ls1 ty1 =~= FieldDecl _ ls2 ty2 = ls1 == ls2 && ty1 == ty2
 
 instance Equiv NewConstrDecl where
   NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2
@@ -117,8 +121,11 @@ instance FixInterface ConstrDecl where
   fix tcs (ConOpDecl  p evs ty1 op ty2) =
     ConOpDecl p evs (fix tcs ty1) op (fix tcs ty2)
   fix tcs (RecordDecl p evs c fs)       =
-    RecordDecl p evs c (map (\(tvs, ty) -> (tvs, fix tcs ty)) fs)
+    RecordDecl p evs c (fix tcs fs)
 
+instance FixInterface FieldDecl where
+  fix tcs (FieldDecl p ls ty) = FieldDecl p ls (fix tcs ty)
+    
 instance FixInterface NewConstrDecl where
   fix tcs (NewConstrDecl p evs c ty    ) = NewConstrDecl p evs c (fix tcs ty)
   fix tcs (NewRecordDecl p evs c (i,ty)) = NewRecordDecl p evs c (i,fix tcs ty)
@@ -136,8 +143,6 @@ instance FixInterface TypeExpr where
   fix tcs (TupleType     tys) = TupleType  (fix tcs tys)
   fix tcs (ListType       ty) = ListType   (fix tcs ty)
   fix tcs (ArrowType ty1 ty2) = ArrowType  (fix tcs ty1) (fix tcs ty2)
-  fix tcs (RecordType     fs) = RecordType (map fixField fs)
-   where fixField (lbl, ty) = (lbl, fix tcs ty)
 
 typeConstructors :: [IDecl] -> [Ident]
 typeConstructors ds = [tc | (QualIdent Nothing tc) <- foldr tyCons [] ds]
