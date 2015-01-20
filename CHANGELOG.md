@@ -4,6 +4,9 @@ Change log for curry-base
 Under Development
 =================
 
+  * Lexer is now capable of lexing binary integer literals, for instance
+    `0b101010` or `0B101010` can now be lexed and are converted to `42`.
+
   * Removed record type extensions
 
   * Moved `CYT` monads to `curry-base` (`Curry.Base.Monad`)
