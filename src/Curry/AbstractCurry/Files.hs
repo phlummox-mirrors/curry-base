@@ -13,9 +13,6 @@
     This library contains I/O actions to read Curry programs
     and transform them into this abstract representation as well as
     write them to a file.
-
-    /Assumption:/ An AbstractCurry program @Prog@ is stored in a file with
-    the file extension @acy@, i.e. in a file @Prog.acy@.
 -}
 module Curry.AbstractCurry.Files
   ( readCurry, writeCurry, showCurry
