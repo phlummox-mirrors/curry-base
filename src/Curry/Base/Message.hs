@@ -7,14 +7,11 @@
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental
-    Portability :  non-portable (FlexibleContexts)
+    Portability :  portable
 
-    The monads MessageM and MessageIO provide a common way to stop execution
-    when an error occurs.
-    They may be used to integrate different compiler passes smoothly.
+    The type message represents a compiler message with an optional source
+    code position.
 -}
-
-{-# LANGUAGE FlexibleContexts #-}
 
 module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
