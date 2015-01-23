@@ -19,10 +19,10 @@ module Curry.AbstractCurry.Files
   ) where
 
 import qualified Control.Exception        as C (catch)
-import           Control.Monad                 (liftM)
 import           Data.List                     (intercalate)
 
-import           Curry.Files.PathUtils         (writeModule, readModule)
+import           Curry.Files.PathUtils         ( writeModule, readModule
+                                               , addVersion, checkVersion)
 
 import           Curry.AbstractCurry.Type
 
@@ -33,11 +33,18 @@ import           Curry.AbstractCurry.Type
 -- |Read an AbstractCurry file and return the corresponding AbstractCurry
 --  program term of type 'CurryProg'
 readCurry :: FilePath -> IO (Maybe CurryProg)
-readCurry = liftM (fmap read) . readModule
+readCurry fn = do
+  mbSrc <- readModule fn
+  return $ case mbSrc of
+    Nothing  -> Nothing
+    Just src -> case checkVersion version src of
+      Left  _  -> Nothing
+      Right ac -> Just (read ac)
 
 -- |Write an AbstractCurry program term into a file.
 writeCurry :: FilePath -> CurryProg -> IO ()
-writeCurry fn prog = C.catch (writeModule fn $ showCurry prog) ioError
+writeCurry fn p = C.catch (writeModule fn $ addVersion version $ showCurry p)
+                  ioError
 
 -- |Show an AbstractCurry program in a nicer way
 showCurry :: CurryProg -> String

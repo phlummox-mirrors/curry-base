@@ -23,14 +23,16 @@ module Curry.AbstractCurry.Type
   , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
   , CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
   , CLocalDecl (..), CExpr (..), CCaseType (..), CStatement (..)
-  , CPattern (..), CLiteral (..), CField
+  , CPattern (..), CLiteral (..), CField, version
   ) where
 
 -- ---------------------------------------------------------------------------
 -- Abstract syntax
 -- ---------------------------------------------------------------------------
 
-{- |A qualified name.
+-- |Current version of AbstractCurry
+version :: String
+version = "AbstractCurry 1.0"
 
 -- |A qualified name.
 -- In AbstractCurry all names are qualified to avoid name clashes.
