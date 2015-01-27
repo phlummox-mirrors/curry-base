@@ -163,9 +163,9 @@ data CRhs
 
 -- | Local (let/where) declarations
 data CLocalDecl
-  = CLocalFunc CFuncDecl                   -- ^ local function declaration
-  | CLocalPat  CPattern CExpr [CLocalDecl] -- ^ local pattern declaration
-  | CLocalVar  CVarIName                   -- ^ local free variable declaration
+  = CLocalFunc CFuncDecl     -- ^ local function declaration
+  | CLocalPat  CPattern CRhs -- ^ local pattern declaration
+  | CLocalVars [CVarIName]   -- ^ local free variable declarations
     deriving (Eq, Read, Show)
 
 -- |Variable names.
@@ -217,10 +217,10 @@ data CExpr
 -- float values are represented with Haskell type 'Double' instead of
 -- 'Float' to gain double precision.
 data CLiteral
-  = CIntc   Integer -- ^ Int literal
-  | CFloatc Double  -- ^ Float literal
-  | CCharc  Char    -- ^ Char literal
-  | CString String  -- ^ String literal
+  = CIntc    Integer -- ^ Int literal
+  | CFloatc  Double  -- ^ Float literal
+  | CCharc   Char    -- ^ Char literal
+  | CStringc String  -- ^ String literal
     deriving (Eq, Read, Show)
 
 -- |Statements in do expressions and list comprehensions.
