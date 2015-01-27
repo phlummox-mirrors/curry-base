@@ -31,14 +31,13 @@ module Curry.Files.Filenames
   , flatExt, extFlatExt, flatIntExt
 
     -- ** AbstractCurry files
-  , acyExt, uacyExt
+  , acyExt
 
     -- ** Source and object files
   , sourceRepExt, sourceExts, moduleExts
 
     -- * Functions for computing file names
-  , interfName, flatName, extFlatName, flatIntName
-  , acyName, uacyName, sourceRepName
+  , interfName, flatName, extFlatName, flatIntName, acyName, sourceRepName
   ) where
 
 import System.FilePath
@@ -167,10 +166,6 @@ flatIntExt = ".fint"
 acyExt :: String
 acyExt = ".acy"
 
--- |Filename extension for untyped-abstract-curry files
-uacyExt :: String
-uacyExt = ".uacy"
-
 -- |Filename extension for curry source representation files
 sourceRepExt :: String
 sourceRepExt = ".cy"
@@ -198,10 +193,6 @@ flatIntName = replaceExtensionWith flatIntExt
 -- |Compute the filename of the abstract curry file for a source file
 acyName :: FilePath -> FilePath
 acyName = replaceExtensionWith acyExt
-
--- |Compute the filename of the untyped abstract curry file for a source file
-uacyName :: FilePath -> FilePath
-uacyName = replaceExtensionWith uacyExt
 
 -- |Compute the filename of the source representation file for a source file
 sourceRepName :: FilePath -> FilePath
