@@ -72,15 +72,16 @@ isTopValueDecl (ExternalDecl      _ _) = True
 isTopValueDecl (BlockDecl           d) = isValueDecl d
 isTopValueDecl _                       = False
 
--- |Is the declaration an infix declaration?
-isInfixDecl :: Decl -> Bool
-isInfixDecl (InfixDecl _ _ _ _) = True
-isInfixDecl _                   = False
-
+-- |Is the top-level declaration a type signature?
 isTopTypeSig :: TopDecl -> Bool
 isTopTypeSig (ForeignDecl _ _ _ _ _) = True
 isTopTypeSig (BlockDecl           d) = isTypeSig d
 isTopTypeSig _                       = False
+
+-- |Is the declaration an infix declaration?
+isInfixDecl :: Decl -> Bool
+isInfixDecl (InfixDecl _ _ _ _) = True
+isInfixDecl _                   = False
 
 -- |Is the declaration a type signature?
 isTypeSig :: Decl -> Bool
