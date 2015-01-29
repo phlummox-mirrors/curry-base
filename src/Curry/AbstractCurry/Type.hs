@@ -34,11 +34,14 @@ module Curry.AbstractCurry.Type
 version :: String
 version = "AbstractCurry 1.0"
 
+-- |A module name.
+type MName = String
+
 -- |A qualified name.
 -- In AbstractCurry all names are qualified to avoid name clashes.
 -- The first component is the module name and the second component the
 -- unqualified name as it occurs in the source program.
-type QName = (String, String)
+type QName = (MName, String)
 
 -- |Identifiers for record labels (extended syntax).
 type CLabel = String
@@ -59,7 +62,7 @@ data CVisibility
 -- [@typedecls@] Type declarations
 -- [@funcdecls@] Function declarations
 -- [@ opdecls@]  Operator precedence declarations
-data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
+data CurryProg = CurryProg MName [MName] [CTypeDecl] [CFuncDecl] [COpDecl]
     deriving (Eq, Read, Show)
 
 -- |Definitions of algebraic data types and type synonyms.
@@ -78,8 +81,8 @@ data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
 -- Thus, a data type declaration consists of the name of the data type,
 -- a list of type parameters and a list of constructor declarations.
 data CTypeDecl
-  = CType QName CVisibility [CTVarIName] [CConsDecl]  -- ^ algebraic data type
-  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr -- ^ type synonym
+  = CType    QName CVisibility [CTVarIName] [CConsDecl] -- ^ algebraic data type
+  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr   -- ^ type synonym
     deriving (Eq, Read, Show)
 
 -- |The type for representing type variables.
@@ -194,23 +197,36 @@ data CPattern
 
 -- | Curry expressions.
 data CExpr
-  = CVar       CVarIName            -- ^ variable (unique index / name)
-  | CLit       CLiteral             -- ^ literal (Integer/Float/Char constant)
-  | CSymbol    QName                -- ^ a defined symbol with module and name
-  | CApply     CExpr CExpr          -- ^ application (e1 e2)
-  | CLambda    [CPattern] CExpr     -- ^ lambda abstraction
-  | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
-  | CDoExpr    [CStatement]         -- ^ do expression
-  | CListComp  CExpr [CStatement]   -- ^ list comprehension
-  | CCase      CCaseType CExpr [(CPattern, CRhs)]  -- ^ case expression
-  | CTyped     CExpr CTypeExpr      -- ^ typed expression
-  | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
-  | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
-  | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
+    -- |variable (unique index / name)
+  = CVar       CVarIName
+    -- |literal (Integer/Float/Char/String constant)
+  | CLit       CLiteral
+    -- |a defined symbol with module and name, i.e., a function or a constructor
+  | CSymbol    QName
+    -- |application (e1 e2)
+  | CApply     CExpr CExpr
+    -- |lambda abstraction
+  | CLambda    [CPattern] CExpr
+    -- |local let declarations
+  | CLetDecl   [CLocalDecl] CExpr
+    -- |do block
+  | CDoExpr    [CStatement]
+    -- |list comprehension
+  | CListComp  CExpr [CStatement]
+    -- |case expression
+  | CCase      CCaseType CExpr [(CPattern, CRhs)]
+    -- |typed expression
+  | CTyped     CExpr CTypeExpr
+    -- |record construction (extended Curry)
+  | CRecConstr [CField CExpr]
+    -- |record selection (extended Curry)
+  | CRecSelect CExpr CLabel
+    -- |record update (extended Curry)
+  | CRecUpdate [CField CExpr] CExpr
     deriving (Eq, Read, Show)
 
--- |Literals occurring in an expression, either an integer, a float,
--- or a character constant.
+-- |Literals occurring in an expression or a pattern,
+-- either an integer, a float, a character, or a string constant.
 -- /Note:/ The constructor definition of 'CIntc' differs from the original
 -- PAKCS definition. It uses Haskell type 'Integer' instead of 'Int'
 -- to provide an unlimited range of integer numbers. Furthermore,
@@ -225,9 +241,9 @@ data CLiteral
 
 -- |Statements in do expressions and list comprehensions.
 data CStatement
-  = CSExpr CExpr         -- ^ an expression (I/O action or boolean)
-  | CSPat CPattern CExpr -- ^ a pattern definition
-  | CSLet [CLocalDecl]   -- ^ a local let declaration
+  = CSExpr CExpr          -- ^ an expression (I/O action or boolean)
+  | CSPat  CPattern CExpr -- ^ a pattern definition
+  | CSLet  [CLocalDecl]   -- ^ a local let declaration
     deriving (Eq, Read, Show)
 
 -- |Type of case expressions
