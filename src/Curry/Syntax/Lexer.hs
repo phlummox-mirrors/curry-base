@@ -636,12 +636,21 @@ lexQualPrimitive cont token mIdent p s = case s of
 -- Lex a numeric literal.
 lexNumber :: (Token -> P a) -> P a
 lexNumber cont p ('0':c:s)
+  | c `elem` "bB"  = lexBinary      cont nullCont (incr p 2) s
   | c `elem` "oO"  = lexOctal       cont nullCont (incr p 2) s
   | c `elem` "xX"  = lexHexadecimal cont nullCont (incr p 2) s
   where nullCont _ _ = cont (intTok 10 "0") (next p) (c:s)
 lexNumber cont p s = lexOptFraction cont (intTok 10 digits) digits
                      (incr p $ length digits) rest
   where (digits, rest) = span isDigit s
+
+-- Lex a binary literal.
+lexBinary :: (Token -> P a) -> P a -> P a
+lexBinary cont nullCont p s
+  | null digits = nullCont undefined undefined
+  | otherwise   = cont (intTok 2 digits) (incr p $ length digits) rest
+  where (digits, rest) = span isBinDigit s
+        isBinDigit c   = c >= '0' && c <= '1'
 
 -- Lex an octal literal.
 lexOctal :: (Token -> P a) -> P a -> P a

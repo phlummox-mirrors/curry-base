@@ -2,27 +2,23 @@
     Module      :  $Header$
     Description :  Monads for message handling
     Copyright   :  2009        Holger Siegel
-                   2012 - 2014 Björn Peemöller
+                   2012 - 2015 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental
-    Portability :  non-portable (FlexibleContexts)
+    Portability :  portable
 
-    The monads MessageM and MessageIO provide a common way to stop execution
-    when an error occurs.
-    They may be used to integrate different compiler passes smoothly.
+    The type message represents a compiler message with an optional source
+    code position.
 -}
-
-{-# LANGUAGE FlexibleContexts #-}
 
 module Curry.Base.Message
   ( Message (..), message, posMessage, showWarning, showError
   , ppMessage, ppWarning, ppError, ppMessages
   ) where
 
--- import Control.Monad.Trans.Except
-import Data.Maybe             (fromMaybe)
+import Data.Maybe          (fromMaybe)
 
 import Curry.Base.Position
 import Curry.Base.Pretty
@@ -45,10 +41,6 @@ instance Ord Message where
 
 instance Show Message where
   showsPrec _ = shows . ppMessage
-
--- instance Error Message where
---   noMsg  = message (text "Failure!")
---   strMsg = message . text
 
 instance HasPosition Message where
   getPosition     = fromMaybe NoPos . msgPos
