@@ -81,8 +81,12 @@ data CurryProg = CurryProg MName [MName] [CTypeDecl] [CFuncDecl] [COpDecl]
 -- Thus, a data type declaration consists of the name of the data type,
 -- a list of type parameters and a list of constructor declarations.
 data CTypeDecl
-  = CType    QName CVisibility [CTVarIName] [CConsDecl] -- ^ algebraic data type
-  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr   -- ^ type synonym
+    -- |algebraic data type
+  = CType    QName CVisibility [CTVarIName] [CConsDecl]
+    -- |type synonym
+  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
+    -- |renaming type
+  | CNewType QName CVisibility [CTVarIName] CNewConsDecl
     deriving (Eq, Read, Show)
 
 -- |The type for representing type variables.
@@ -94,6 +98,12 @@ type CTVarIName = (Int, String)
 -- |A constructor declaration consists of the name and arity of the
 -- constructor and a list of the argument types of the constructor.
 data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
+    deriving (Eq, Read, Show)
+
+-- |A newtype constructor declaration consists of the name and visibility
+-- of the constructor and the argument type of the constructor.
+-- The arity of a newtype constructor is always 1.
+data CNewConsDecl = CNewCons QName CVisibility CTypeExpr
     deriving (Eq, Read, Show)
 
 -- |Type expression.
