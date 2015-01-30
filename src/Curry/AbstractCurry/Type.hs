@@ -20,6 +20,7 @@
 -}
 module Curry.AbstractCurry.Type
   ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
+  , CTypeClassDecl (..), CContext
   , CTypeDecl (..), CConsDecl (..), CNewConsDecl (..), CTypeExpr (..)
   , COpDecl (..), CFixity (..), CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
   , CLocalDecl (..), CExpr (..), CCaseType (..), CStatement (..)
@@ -57,13 +58,81 @@ data CVisibility
 -- CurryProg modname imports typedecls funcdecls opdecls
 -- @
 -- where
--- [@modname@]   Name of this module
--- [@imports@]   List of modules names that are imported
--- [@typedecls@] Type declarations
--- [@funcdecls@] Function declarations
--- [@ opdecls@]  Operator precedence declarations
-data CurryProg = CurryProg MName [MName] [CTypeDecl] [CFuncDecl] [COpDecl]
+-- [@modname@]        Name of this module
+-- [@imports@]        List of modules names that are imported
+-- [@typedecls@]      Type declarations
+-- [@typeclassdecls@] Type class declarations and instances
+-- [@funcdecls@]      Function declarations
+-- [@ opdecls@]       Operator precedence declarations
+data CurryProg
+  = CurryProg MName [MName] [CTypeDecl] [CTypeClassDecl] [CFuncDecl] [COpDecl]
     deriving (Eq, Read, Show)
+
+-- |This data type represents both: type class declarations and
+--   type class instances. A value of this type can have the following
+--   two forms
+--
+--  @CClassDecl className visibility superClasses typeVars methods@
+--
+--  where
+--
+--  [@className@]    Name of the declared class
+--
+--  [@visibility$]
+--
+--  [@superClasses@] List of super classes
+--
+--  [@typeVars@]     List of type variables
+--
+--  [@methods@]      List of class methods as well as default implementations;
+--                    the former is represented as @CFuncDecl@ without any rules
+--
+--  Example: @
+--            -- New type class declaration with artificial dependencies
+--            class (Eq a, Enum a) => NewTypeClass a where
+--              -- method with default implementation
+--              identity :: a -> a
+--              identity = id
+--
+--              -- ordinary class method
+--              toggle   :: a -> a
+--           @
+--
+--  @CInstanceDecl className contexts typeConstructor methods@
+--
+--  where
+--
+--  [@className@]       Name of the class corresponding to instance declaration
+--
+--  [@visibility$]
+--
+--  [@contexts@]        List of super classes
+--
+--  [@typeConstructor@] Type constructor of given instance declaration
+--
+--  [@methods@]         Implementation of class methods
+--
+--  Example: @
+--            -- The NewTypeClass instance for Bool adopts the default
+--                implementation for the identity method
+--            instance (Eq a, Enum a) => NewTypeClass Bool where
+--              toggle   x = not x
+--           @
+--
+data CTypeClassDecl
+  = CClassDecl    QName CVisibility CContext [CTVarIName] [CFuncDecl]
+  | CInstanceDecl QName             CContext CTypeExpr    [CFuncDecl]
+
+-- |Representation of a type class context for type signatures,
+--   class declarations and class instances
+--
+--  Example: @(Eq a, Enum a)@ corresponds to
+--            @
+--             [ ( ("Prelude","Eq")  ,[(0,"a")] )
+--             , ( ("Prelude","Enum"),[(0,"a")] )
+--             ]
+--            @
+data CContext = CContext [(QName,[CTVarIName])]
 
 -- |Definitions of algebraic data types and type synonyms.
 -- A data type definition of the form
@@ -139,11 +208,12 @@ data CFixity
 -- |Data type for representing function declarations.
 -- A function declaration in FlatCurry is a term of the form
 -- @
--- (CFunc name arity visibility type (CRules eval [CRule rule1,...,rulek]))
+-- (CFunc name arity visibility context type
+--    (CRules eval [CRule rule1,...,rulek]))
 -- @
 -- and represents the function @name@ with definition
 -- @
--- name :: type
+-- name :: context => type
 -- rule1
 -- ...
 -- rulek
