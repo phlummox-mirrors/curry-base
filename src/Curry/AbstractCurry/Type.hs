@@ -20,8 +20,8 @@
 -}
 module Curry.AbstractCurry.Type
   ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
-  , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
-  , CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
+  , CTypeDecl (..), CConsDecl (..), CNewConsDecl (..), CTypeExpr (..)
+  , COpDecl (..), CFixity (..), CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
   , CLocalDecl (..), CExpr (..), CCaseType (..), CStatement (..)
   , CPattern (..), CLiteral (..), CField, version
   ) where
