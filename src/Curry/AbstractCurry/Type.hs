@@ -20,9 +20,9 @@
 -}
 module Curry.AbstractCurry.Type
   ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
-  , CTypeDecl (..), CConsDecl (..), CNewConsDecl (..), CTypeExpr (..)
-  , COpDecl (..), CFixity (..), CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
-  , CLocalDecl (..), CExpr (..), CCaseType (..), CStatement (..)
+  , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
+  , Arity, CFuncDecl (..), CRhs (..), CRule (..), CLocalDecl (..)
+  , CVarIName, CExpr (..), CCaseType (..), CStatement (..)
   , CPattern (..), CLiteral (..), CField, version
   ) where
 
@@ -85,8 +85,9 @@ data CTypeDecl
   = CType    QName CVisibility [CTVarIName] [CConsDecl]
     -- |type synonym
   | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
-    -- |renaming type
-  | CNewType QName CVisibility [CTVarIName] CNewConsDecl
+    -- |renaming type, may have only exactly one type expression
+    -- in the constructor declaration
+  | CNewType QName CVisibility [CTVarIName] CConsDecl
     deriving (Eq, Read, Show)
 
 -- |The type for representing type variables.
@@ -95,15 +96,10 @@ data CTypeDecl
 -- the name written in the source program).
 type CTVarIName = (Int, String)
 
--- |A constructor declaration consists of the name and arity of the
+-- |A constructor declaration consists of the name of the
 -- constructor and a list of the argument types of the constructor.
-data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
-    deriving (Eq, Read, Show)
-
--- |A newtype constructor declaration consists of the name and visibility
--- of the constructor and the argument type of the constructor.
--- The arity of a newtype constructor is always 1.
-data CNewConsDecl = CNewCons QName CVisibility CTypeExpr
+-- The arity equals the number of types.
+data CConsDecl = CCons QName CVisibility [CTypeExpr]
     deriving (Eq, Read, Show)
 
 -- |Type expression.
@@ -136,6 +132,9 @@ data CFixity
   | CInfixrOp -- ^ right-associative infix operator
     deriving (Eq, Read, Show)
 
+-- |Function arity
+type Arity = Int
+
 -- |Data type for representing function declarations.
 -- A function declaration in FlatCurry is a term of the form
 -- @
@@ -158,7 +157,7 @@ data CFixity
 -- a list of rules.
 -- If the list of rules is empty, the function is considered
 -- to be externally defined.
-data CFuncDecl = CFunc QName Int CVisibility CTypeExpr [CRule]
+data CFuncDecl = CFunc QName Arity CVisibility CTypeExpr [CRule]
     deriving (Eq, Read, Show)
 
 -- |The general form of a function rule. It consists of a list of patterns
