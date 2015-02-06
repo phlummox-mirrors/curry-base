@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Monads for message handling
     Copyright   :  2009        Holger Siegel
-                   2012 - 2014 Björn Peemöller
+                   2012 - 2015 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -21,8 +21,7 @@ module Curry.Base.Message
   , ppMessage, ppWarning, ppError, ppMessages
   ) where
 
-import Control.Monad.Error
-import Data.Maybe             (fromMaybe)
+import Data.Maybe          (fromMaybe)
 
 import Curry.Base.Position
 import Curry.Base.Pretty
@@ -45,10 +44,6 @@ instance Ord Message where
 
 instance Show Message where
   showsPrec _ = shows . ppMessage
-
-instance Error Message where
-  noMsg  = message (text "Failure!")
-  strMsg = message . text
 
 instance HasPosition Message where
   getPosition     = fromMaybe NoPos . msgPos

@@ -3,7 +3,7 @@
     Description :  A Parser for Curry
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2013 Björn Peemöller
+                       2011 - 2015 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -13,11 +13,14 @@
     The Curry parser is implemented using the (mostly) LL(1) parsing
     combinators implemented in 'Curry.Base.LLParseComb'.
 -}
-
+{-# LANGUAGE CPP #-}
 module Curry.Syntax.Parser
   ( parseSource, parseHeader, parseInterface, parseGoal
   ) where
 
+#if __GLASGOW_HASKELL__ >= 710
+import Prelude hiding ((<*>))
+#endif
 import Curry.Base.Ident
 import Curry.Base.Monad       (CYM)
 import Curry.Base.Position    (Position, mk, mk')

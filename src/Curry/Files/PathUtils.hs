@@ -51,13 +51,11 @@ import Curry.Files.Filenames
 -- - If the file name has no extension, then a source file extension is
 --   assumed.
 lookupCurryFile :: [FilePath] -> FilePath -> IO (Maybe FilePath)
-lookupCurryFile paths fn = lookupFile paths' exts fn
+lookupCurryFile paths fn = lookupFile paths exts fn
   where
-  paths' | pathSeparator `elem` fn = ["."]
-         | otherwise               = paths
-  exts   | null fnExt              = sourceExts
-         | otherwise               = [fnExt]
-  fnExt                            = takeExtension fn
+  exts  | null fnExt = sourceExts
+        | otherwise  = [fnExt]
+  fnExt              = takeExtension fn
 
 -- |Search for a given curry module in the given source file and
 -- library paths. Note that the current directory is always searched first.

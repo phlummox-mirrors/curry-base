@@ -25,7 +25,6 @@
 module Curry.ExtendedFlat.UnMutual (unMutualProg) where
 
 import Data.Graph
-import Data.Maybe
 import Data.List
 import Control.Monad.State
 
@@ -67,10 +66,13 @@ mkSingleLet body bound fbs = do
   body' <- mkFbSelectors recname body
   return (Let [(recname, bound')] body')
   where
-    fbsType = TCons (mkQName tuplecon) (map (fromJust . typeofVar) fbs)
+    fbsType = TCons (mkQName tuplecon) (map getType fbs)
     tuplecon =  ("Prelude", "(" ++ replicate (length fbs -1 ) ',' ++ ")")
-    mkFbSelectors recname b = foldM (mkSelector recname)b fbs
+    mkFbSelectors recname b = foldM (mkSelector recname) b fbs
     mkSelector recname b v  = nonrecLet v (mkSel (Var recname) v fbs) b
+    getType v = case typeofVar v of
+                     Nothing -> error "Curry.ExtendedFlat.UnMutual"
+                     Just ty -> ty
 
 -- Some self-explaining helper functions:
 nonrecLet :: VarIndex -> Expr -> Expr -> UnMutualMonad Expr
