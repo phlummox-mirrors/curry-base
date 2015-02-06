@@ -122,6 +122,7 @@ data CurryProg
 data CTypeClassDecl
   = CClassDecl    QName CVisibility CContext [CTVarIName] [CFuncDecl]
   | CInstanceDecl QName             CContext CTypeExpr    [CFuncDecl]
+  deriving (Eq, Read, Show)
 
 -- |Representation of a type class context for type signatures,
 --   class declarations and class instances
@@ -133,6 +134,7 @@ data CTypeClassDecl
 --             ]
 --            @
 data CContext = CContext [(QName,[CTVarIName])]
+  deriving (Eq, Read, Show)
 
 -- |Definitions of algebraic data types and type synonyms.
 -- A data type definition of the form
@@ -253,9 +255,6 @@ data CLocalDecl
 -- Object variables occurring in expressions are represented by @(Var i)@
 -- where @i@ is a variable index.
 type CVarIName = (Int, String)
-
--- |Labeled record fields
-type CField a = (QName, a)
 
 -- |Pattern expressions.
 data CPattern

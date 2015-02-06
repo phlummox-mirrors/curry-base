@@ -48,10 +48,11 @@ writeCurry fn p = C.catch (writeModule fn $ addVersion version $ showCurry p)
 
 -- |Show an AbstractCurry program in a nicer way
 showCurry :: CurryProg -> String
-showCurry (CurryProg mname imps types funcs ops)
+showCurry (CurryProg mname imps types tClasses funcs ops)
   =  "CurryProg " ++ show mname ++ "\n"
   ++ show imps ++ "\n"
   ++ wrapList types
+  ++ wrapList tClasses
   ++ wrapList funcs
   ++ wrapList ops
   where wrapList xs = " [" ++ intercalate ",\n  " (map show xs) ++ "]\n"
