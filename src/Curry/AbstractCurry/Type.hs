@@ -21,9 +21,9 @@
 module Curry.AbstractCurry.Type
   ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
   , CTypeClassDecl (..), CContext
-  , CTypeDecl (..), CConsDecl (..), CNewConsDecl (..), CTypeExpr (..)
-  , COpDecl (..), CFixity (..), CVarIName, CFuncDecl (..), CRhs (..), CRule (..)
-  , CLocalDecl (..), CExpr (..), CCaseType (..), CStatement (..)
+  , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
+  , Arity, CFuncDecl (..), CRhs (..), CRule (..), CLocalDecl (..)
+  , CVarIName, CExpr (..), CCaseType (..), CStatement (..)
   , CPattern (..), CLiteral (..), CField, version
   ) where
 
@@ -154,8 +154,9 @@ data CTypeDecl
   = CType    QName CVisibility [CTVarIName] [CConsDecl]
     -- |type synonym
   | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
-    -- |renaming type
-  | CNewType QName CVisibility [CTVarIName] CNewConsDecl
+    -- |renaming type, must have exactly one type expression
+    -- in the constructor declaration
+  | CNewType QName CVisibility [CTVarIName] CConsDecl
     deriving (Eq, Read, Show)
 
 -- |The type for representing type variables.
@@ -164,16 +165,18 @@ data CTypeDecl
 -- the name written in the source program).
 type CTVarIName = (Int, String)
 
--- |A constructor declaration consists of the name and arity of the
+-- |A constructor declaration consists of the name of the
 -- constructor and a list of the argument types of the constructor.
-data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
+-- The arity equals the number of types.
+data CConsDecl
+  = CCons   QName CVisibility [CTypeExpr]
+  | CRecord QName CVisibility [CFieldDecl]
     deriving (Eq, Read, Show)
 
--- |A newtype constructor declaration consists of the name and visibility
--- of the constructor and the argument type of the constructor.
--- The arity of a newtype constructor is always 1.
-data CNewConsDecl = CNewCons QName CVisibility CTypeExpr
-    deriving (Eq, Read, Show)
+-- |A record field declaration consists of the name of the
+--   the label, the visibility and its corresponding type.
+data CFieldDecl = CField QName CVisibility CTypeExpr
+  deriving (Eq, Read, Show)
 
 -- |Type expression.
 -- A type expression is either a type variable, a function type,
@@ -185,8 +188,6 @@ data CTypeExpr
   | CFuncType CTypeExpr CTypeExpr
     -- |Type constructor application
   | CTCons QName [CTypeExpr]
-    -- |Record type (extended Curry)
-  | CRecordType [CField CTypeExpr]
     deriving (Eq, Read, Show)
 
 -- |Labeled record fields
@@ -205,6 +206,9 @@ data CFixity
   | CInfixrOp -- ^ right-associative infix operator
     deriving (Eq, Read, Show)
 
+-- |Function arity
+type Arity = Int
+
 -- |Data type for representing function declarations.
 -- A function declaration in FlatCurry is a term of the form
 -- @
@@ -218,17 +222,11 @@ data CFixity
 -- ...
 -- rulek
 -- @
--- /Note:/ The variable indices are unique inside each rule.
--- External functions are represented as
--- @
--- (CFunc name arity type (CExternal s))
--- @
--- where s is the external name associated to this function.
 -- Thus, a function declaration consists of the name, arity, type, and
 -- a list of rules.
 -- If the list of rules is empty, the function is considered
 -- to be externally defined.
-data CFuncDecl = CFunc QName Int CVisibility CTypeExpr [CRule]
+data CFuncDecl = CFunc QName Arity CVisibility CContext CTypeExpr [CRule]
     deriving (Eq, Read, Show)
 
 -- |The general form of a function rule. It consists of a list of patterns
@@ -256,6 +254,9 @@ data CLocalDecl
 -- where @i@ is a variable index.
 type CVarIName = (Int, String)
 
+-- |Labeled record fields
+type CField a = (QName, a)
+
 -- |Pattern expressions.
 data CPattern
     -- |pattern variable (unique index / name)
@@ -272,7 +273,7 @@ data CPattern
     -- |lazy pattern (extended Curry)
   | CPLazy CPattern
     -- |record pattern (extended curry)
-  | CPRecord [CField CPattern] (Maybe CPattern)
+  | CPRecord QName [CField CPattern]
     deriving (Eq, Read, Show)
 
 -- | Curry expressions.
@@ -296,13 +297,11 @@ data CExpr
     -- |case expression
   | CCase      CCaseType CExpr [(CPattern, CRhs)]
     -- |typed expression
-  | CTyped     CExpr CTypeExpr
+  | CTyped     CExpr CContext CTypeExpr
     -- |record construction (extended Curry)
-  | CRecConstr [CField CExpr]
-    -- |record selection (extended Curry)
-  | CRecSelect CExpr CLabel
+  | CRecConstr QName [CField CExpr]
     -- |record update (extended Curry)
-  | CRecUpdate [CField CExpr] CExpr
+  | CRecUpdate CExpr [CField CExpr]
     deriving (Eq, Read, Show)
 
 -- |Literals occurring in an expression or a pattern,
