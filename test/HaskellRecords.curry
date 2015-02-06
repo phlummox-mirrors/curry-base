@@ -1,3 +1,9 @@
+module M (D (C1, C2)) where
+
+data D = C1 Int
+       | C2 String
+       | C3 Bool
+
 -- data
 -- should be parsed
 -- data RD = RD {}
@@ -32,5 +38,5 @@
 -- record pattern
 
 -- f R1 { x = 45 } = True
-f R1 { x = 45, y = False } = True
-f R1 { } = True
+-- f R1 { x = 45, y = False } = True
+-- f R1 { } = True

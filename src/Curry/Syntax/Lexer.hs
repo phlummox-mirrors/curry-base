@@ -137,6 +137,7 @@ data Category
   -- pragmas
   | PragmaLanguage -- {-# LANGUAGE
   | PragmaOptions  -- {-# OPTIONS
+  | PragmaHiding   -- {-# HIDING
   | PragmaEnd      -- #-}
 
 
@@ -271,6 +272,7 @@ instance Show Token where
   showsPrec _ (Token PragmaLanguage     _) = showString "{-# LANGUAGE"
   showsPrec _ (Token PragmaOptions      a) = showString "{-# OPTIONS"
                                            . shows a
+  showsPrec _ (Token PragmaHiding       _) = showString "{-# HIDING"
   showsPrec _ (Token PragmaEnd          _) = showString "#-}"
   showsPrec _ (Token LineComment        a) = shows a
   showsPrec _ (Token NestedComment      a) = shows a
@@ -395,6 +397,7 @@ pragmas :: Map.Map String Category
 pragmas = Map.fromList
   [ ("language", PragmaLanguage)
   , ("options" , PragmaOptions )
+  , ("hiding"  , PragmaHiding  )
   ]
 
 

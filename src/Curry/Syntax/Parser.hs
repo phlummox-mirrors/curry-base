@@ -159,20 +159,25 @@ iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hFuncDecl)
 
 -- |Parser for an interface data declaration
 iDataDecl :: Parser Token IDecl a
-iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs
-  where constrs = equals <-*> iConstrDecl `sepBy1` bar `opt` []
-        iConstrDecl =  Just    <$>  constrDecl <\> token Underscore
-                   <|> Nothing <$-> token Underscore
+iDataDecl = iTypeDeclLhs IDataDecl KW_data <*> constrs <*> iHidden
+  where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
 -- |Parser for an interface newtype declaration
 iNewtypeDecl :: Parser Token IDecl a
 iNewtypeDecl = iTypeDeclLhs INewtypeDecl KW_newtype
-               <*-> equals <*> newConstrDecl
+               <*-> equals <*> newConstrDecl <*> iHidden
 
 -- |Parser for an interface type synonym declaration
 iTypeDecl :: Parser Token IDecl a
 iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
             <*-> equals <*> type0
+
+-- |Parser for an interface hiding pragma
+iHidden :: Parser Token [Ident] a
+iHidden = token PragmaHiding
+          <-*> (con `sepBy` comma)
+          <*-> token PragmaEnd
+
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
@@ -571,7 +576,7 @@ anonFreeVariable =  (\ p v -> Variable $ qualify $ addPositionIdent p v)
 
 variable :: Parser Token Expression a
 variable = qFunId <**> optRecord
-  where optRecord = flip RecordConstr <$> fields expr0 `opt` Variable
+  where optRecord = flip Record <$> fields expr0 `opt` Variable
 
 parenExpr :: Parser Token Expression a
 parenExpr = parens pExpr

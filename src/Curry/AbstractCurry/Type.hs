@@ -129,8 +129,6 @@ data CTypeExpr
   | CFuncType CTypeExpr CTypeExpr
     -- |Type constructor application
   | CTCons QName [CTypeExpr]
-    -- |Record type (extended Curry)
-  | CRecordType [CField CTypeExpr]
     deriving (Eq, Read, Show)
 
 

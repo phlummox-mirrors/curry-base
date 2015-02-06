@@ -484,12 +484,12 @@ showsExpression (Case _ ct expr alts)
   . showsList showsAlt alts
   . showsString ")"
 showsExpression (RecordUpdate expr efields)
-  = showsString "(HsRecordUpdate "
+  = showsString "(RecordUpdate "
   . showsExpression expr . space
   . showsList (showsField showsExpression) efields
   . showsString ")"
-showsExpression (RecordConstr qident efields)
-  = showsString "(HsRecordConstr "
+showsExpression (Record qident efields)
+  = showsString "(Record "
   . showsQualIdent qident . space
   . showsList (showsField showsExpression) efields
   . showsString ")"

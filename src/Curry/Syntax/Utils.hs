@@ -4,6 +4,7 @@
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
                        2011 - 2014 Björn Peemöller
+                       2015        Jan Tikovsky
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -20,6 +21,8 @@ module Curry.Syntax.Utils
   , isRecordDecl, isFunctionDecl, isExternalDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
+  , constrId, nconstrId
+  , recordLabels
   ) where
 
 import Control.Monad.State
@@ -179,3 +182,17 @@ addSrcRefs x = evalState (addRefs x) 0
       ists <- sequence (map add ts)
       let (is,ts') = unzip ists
       return (i:is,ts')
+
+constrId :: ConstrDecl -> Ident
+constrId (ConstrDecl _ _ c _) = c
+constrId (ConOpDecl _ _ _ op _) = op
+constrId (RecordDecl _ _ c _) = c
+
+nconstrId :: NewConstrDecl -> Ident
+nconstrId (NewConstrDecl _ _ c _) = c
+nconstrId (NewRecordDecl _ _ c _) = c
+
+recordLabels :: ConstrDecl -> [Ident]
+recordLabels (ConstrDecl   _ _ _ _) = []
+recordLabels (ConOpDecl _ _ _ _  _) = []
+recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _, l <- ls]

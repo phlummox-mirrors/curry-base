@@ -118,8 +118,8 @@ type Arity = Int
 data IDecl
   = IInfixDecl     Position Infix Precedence QualIdent
   | HidingDataDecl Position QualIdent [Ident]
-  | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
-  | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
+  | IDataDecl      Position QualIdent [Ident] [ConstrDecl] [Ident]
+  | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl [Ident]
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
   | IFunctionDecl  Position QualIdent Arity   TypeExpr
     deriving (Eq, Read, Show, Data, Typeable)
@@ -234,13 +234,13 @@ data Pattern
   | ConstructorPattern QualIdent [Pattern]
   | InfixPattern       Pattern QualIdent Pattern
   | ParenPattern       Pattern
+  | RecordPattern      QualIdent [Field Pattern] -- C { l1 = p1, ..., ln = pn }
   | TuplePattern       SrcRef [Pattern]
   | ListPattern        [SrcRef] [Pattern]
   | AsPattern          Ident Pattern
   | LazyPattern        SrcRef Pattern
   | FunctionPattern    QualIdent [Pattern]
   | InfixFuncPattern   Pattern QualIdent Pattern
-  | RecordPattern      QualIdent [Field Pattern] -- C { l1 = p1, ..., ln = pn }
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Expression
@@ -250,6 +250,8 @@ data Expression
   | Constructor       QualIdent
   | Paren             Expression
   | Typed             Expression TypeExpr
+  | Record            QualIdent [Field Expression]  -- C {l1 = e1,..., ln = en}
+  | RecordUpdate      Expression [Field Expression] -- e {l1 = e1,..., ln = en}
   | Tuple             SrcRef [Expression]
   | List              [SrcRef] [Expression]
   | ListCompr         SrcRef Expression [Statement] -- the ref corresponds to the main list
@@ -267,8 +269,6 @@ data Expression
   | Do                [Statement] Expression
   | IfThenElse        SrcRef Expression Expression Expression
   | Case              SrcRef CaseType Expression [Alt]
-  | RecordConstr      QualIdent [Field Expression]  -- C {l1 = e1,..., ln = en}
-  | RecordUpdate      Expression [Field Expression] -- e {l1 = e1,..., ln = en}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Infix operation
