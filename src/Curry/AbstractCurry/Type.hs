@@ -20,7 +20,7 @@
 -}
 module Curry.AbstractCurry.Type
   ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
-  , CTypeClassDecl (..), CContext
+  , CTypeClassDecl (..), CContext (..)
   , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
   , Arity, CFuncDecl (..), CRhs (..), CRule (..), CLocalDecl (..)
   , CVarIName, CExpr (..), CCaseType (..), CStatement (..)
