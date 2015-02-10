@@ -195,4 +195,4 @@ nconstrId (NewRecordDecl _ _ c _) = c
 recordLabels :: ConstrDecl -> [Ident]
 recordLabels (ConstrDecl   _ _ _ _) = []
 recordLabels (ConOpDecl _ _ _ _  _) = []
-recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _, l <- ls]
+recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _ <- fs, l <- ls]
