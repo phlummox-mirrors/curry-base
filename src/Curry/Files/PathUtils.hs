@@ -23,10 +23,13 @@ module Curry.Files.PathUtils
   , getModuleModTime
   , writeModule
   , readModule
+  , addVersion
+  , checkVersion
   ) where
 
 import qualified Control.Exception as C (IOException, handle)
 import           Control.Monad          (liftM)
+import           Data.List              (isPrefixOf, isSuffixOf)
 import           System.FilePath
 import           System.Directory
 
@@ -115,6 +118,26 @@ getModuleModTime :: FilePath -> IO (Maybe UTCTime)
 getModuleModTime :: FilePath -> IO (Maybe ClockTime)
 #endif
 getModuleModTime = tryOnExistingFile getModificationTime
+
+-- |Add the given version string to the file content
+addVersion :: String -> String -> String
+addVersion v content = "{- " ++ v ++ " -}\n" ++ content
+
+-- |Check a source file for the given version string
+checkVersion :: String -> String -> Either String String
+checkVersion expected src = case lines src of
+  [] -> Left "empty file"
+  (l:ls) -> case getVersion l of
+    Just v | v == expected -> Right (unlines ls)
+           | otherwise     -> Left $ "Expected version `" ++ expected
+                                     ++ "', but found version `" ++ v ++ "'"
+    _                      -> Left $ "No version found"
+
+  where
+    getVersion s | "{- " `isPrefixOf` s && " -}" `isSuffixOf` s
+                 = Just (reverse $ drop 3 $ reverse $ drop 3 s)
+                 | otherwise
+                 = Nothing
 
 -- ---------------------------------------------------------------------------
 -- Helper functions
