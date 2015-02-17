@@ -22,6 +22,10 @@ module Curry.Syntax.Parser
 #if __GLASGOW_HASKELL__ >= 710
 import Prelude hiding ((<*>))
 #endif
+
+import Data.Maybe             (fromJust, isJust)
+import Data.List              (intercalate)
+
 import Curry.Base.Ident
 import Curry.Base.Monad       (CYM)
 import Curry.Base.Position    (Position, mk, mk')
@@ -31,11 +35,6 @@ import Curry.Syntax.Extension
 import Curry.Syntax.Lexer (Token (..), Category (..), Attributes (..), lexer)
 import Curry.Syntax.Type
 import Curry.Syntax.Utils (mkInt, mkFloat, addSrcRefs)
-
-import Prelude hiding (exp)
-
-import Data.Maybe
-import Data.List
 
 -- |Parse a 'Module'
 parseSource :: FilePath -> String -> CYM Module
@@ -133,7 +132,7 @@ importSpec =   position
 -- |Parser for all interfaces (type class specific as well as non type class
 -- specific)
 interfaces :: Parser Token [Interface] a
-interfaces = (\i1 i2 -> i1 : [i2]) <$> 
+interfaces = (\i1 i2 -> i1 : [i2]) <$>
   interface Id_interface <*> interface Id_interfaceTypeClasses
 
 -- |Parser for an interface
@@ -167,14 +166,13 @@ iInfixDecl = infixDeclLhs IInfixDecl <*> integer <*> qfunop
 iHidingDecl :: Parser Token IDecl a
 iHidingDecl = tokenPos Id_hiding <**> (hDataDecl <|> hClassDecl <|> hFuncDecl)
   where
-  hDataDecl = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
+  hDataDecl  = hiddenData <$-> token KW_data <*> qtycon <*> many tyvar
   hClassDecl = const <$> iClassDecl True
-  hFuncDecl = hidingFunc <$> arity <*-> token DoubleColon <*> 
-    (Context <$> (parens $ (contextElem `sepBy` comma))) <*-> token DoubleArrow
+  hFuncDecl  = hidingFunc <$> arity <*-> token DoubleColon <*>
+    (Context <$> (parens $ (contextElem `sepBy` comma))) <*-> expectDoubleArrow
      <*> type0 True
-  hiddenData tc tvs p = HidingDataDecl p tc tvs
-  -- TODO: 0 was inserted to type check, but what is the meaning of this field?
-  hidingFunc a cx ty p = IFunctionDecl p (qualify (mkIdent "hiding")) a cx ty
+  hiddenData tc tvs p  = HidingDataDecl p tc tvs
+  hidingFunc a ctx ty p = IFunctionDecl p (qualify (mkIdent "hiding")) a ctx ty
 
 -- |Parser for an interface data declaration
 iDataDecl :: Parser Token IDecl a
@@ -195,23 +193,23 @@ iTypeDecl = iTypeDeclLhs ITypeDecl KW_type
 
 -- |Parser for an interface function declaration
 iFunctionDecl :: Parser Token IDecl a
-iFunctionDecl =  IFunctionDecl <$> position <*> qIfun <*> arity
-            <*-> token DoubleColon 
-            <*> (Context <$> (parens $ (contextElem `sepBy` comma)))
-            <*-> token DoubleArrow
-            <*> type0 True
+iFunctionDecl =  (\p f a (ctx, ty) -> IFunctionDecl p f a ctx ty)
+            <$>  position <*> qIfun <*> arity
+            <*-> token DoubleColon
+            <*>  optContext (type0 True)
 
 -- | the separator used for constructed function and type names
+-- TODO: REMOVE (bjp 2015-02-17)
 separator :: Parser Token Attributes a
 separator = token Colon <*-> token Underscore
 
 -- |Generated functions like the selection functions and dictionaries
 -- use the separator ":" for seperating elements from each other, and
 -- for assuring that the method/type names will not overlap with names
--- used in the source code. 
--- As we write the name as-is into the interface file, we have to consider, 
--- that function/type names when they are parsed consist of multiple QualIdents, 
--- seperated by colons.  
+-- used in the source code.
+-- As we write the name as-is into the interface file, we have to consider,
+-- that function/type names when they are parsed consist of multiple QualIdents,
+-- seperated by colons.
 qIfun :: Parser Token QualIdent a
 qIfun = composedIdent <|> parens (qFunSym <?> "operator symbol expected")
 
@@ -220,14 +218,14 @@ qIfun = composedIdent <|> parens (qFunSym <?> "operator symbol expected")
 composedIdent :: Parser Token QualIdent a
 composedIdent = mkQIdent <$> (qIdent <|> qSym) `sepBy1` separator
 
--- |converts a list of QualIdents to one QualIdent: 
+-- |converts a list of QualIdents to one QualIdent:
 -- @M1.q1 M2.q2 ... Mn.qn@ is converted to @M1."q1:M2.q2:...:Mn.qn"@
 -- and
 -- @q1 M2.q2 ... Mn.qn@ to @"q1:M2.q2:...:Mn.qn"@
 mkQIdent :: [QualIdent] -> QualIdent
 -- the first qualident determines the module
-mkQIdent (qid:qids) = let mdl = qidModule qid in 
-  (if isJust mdl then qualifyWith (fromJust mdl) else qualify) $ 
+mkQIdent (qid:qids) = let mdl = qidModule qid in
+  (if isJust mdl then qualifyWith (fromJust mdl) else qualify) $
   mkIdent (intercalate sep $ show (qidIdent qid) : map show qids)
 mkQIdent [] = error "qIfun"
 
@@ -237,11 +235,12 @@ arity = int `opt` 0
 
 iTypeDeclLhs :: (Position -> QualIdent -> [Ident] -> a) -> Category
              -> Parser Token a b
-iTypeDeclLhs f kw = f <$> tokenPos kw <*> 
+iTypeDeclLhs f kw = f <$> tokenPos kw <*>
   (mkQIdent <$> qIdent `sepBy1` separator) <*> many tyvar
 
 -- ----------------------------------------------------------------------------
 -- type classes specific interface parsers
+-- TODO: CHECK (bjp 2015-02-17)
 -- ----------------------------------------------------------------------------
 
 -- |Parser for a interface class declaration of the following form:
@@ -254,18 +253,18 @@ iTypeDeclLhs f kw = f <$> tokenPos kw <*>
 -- @
 iClassDecl :: Bool -> Parser Token IDecl a
 iClassDecl hidden = IClassDecl <$> tokenPos KW_class <*> succeed hidden
-  <*> brackets (qtycls `sepBy` comma) 
-  <*> qtycls <*> tyvar <*-> expectWhere <*-> leftBrace 
+  <*> brackets (qtycls `sepBy` comma)
+  <*> qtycls <*> tyvar <*-> expectWhere <*-> leftBrace
   <*> classTySigs <*-> rightBrace  <*> brackets (fun `sepBy` comma)
   <*> brackets (composedIdent `sepBy` comma)
 
--- |Parses all type signatures of a public class declaration  
+-- |Parses all type signatures of a public class declaration
 classTySigs :: Parser Token [(Bool, IDecl)] a
 classTySigs = classTySig `sepBy` semicolon
 
 -- |Parses one type signature of a public class declaration
 classTySig :: Parser Token (Bool, IDecl) a
-classTySig = (\public f -> (public, f)) <$> 
+classTySig = (\public f -> (public, f)) <$>
   (False <$-> token Id_hiding <|> True <$-> token Id_public) <*>
   iFunctionDecl
 
@@ -273,14 +272,14 @@ classTySig = (\public f -> (public, f)) <$>
 -- @
 -- instance[origin] (C_1 a_i1, ..., C_n a_in) => C (T a_1 ... a_k) [dependencies]
 -- @
--- where T is a type constructor (can also be a special type constructor (list, 
--- unit, tuple, arrow)). "origin" may be empty. 
+-- where T is a type constructor (can also be a special type constructor (list,
+-- unit, tuple, arrow)). "origin" may be empty.
 iInstanceDecl :: Parser Token IDecl a
 iInstanceDecl =
-  IInstanceDecl <$> tokenPos KW_instance <*> brackets (option mIdent) 
-  <*> parens (sepBy simpleclass comma)
-  <*-> token DoubleArrow <*> qtycls 
-  <*-> leftParen <*> gtycon <*> many tyvar 
+  IInstanceDecl <$> tokenPos KW_instance <*> brackets (option mIdent)
+  <*> parens (sepBy simpleClass comma)
+  <*-> expectDoubleArrow <*> qtycls
+  <*-> leftParen <*> gtycon <*> many tyvar
   <*-> rightParen <*> brackets (composedIdent `sepBy` comma)
 
 -- ---------------------------------------------------------------------------
@@ -295,12 +294,12 @@ topDecl = choice [ dataDecl, newtypeDecl, typeDecl, foreignDecl
                  , infixDecl, functionDecl, classDecl, instanceDecl ]
 
 dataDecl :: Parser Token Decl a
-dataDecl = typeDeclLhsWithDeriving DataDecl KW_data <*> constrs 
+dataDecl = typeDeclLhsWithDeriving DataDecl KW_data <*> constrs
   <*> option deriving0
   where constrs = equals <-*> constrDecl `sepBy1` bar `opt` []
 
 newtypeDecl :: Parser Token Decl a
-newtypeDecl = typeDeclLhsWithDeriving NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl 
+newtypeDecl = typeDeclLhsWithDeriving NewtypeDecl KW_newtype <*-> equals <*> newConstrDecl
   <*> option deriving0
 
 typeDecl :: Parser Token Decl a
@@ -315,7 +314,7 @@ typeDeclLhsWithDeriving :: (Position -> Ident -> [Ident] -> a -> Maybe Deriving 
 typeDeclLhsWithDeriving f kw = f <$> tokenPos kw <*> tycon <*> many anonOrTyvar
 
 deriving0 :: Parser Token Deriving a
-deriving0 = Deriving <$> 
+deriving0 = Deriving <$>
   (token KW_deriving <-*> (parens (qIdent `sepBy` comma) <|> (:[]) <$> qIdent))
 
 constrDecl :: Parser Token ConstrDecl a
@@ -360,14 +359,13 @@ funRule = mkFunDecl <$> lhs <*> declRhs
 funListDecl :: Parser Token ([Ident] -> Position -> Decl) a
 funListDecl =  typeSignature
            <|> externalDecl
-  
+
 typeSignature :: Parser Token ([Ident] -> Position -> Decl) a
-typeSignature = (typeSig <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0 False)
-  <|?> (typeSig <$-> token DoubleColon <*> succeed emptyContext <*> type0 False)
-  where typeSig cx ty vs p = TypeSig p False vs cx ty
+typeSignature = typeSig <$-> token DoubleColon <*> optContext (type0 False)
+  where typeSig (ctx, ty) vs p = TypeSig p False vs ctx ty
 
 externalDecl :: Parser Token ([Ident] -> Position -> Decl) a
-externalDecl = flip ExternalDecl <$-> token KW_external 
+externalDecl = flip ExternalDecl <$-> token KW_external
 
 mkFunDecl :: (Ident, Lhs) -> Rhs -> Position -> Decl
 mkFunDecl (f, lhs) rhs' p = FunctionDecl p Nothing (-1) f [Equation p lhs rhs']
@@ -450,45 +448,28 @@ foreignDecl = ForeignDecl
 --       ^
 -- class Eq a => Ord b
 --       ^
--- At the points marked, we cannot decide, whether we have 
--- a context or not, so we don't know whether to apply 
--- "scontext <*-> token DoubleArrow" or "succeed emptyscontext" and "tycls". 
--- What was the right interpretation can only be decided later, 
--- and that's what the <|?> operator does: It tries both parsers 
+-- At the points marked, we cannot decide, whether we have
+-- a context or not, so we don't know whether to apply
+-- "scontext <*-> expectDoubleArrow" or "succeed emptySContext" and "tycls".
+-- What was the right interpretation can only be decided later,
+-- and that's what the <|?> operator does: It tries both parsers
 -- and afterward chooses the appropriate one.
 classDecl :: Parser Token Decl a
-classDecl = (\p (scon,c,v) decls -> ClassDecl p scon c v decls) <$>
-  tokenPos KW_class
-  <*> 
-    (((,,) <$> scontext <*-> token DoubleArrow
-    <*> tycls
-    <*> tyvar)
-    <|?>
-    ((,,) <$> succeed emptyscontext
-    <*> tycls
-    <*> tyvar))
+classDecl = (\p (sctx, c, v) ds -> ClassDecl p sctx c v ds)
+  <$> tokenPos KW_class
+  <*> optSContext tycls tyvar
   <*> (token KW_where <-*> layout classDecls `opt` [])
-  where classDecls = oneClassDecl `sepBy` semicolon
+  where classDecls  = oneClassDecl `sepBy` semicolon
         fullTypeSig = position <**> (fun `sepBy1` comma <**> typeSignature)
         -- TODO: support infix declarations
         oneClassDecl = foldl1 (<|?>) [ fullTypeSig, position <**> funRule {-, infixDecl -}]
 
 instanceDecl :: Parser Token Decl a
-instanceDecl = 
-  (\p (scon, qc, (itycon, vars)) decls 
-    -> InstanceDecl p scon qc itycon vars decls)
-  <$>
-  tokenPos KW_instance
-  <*> 
-    (((,,) <$> scontext <*-> token DoubleArrow
-    <*> qtycls
-    <*> inst)
-    <|?>
-    ((,,) <$> succeed emptyscontext
-    <*> qtycls
-    <*> inst))
+instanceDecl = (\p (sctx, qc, (tc, vs)) ds -> InstanceDecl p sctx qc tc vs ds)
+  <$> tokenPos KW_instance
+  <*> optSContext qtycls inst
   <*> (token KW_where <-*> layout instDecls `opt` [])
-  where instDecls = oneInstDecl `sepBy` semicolon
+  where instDecls   = oneInstDecl `sepBy` semicolon
         oneInstDecl = position <**> funRule
 
 -- ---------------------------------------------------------------------------
@@ -689,11 +670,8 @@ condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 
 -- expr ::= expr0 [ '::' [context =>] type0 ]
 expr :: Parser Token Expression a
-expr = (expr0 <??> 
-   (typed <$-> token DoubleColon <*> succeed emptyContext <*> type0 False
-    <|?> 
-    typed <$-> token DoubleColon <*> context <*-> token DoubleArrow <*> type0 False))
- where typed cons ty exp = Typed Nothing exp cons ty 
+expr = expr0 <??> (typed <$-> token DoubleColon <*> optContext (type0 False))
+ where typed (ctx, ty) e = Typed Nothing e ctx ty
 
 -- expr0 ::= expr1 { infixOp expr1 }
 expr0 :: Parser Token Expression a
@@ -743,10 +721,9 @@ parenExpr = parens pExpr
               <|> (.) <$> (optType <.> tupleExpr)
   leftSectionOrExp = expr1 <**> (infixApp <$> infixOrTuple')
                 `opt` leftSection
-  optType   = ((typed <$-> token DoubleColon <*> succeed emptyContext <*> type0 False)
-          <|?> (typed <$-> token DoubleColon <*> context <*-> 
-                           token DoubleArrow <*> type0 False)) `opt` id
-  typed cons ty exp = Typed Nothing exp cons ty
+  optType   = (typed <$-> token DoubleColon <*> optContext (type0 False))
+              `opt` id
+  typed (ctx, ty) e = Typed Nothing e ctx ty
   tupleExpr = tuple <$> many1 (comma <-*> expr) `opt` Paren
   opOrRightSection =  qFunSym <**> optRightSection
                   <|> colon   <**> optCRightSection
@@ -912,7 +889,7 @@ tycls :: Parser Token Ident a
 tycls = conId
 
 qtycls :: Parser Token QualIdent a
-qtycls = qConId 
+qtycls = qConId
 
 modIdent :: Parser Token ModuleIdent a
 modIdent = mIdent <?> "module name expected"
@@ -1075,6 +1052,9 @@ expectSelect = token Select <?> ":> expected"
 expectRightArrow :: Parser Token Attributes a
 expectRightArrow  = token RightArrow <?> "-> expected"
 
+expectDoubleArrow :: Parser Token Attributes a
+expectDoubleArrow = token DoubleArrow <?> "=> expected"
+
 expectBind :: Parser Token Attributes a
 expectBind = token Bind <?> ":= expected"
 
@@ -1119,38 +1099,48 @@ mkIdentPosition pos = addPositionIdent pos . mkIdent
 -- Type classes
 -- ---------------------------------------------------------------------------
 
+-- |An optional simple context in front of a class or instance declaration
+-- TODO: REFACTOR by left-factorization (bjp 2015-02-17)
+optSContext :: Parser Token a c -- parser for class
+            -> Parser Token b c -- parser for type variable/expression
+            -> Parser Token (SContext, a, b) c
+optSContext p q = (,,) <$> scontext <*-> expectDoubleArrow <*> p <*> q
+             <|?> (,,) <$> succeed emptySContext <*> p <*> q
+
 -- |Simple class context, consisting of pairs (class, type variable)
 scontext :: Parser Token SContext a
-scontext = SContext <$> ((parens (sepBy simpleclass comma)) <|> ((:[]) <$> simpleclass))
+scontext = SContext
+       <$> (parens (simpleClass `sepBy` comma) <|> (:[]) <$> simpleClass)
 
-emptyscontext :: SContext
-emptyscontext = SContext [] 
+emptySContext :: SContext
+emptySContext = SContext []
 
-simpleclass :: Parser Token (QualIdent, Ident) a
-simpleclass = (,) <$> qtycls <*> tyvar
+simpleClass :: Parser Token (QualIdent, Ident) a
+simpleClass = (,) <$> qtycls <*> tyvar
 
 -- |Type in instance declaration. Also recognizes special syntax forms
--- for tuples, lists and function types. 
+-- for tuples, lists and function types.
+-- TODO: REFACTOR (bjp 2015-02-17)
 inst :: Parser Token (TypeConstructor, [Ident]) a
-inst = 
-  -- qualified type constructor or special type constructor 
+inst =
+  -- qualified type constructor or special type constructor
   -- ( "()", "[]", "->", "(,{,})" ) standing alone
-  (\tcon -> (tcon,[])) <$> gtycon 
+  (\tcon -> (tcon,[])) <$> gtycon
   -- (<qualified type constructor or special type constructor> {tvars})
   <|?> parens ((,) <$> gtycon <*> many tyvar)
   -- Tuple (tvar1, ..., tvarn)
-  <|?> (\vars -> (TupleTC (length vars), vars)) 
+  <|?> (\vars -> (TupleTC (length vars), vars))
          <$> parens ((:) <$> tyvar <*> many1 (comma <-*> tyvar))
   -- List [tvar]
   <|?> (\lvar -> (ListTC, [lvar])) <$> brackets tyvar
   -- Function type (tvar1 -> tvar2)
-  <|?> (\(v1, v2) -> (ArrowTC, [v1, v2])) 
-         <$> parens ((,) <$> (tyvar <*-> token RightArrow) <*> tyvar) 
+  <|?> (\(v1, v2) -> (ArrowTC, [v1, v2]))
+         <$> parens ((,) <$> (tyvar <*-> token RightArrow) <*> tyvar)
 
 -- | any (qualfied) type constructor, and the special type constructors
 -- (), [], (->) and (,{,})
 gtycon :: Parser Token TypeConstructor a
-gtycon = QualTC <$> qtycon 
+gtycon = QualTC <$> qtycon
     <|?> UnitTC <$-> unit
     <|?> ListTC <$-> emptyList
     <|?> ArrowTC <$-> funArrow
@@ -1160,7 +1150,7 @@ unit :: Parser Token () a
 unit = parens (succeed ())
 
 emptyList :: Parser Token () a
-emptyList = brackets (succeed ()) 
+emptyList = brackets (succeed ())
 
 funArrow :: Parser Token () a
 funArrow = () <$-> leftParen <*-> token RightArrow <*-> rightParen
@@ -1169,28 +1159,30 @@ funArrow = () <$-> leftParen <*-> token RightArrow <*-> rightParen
 tupleTC :: Parser Token Int a
 tupleTC = ((+1) . length) <$> parens (many1 comma)
 
--- | a saturated context (not the simple context as above)   
+-- |An optional context in front of a type expression
+-- TODO: REFACTOR by left-factorization (bjp 2015-02-17)
+optContext :: Parser Token TypeExpr a -> Parser Token (Context, TypeExpr) a
+optContext p = (,) <$> context <*-> expectDoubleArrow <*> p
+          <|?> (,) <$> succeed emptyContext <*> p
+
+-- | a saturated context (not the simple context as above)
 context :: Parser Token Context a
-context = (\c -> Context [c]) <$> contextElem 
-      <|> Context <$> (parens $ (contextElem `sepBy` comma))  
+context = (\c -> Context [c]) <$> contextElem
+      <|> Context <$> (parens $ (contextElem `sepBy` comma))
 
 -- | each saturated context element has the following form:
 -- contextElem ::= qtycls tyvar | qtycls (tyvar atype_1 ... atype_n) n >= 1
 contextElem :: Parser Token ContextElem a
-contextElem = (\tcon (tvar, types) -> ContextElem tcon tvar types) 
-  <$> qtycon <*> 
+contextElem = (\tcon (tvar, types) -> ContextElem tcon tvar types)
+  <$> qtycon <*>
   ((,) <$> tyvar <*> succeed [] <|> parens ((,) <$> tyvar <*> many1 atype))
 
 atype :: Parser Token TypeExpr a
 atype = gtycon' <|?> identType <|?> parenType False <|?> listType False
-
 
 gtycon' :: Parser Token TypeExpr a
 gtycon' = {-(flip ConstructorType []) <$> qtycon
      <|?> SpecialConstructorType UnitTC [] <$-> unit
      <|?> -}SpecialConstructorType ListTC [] <$-> emptyList
      <|?> SpecialConstructorType ArrowTC [] <$-> funArrow
-     <|?> (flip SpecialConstructorType  []) <$> (TupleTC <$> tupleTC) 
-
-
-
+     <|?> (flip SpecialConstructorType  []) <$> (TupleTC <$> tupleTC)
