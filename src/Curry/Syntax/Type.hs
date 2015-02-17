@@ -118,7 +118,7 @@ type Arity = Int
 data IDecl
   = IInfixDecl     Position Infix Precedence QualIdent
   | HidingDataDecl Position QualIdent [Ident]
-  | IDataDecl      Position QualIdent [Ident] [ConstrDecl] [Ident]
+  | IDataDecl      Position QualIdent [Ident] [ConstrDecl]  [Ident]
   | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl [Ident]
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
   | IFunctionDecl  Position QualIdent Arity   TypeExpr

@@ -99,8 +99,15 @@ type CTVarIName = (Int, String)
 -- |A constructor declaration consists of the name of the
 -- constructor and a list of the argument types of the constructor.
 -- The arity equals the number of types.
-data CConsDecl = CCons QName CVisibility [CTypeExpr]
+data CConsDecl
+  = CCons   QName CVisibility [CTypeExpr]
+  | CRecord QName CVisibility [CFieldDecl]
     deriving (Eq, Read, Show)
+
+-- |A record field declaration consists of the name of the
+--   the label, the visibility and its corresponding type.
+data CFieldDecl = CField QName CVisibility CTypeExpr
+  deriving (Eq, Read, Show)
 
 -- |Type expression.
 -- A type expression is either a type variable, a function type,
@@ -199,7 +206,7 @@ data CPattern
     -- |lazy pattern (extended Curry)
   | CPLazy CPattern
     -- |record pattern (extended curry)
-  | CPRecord [CField CPattern] (Maybe CPattern)
+  | CPRecord QName [CField CPattern]
     deriving (Eq, Read, Show)
 
 -- | Curry expressions.
@@ -225,11 +232,9 @@ data CExpr
     -- |typed expression
   | CTyped     CExpr CTypeExpr
     -- |record construction (extended Curry)
-  | CRecConstr [CField CExpr]
-    -- |record selection (extended Curry)
-  | CRecSelect CExpr CLabel
+  | CRecConstr QName [CField CExpr]
     -- |record update (extended Curry)
-  | CRecUpdate [CField CExpr] CExpr
+  | CRecUpdate CExpr [CField CExpr]
     deriving (Eq, Read, Show)
 
 -- |Literals occurring in an expression or a pattern,

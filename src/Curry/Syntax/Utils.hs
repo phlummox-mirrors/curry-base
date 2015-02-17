@@ -22,7 +22,7 @@ module Curry.Syntax.Utils
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   , constrId, nconstrId
-  , recordLabels
+  , recordLabels, nrecordLabels
   ) where
 
 import Control.Monad.State
@@ -196,3 +196,7 @@ recordLabels :: ConstrDecl -> [Ident]
 recordLabels (ConstrDecl   _ _ _ _) = []
 recordLabels (ConOpDecl _ _ _ _  _) = []
 recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _ <- fs, l <- ls]
+
+nrecordLabels :: NewConstrDecl -> [Ident]
+nrecordLabels (NewConstrDecl _ _ _ _    ) = []
+nrecordLabels (NewRecordDecl _ _ _ (l, _) = [l]
