@@ -115,7 +115,7 @@ mkInt :: Integer -> Literal
 mkInt i = mk (\r -> Int (addPositionIdent (AST r) anonId) i)
 
 -- |Select the label of a field
-fieldLabel :: Field a -> Ident
+fieldLabel :: Field a -> QualIdent
 fieldLabel (Field _ l _) = l
 
 -- |Select the term of a field
@@ -123,7 +123,7 @@ fieldTerm :: Field a -> a
 fieldTerm (Field _ _ t) = t
 
 -- |Select the label and term of a field
-field2Tuple :: Field a -> (Ident, a)
+field2Tuple :: Field a -> (QualIdent, a)
 field2Tuple (Field _ l t) = (l, t)
 
 -- |Get the operator name of an infix operator
@@ -198,5 +198,5 @@ recordLabels (ConOpDecl _ _ _ _  _) = []
 recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _ <- fs, l <- ls]
 
 nrecordLabels :: NewConstrDecl -> [Ident]
-nrecordLabels (NewConstrDecl _ _ _ _    ) = []
-nrecordLabels (NewRecordDecl _ _ _ (l, _) = [l]
+nrecordLabels (NewConstrDecl _ _ _ _    )  = []
+nrecordLabels (NewRecordDecl _ _ _ (l, _)) = [l]

@@ -180,6 +180,7 @@ iHidden :: Parser Token [Ident] a
 iHidden = token PragmaHiding
           <-*> (con `sepBy` comma)
           <*-> token PragmaEnd
+          `opt` []
 
 
 -- |Parser for an interface function declaration
@@ -242,8 +243,8 @@ constrDecl = position <**> (existVars <**> constr)
 
 fieldDecl :: Parser Token FieldDecl a
 fieldDecl = FieldDecl <$> position <*> labels <*-> token DoubleColon <*> type0
-  where labels = labId `sepBy1` comma
-  
+  where labels = fun `sepBy1` comma
+
 newConstrDecl :: Parser Token NewConstrDecl a
 newConstrDecl = position <**> (existVars <**> (con <**> newConstr))
   where newConstr =  newConDecl <$> type2
@@ -253,8 +254,8 @@ newConstrDecl = position <**> (existVars <**> (con <**> newConstr))
 
 newFieldDecl :: Parser Token (Ident, TypeExpr) a
 newFieldDecl = layoutOff <-*> braces labelDecl
-  where labelDecl = (,) <$> labId <*-> token DoubleColon <*> type0
-              
+  where labelDecl = (,) <$> fun <*-> token DoubleColon <*> type0
+
 -- Parsing of existential variables (currently disabled)
 existVars :: Parser Token [Ident] a
 {-
@@ -565,7 +566,7 @@ expr2 = choice [ lambdaExpr, letExpr, doExpr, ifExpr, caseExpr
 expr3 :: Parser Token Expression a
 expr3 = foldl RecordUpdate <$> expr4 <*> many recUpdate
   where recUpdate = layoutOff <-*> braces (field expr0 `sepBy1` comma)
-  
+
 expr4 :: Parser Token Expression a
 expr4 = choice
   [constant, anonFreeVariable, variable, parenExpr, listExpr]
@@ -658,7 +659,7 @@ fields :: Parser Token a b -> Parser Token [Field a] b
 fields p = layoutOff <-*> braces (field p `sepBy` comma)
 
 field :: Parser Token a b -> Parser Token (Field a) b
-field p = Field <$> position <*> labId <*-> expectEquals <*> p
+field p = Field <$> position <*> qfun <*-> expectEquals <*> p
 
 -- ---------------------------------------------------------------------------
 -- \paragraph{Statements in list comprehensions and \texttt{do} expressions}
@@ -747,9 +748,6 @@ funId = ident
 
 conId :: Parser Token Ident a
 conId = ident
-
-labId :: Parser Token Ident a
-labId = renameLabel <$> ident
 
 funSym :: Parser Token Ident a
 funSym = sym

@@ -263,7 +263,7 @@ ppPattern p (RecordPattern c fs) = parenIf (p > 1)
 
 -- |Pretty print a record field pattern
 ppFieldPatt :: Field Pattern -> Doc
-ppFieldPatt (Field _ l t) = ppIdent l <+> equals <+> ppPattern 0 t
+ppFieldPatt (Field _ l t) = ppQIdent l <+> equals <+> ppPattern 0 t
 
 -- ---------------------------------------------------------------------------
 -- Expressions
@@ -336,7 +336,7 @@ ppAlt (Alt _ t rhs) = ppRule (ppPattern 0 t) rarrow rhs
 
 -- |Pretty print a record field expression (Haskell syntax)
 ppFieldExpr :: Field Expression -> Doc
-ppFieldExpr (Field _ l e) = ppIdent l <+> equals <+> ppExpr 0 e
+ppFieldExpr (Field _ l e) = ppQIdent l <+> equals <+> ppExpr 0 e
 
 -- |Pretty print an operator
 ppOp :: InfixOp -> Doc

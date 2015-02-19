@@ -295,7 +295,7 @@ data Alt = Alt Position Pattern Rhs
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Record field
-data Field a = Field Position Ident a
+data Field a = Field Position QualIdent a
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------

@@ -19,10 +19,10 @@
     in comparison to the first proposal of 2003.
 -}
 module Curry.AbstractCurry.Type
-  ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
-  , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
-  , Arity, CFuncDecl (..), CRhs (..), CRule (..), CLocalDecl (..)
-  , CVarIName, CExpr (..), CCaseType (..), CStatement (..)
+  ( CurryProg (..), QName, CVisibility (..), CTVarIName
+  , CTypeDecl (..), CConsDecl (..), CFieldDecl (..), CTypeExpr (..)
+  , COpDecl (..), CFixity (..), Arity, CFuncDecl (..), CRhs (..), CRule (..)
+  , CLocalDecl (..), CVarIName, CExpr (..), CCaseType (..), CStatement (..)
   , CPattern (..), CLiteral (..), CField, version
   ) where
 
@@ -42,9 +42,6 @@ type MName = String
 -- The first component is the module name and the second component the
 -- unqualified name as it occurs in the source program.
 type QName = (MName, String)
-
--- |Identifiers for record labels (extended syntax).
-type CLabel = String
 
 -- |Data type to specify the visibility of various entities.
 data CVisibility
@@ -122,7 +119,7 @@ data CTypeExpr
     deriving (Eq, Read, Show)
 
 -- |Labeled record fields
-type CField a = (CLabel, a)
+type CField a = (QName, a)
 
 -- |Operator precedence declaration.
 -- An operator precedence declaration @fix p n@ in Curry corresponds to the

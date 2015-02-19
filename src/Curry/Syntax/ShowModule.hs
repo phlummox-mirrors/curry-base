@@ -535,7 +535,7 @@ showsField :: (a -> ShowS) -> Field a -> ShowS
 showsField sa (Field pos ident a)
   = showsString "(Field "
   . showsPosition pos . space
-  . showsIdent ident . space
+  . showsQualIdent ident . space
   . sa a
   . showsString ")"
 
