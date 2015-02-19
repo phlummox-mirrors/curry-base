@@ -18,7 +18,7 @@
 module Curry.Syntax.Utils
   ( hasLanguageExtension, knownExtensions
   , isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl, isFunctionDecl, isExternalDecl, patchModuleId
+  , isFunctionDecl, isExternalDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
   , constrId, nconstrId
@@ -76,16 +76,6 @@ isValueDecl (ExternalDecl      _ _) = True
 isValueDecl (PatternDecl     _ _ _) = True
 isValueDecl (FreeDecl          _ _) = True
 isValueDecl _                       = False
-
--- |Is the declaration a record declaration?
-isRecordDecl :: Decl -> Bool
-isRecordDecl (DataDecl _ _ _ cs)             = any isRecordCons cs
-isRecordDecl _                               = False
-
--- |Is the constructor declaration a record declaration?
-isRecordCons :: ConstrDecl -> Bool
-isRecordCons (RecordDecl _ _ _ _) = True
-isRecordCons _                    = False
 
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool
@@ -183,20 +173,24 @@ addSrcRefs x = evalState (addRefs x) 0
       let (is,ts') = unzip ists
       return (i:is,ts')
 
+-- | Get the identifier of a constructor declaration
 constrId :: ConstrDecl -> Ident
 constrId (ConstrDecl _ _ c _) = c
 constrId (ConOpDecl _ _ _ op _) = op
 constrId (RecordDecl _ _ c _) = c
 
+-- | Get the identifier of a newtype constructor declaration
 nconstrId :: NewConstrDecl -> Ident
 nconstrId (NewConstrDecl _ _ c _) = c
 nconstrId (NewRecordDecl _ _ c _) = c
 
+-- | Get record label identifiers of a constructor declaration
 recordLabels :: ConstrDecl -> [Ident]
 recordLabels (ConstrDecl   _ _ _ _) = []
 recordLabels (ConOpDecl _ _ _ _  _) = []
 recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _ <- fs, l <- ls]
 
+-- | Get record label identifier of a newtype constructor declaration
 nrecordLabels :: NewConstrDecl -> [Ident]
 nrecordLabels (NewConstrDecl _ _ _ _    )  = []
 nrecordLabels (NewRecordDecl _ _ _ (l, _)) = [l]

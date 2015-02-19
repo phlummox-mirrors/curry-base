@@ -380,7 +380,8 @@ parenList :: [Doc] -> Doc
 parenList = parens . list
 
 record :: Doc -> Doc
-record doc = braces $ space <> doc <> space
+record doc | isEmpty doc = braces empty
+           | otherwise   = braces $ space <> doc <> space
 
 bracketList :: [Doc] -> Doc
 bracketList = brackets . list
