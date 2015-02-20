@@ -202,7 +202,7 @@ ppITypeDeclLhs kw tc tvs = text kw <+> ppQIdent tc <+> hsep (map ppIdent tvs)
 ppHiding :: [Ident] -> Doc
 ppHiding hs
   | null hs   = empty
-  | otherwise = text "{-# HIDING" <+> hsep (map ppIdent hs) <+> text "#-}"
+  | otherwise = text "{-# HIDING" <+> list (map ppIdent hs) <+> text "#-}"
 
 -- ---------------------------------------------------------------------------
 -- Types
