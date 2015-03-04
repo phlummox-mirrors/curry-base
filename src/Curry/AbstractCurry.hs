@@ -1,8 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  Library to support meta-programming in Curry
-    Copyright   :  (c) Michael Hanus, April 2004
-                       Martin Engelke, July 2005
+    Copyright   :  Michael Hanus  , April 2004
+                   Martin Engelke , July 2005
+                   Björn Peemöller, November 2013
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de

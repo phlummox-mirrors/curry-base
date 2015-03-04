@@ -45,7 +45,8 @@ instance Equiv a => Equiv [a] where
   (x:xs) =~= (y:ys) = x =~= y && xs =~= ys
   _      =~= _      = False
 
-eqvSet :: Equiv a => [a] -> [a] -> Bool
+eqvList, eqvSet :: Equiv a => [a] -> [a] -> Bool
+xs `eqvList` ys = length xs == length ys && and (zipWith (=~=) xs ys)
 xs `eqvSet` ys = null (deleteFirstsBy (=~=) xs ys ++ deleteFirstsBy (=~=) ys xs)
 
 instance Equiv Interface where
@@ -60,10 +61,10 @@ instance Equiv IDecl where
     = fix1 == fix2 && p1 == p2 && op1 == op2
   HidingDataDecl _ tc1 tvs1 =~= HidingDataDecl _ tc2 tvs2
     = tc1 == tc2 && tvs1 == tvs2
-  IDataDecl _ tc1 tvs1 cs1 =~= IDataDecl _ tc2 tvs2 cs2
-    = tc1 == tc2 && tvs1 == tvs2 && cs1 =~= cs2
-  INewtypeDecl _ tc1 tvs1 nc1 =~= INewtypeDecl _ tc2 tvs2 nc2
-    = tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2
+  IDataDecl _ tc1 tvs1 cs1 hs1 =~= IDataDecl _ tc2 tvs2 cs2 hs2
+    = tc1 == tc2 && tvs1 == tvs2 && cs1 =~= cs2 && hs1 `eqvSet` hs2
+  INewtypeDecl _ tc1 tvs1 nc1 hs1 =~= INewtypeDecl _ tc2 tvs2 nc2 hs2
+    = tc1 == tc2 && tvs1 == tvs2 && nc1 =~= nc2 && hs1 `eqvSet` hs2
   ITypeDecl _ tc1 tvs1 ty1 =~= ITypeDecl _ tc2 tvs2 ty2
     = tc1 == tc2 && tvs1 == tvs2 && ty1 == ty2
   IFunctionDecl _ f1 n1 ty1 =~= IFunctionDecl _ f2 n2 ty2
@@ -75,11 +76,22 @@ instance Equiv ConstrDecl where
     = c1 == c2 && evs1 == evs2 && tys1 == tys2
   ConOpDecl _ evs1 ty11 op1 ty12 =~= ConOpDecl _ evs2 ty21 op2 ty22
     = op1 == op2 && evs1 == evs2 && ty11 == ty21 && ty12 == ty22
+  RecordDecl _ evs1 c1 fs1 =~= RecordDecl _ evs2 c2 fs2
+    = c1 == c2 && evs1 == evs2 && fs1 `eqvList` fs2
   _ =~= _ = False
+
+instance Equiv FieldDecl where
+  FieldDecl _ ls1 ty1 =~= FieldDecl _ ls2 ty2 = ls1 == ls2 && ty1 == ty2
 
 instance Equiv NewConstrDecl where
   NewConstrDecl _ evs1 c1 ty1 =~= NewConstrDecl _ evs2 c2 ty2
     = c1 == c2 && evs1 == evs2 && ty1 == ty2
+  NewRecordDecl _ evs1 c1 fld1 =~= NewRecordDecl _ evs2 c2 fld2
+    = c1 == c2 && evs1 == evs2 && fld1 == fld2
+  _ =~= _ = False
+
+instance Equiv Ident where
+  (=~=) = (==)
 
 -- If we check for a change in the interface, we do not need to check the
 -- interface declarations, but still must disambiguate (nullary) type
@@ -101,8 +113,9 @@ instance FixInterface a => FixInterface [a] where
   fix tcs = map (fix tcs)
 
 instance FixInterface IDecl where
-  fix tcs (IDataDecl     p tc tvs cs) = IDataDecl     p tc tvs (fix tcs cs)
-  fix tcs (INewtypeDecl  p tc tvs nc) = INewtypeDecl  p tc tvs (fix tcs nc)
+  fix tcs (IDataDecl     p tc tvs cs hs) = IDataDecl  p tc tvs (fix tcs cs) hs
+  fix tcs (INewtypeDecl  p tc tvs nc hs) =
+    INewtypeDecl  p tc tvs (fix tcs nc) hs
   fix tcs (ITypeDecl     p tc tvs ty) = ITypeDecl     p tc tvs (fix tcs ty)
   fix tcs (IFunctionDecl p f  n   ty) = IFunctionDecl p f  n   (fix tcs ty)
   fix _   d                           = d
@@ -111,9 +124,15 @@ instance FixInterface ConstrDecl where
   fix tcs (ConstrDecl p evs      c tys) = ConstrDecl p evs c (fix tcs tys)
   fix tcs (ConOpDecl  p evs ty1 op ty2) =
     ConOpDecl p evs (fix tcs ty1) op (fix tcs ty2)
+  fix tcs (RecordDecl p evs c fs)       =
+    RecordDecl p evs c (fix tcs fs)
 
+instance FixInterface FieldDecl where
+  fix tcs (FieldDecl p ls ty) = FieldDecl p ls (fix tcs ty)
+    
 instance FixInterface NewConstrDecl where
-  fix tcs (NewConstrDecl p evs c ty) = NewConstrDecl p evs c (fix tcs ty)
+  fix tcs (NewConstrDecl p evs c ty    ) = NewConstrDecl p evs c (fix tcs ty)
+  fix tcs (NewRecordDecl p evs c (i,ty)) = NewRecordDecl p evs c (i,fix tcs ty)
 
 instance FixInterface TypeExpr where
   fix tcs (ConstructorType tc tys)
@@ -128,17 +147,15 @@ instance FixInterface TypeExpr where
   fix tcs (TupleType     tys) = TupleType  (fix tcs tys)
   fix tcs (ListType       ty) = ListType   (fix tcs ty)
   fix tcs (ArrowType ty1 ty2) = ArrowType  (fix tcs ty1) (fix tcs ty2)
-  fix tcs (RecordType     fs) = RecordType (map fixField fs)
-   where fixField (lbl, ty) = (lbl, fix tcs ty)
 
 typeConstructors :: [IDecl] -> [Ident]
 typeConstructors ds = [tc | (QualIdent Nothing tc) <- foldr tyCons [] ds]
-  where tyCons (IInfixDecl      _ _ _ _) tcs = tcs
-        tyCons (HidingDataDecl   _ tc _) tcs = tc : tcs
-        tyCons (IDataDecl      _ tc _ _) tcs = tc : tcs
-        tyCons (INewtypeDecl   _ tc _ _) tcs = tc : tcs
-        tyCons (ITypeDecl      _ tc _ _) tcs = tc : tcs
-        tyCons (IFunctionDecl   _ _ _ _) tcs = tcs
+  where tyCons (IInfixDecl        _ _ _ _) tcs = tcs
+        tyCons (HidingDataDecl     _ tc _) tcs = tc : tcs
+        tyCons (IDataDecl      _ tc _ _ _) tcs = tc : tcs
+        tyCons (INewtypeDecl   _ tc _ _ _) tcs = tc : tcs
+        tyCons (ITypeDecl        _ tc _ _) tcs = tc : tcs
+        tyCons (IFunctionDecl     _ _ _ _) tcs = tcs
 
 isPrimTypeId :: QualIdent -> Bool
 isPrimTypeId tc = tc `elem` [qUnitId, qListId] || isQTupleId tc

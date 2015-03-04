@@ -190,6 +190,21 @@ showsConsDecl (ConOpDecl pos idents ty1 ident ty2)
   . showsIdent ident . space
   . showsTypeExpr ty2
   . showsString ")"
+showsConsDecl (RecordDecl pos idents ident fs)
+  = showsString "(RecordDecl "
+  . showsPosition pos . space
+  . showsList showsIdent idents . space
+  . showsIdent ident . space
+  . showsList showsFieldDecl fs
+  . showsString ")"
+
+showsFieldDecl :: FieldDecl -> ShowS
+showsFieldDecl (FieldDecl pos labels ty)
+  = showsString "(FieldDecl "
+  . showsPosition pos . space
+  . showsList showsIdent labels . space
+  . showsTypeExpr ty
+  . showsString ")"
 
 showsNewConsDecl :: NewConstrDecl -> ShowS
 showsNewConsDecl (NewConstrDecl pos idents ident typ)
@@ -198,6 +213,13 @@ showsNewConsDecl (NewConstrDecl pos idents ident typ)
   . showsList showsIdent idents . space
   . showsIdent ident . space
   . showsTypeExpr typ
+  . showsString ")"
+showsNewConsDecl (NewRecordDecl pos idents ident fld)
+  = showsString "(NewRecordDecl "
+  . showsPosition pos . space
+  . showsList showsIdent idents . space
+  . showsIdent ident . space
+  . showsPair showsIdent showsTypeExpr fld
   . showsString ")"
 
 showsTypeExpr :: TypeExpr -> ShowS
@@ -222,10 +244,6 @@ showsTypeExpr (ArrowType dom ran)
   = showsString "(ArrowType "
   . showsTypeExpr dom . space
   . showsTypeExpr ran
-  . showsString ")"
-showsTypeExpr (RecordType fieldts)
-  = showsString "(RecordType "
-  . showsList (showsPair (showsList showsIdent) showsTypeExpr) fieldts
   . showsString ")"
 
 showsEquation :: Equation -> ShowS
@@ -351,10 +369,10 @@ showsConsTerm (InfixFuncPattern cons1 qident cons2)
   . showsQualIdent qident . space
   . showsConsTerm cons2
   . showsString ")"
-showsConsTerm (RecordPattern cfields mcons)
-  = shows "(RecordPattern "
+showsConsTerm (RecordPattern qident cfields)
+  = showsString "(RecordPattern "
+  . showsQualIdent qident . space
   . showsList (showsField showsConsTerm) cfields . space
-  . showsMaybe showsConsTerm mcons
   . showsString ")"
 
 showsExpression :: Expression -> ShowS
@@ -465,19 +483,15 @@ showsExpression (Case _ ct expr alts)
   . showsExpression expr . space
   . showsList showsAlt alts
   . showsString ")"
-showsExpression (RecordConstr efields)
-  = showsString "(RecordConstr "
+showsExpression (RecordUpdate expr efields)
+  = showsString "(RecordUpdate "
+  . showsExpression expr . space
   . showsList (showsField showsExpression) efields
   . showsString ")"
-showsExpression (RecordSelection expr ident)
-  = showsString "(RecordSelection "
-  . showsExpression expr . space
-  . showsIdent ident
-  . showsString ")"
-showsExpression (RecordUpdate efields expr)
-  = showsString "(RecordUpdate "
-  . showsList (showsField showsExpression) efields . space
-  . showsExpression expr
+showsExpression (Record qident efields)
+  = showsString "(Record "
+  . showsQualIdent qident . space
+  . showsList (showsField showsExpression) efields
   . showsString ")"
 
 showsInfixOp :: InfixOp -> ShowS
@@ -521,7 +535,7 @@ showsField :: (a -> ShowS) -> Field a -> ShowS
 showsField sa (Field pos ident a)
   = showsString "(Field "
   . showsPosition pos . space
-  . showsIdent ident . space
+  . showsQualIdent ident . space
   . sa a
   . showsString ")"
 

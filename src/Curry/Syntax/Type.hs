@@ -4,6 +4,7 @@
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
                        2011 - 2012 Björn Peemöller
+                       2014        Jan Rasmus Tikovsky
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -29,6 +30,7 @@ module Curry.Syntax.Type
   , Interface (..), IImportDecl (..), Arity, IDecl (..)
     -- * Declarations
   , Decl (..), Precedence, Infix (..), ConstrDecl (..), NewConstrDecl (..)
+  , FieldDecl (..)
   , CallConv (..), TypeExpr (..)
   , Equation (..), Lhs (..), Rhs (..), CondExpr (..)
   , Literal (..), Pattern (..), Expression (..), InfixOp (..)
@@ -116,8 +118,8 @@ type Arity = Int
 data IDecl
   = IInfixDecl     Position Infix Precedence QualIdent
   | HidingDataDecl Position QualIdent [Ident]
-  | IDataDecl      Position QualIdent [Ident] [Maybe ConstrDecl]
-  | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl
+  | IDataDecl      Position QualIdent [Ident] [ConstrDecl]  [Ident]
+  | INewtypeDecl   Position QualIdent [Ident] NewConstrDecl [Ident]
   | ITypeDecl      Position QualIdent [Ident] TypeExpr
   | IFunctionDecl  Position QualIdent Arity   TypeExpr
     deriving (Eq, Read, Show, Data, Typeable)
@@ -158,11 +160,18 @@ data Infix
 data ConstrDecl
   = ConstrDecl Position [Ident] Ident [TypeExpr]
   | ConOpDecl  Position [Ident] TypeExpr Ident TypeExpr
+  | RecordDecl Position [Ident] Ident [FieldDecl]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Constructor declaration for renaming types (newtypes)
-data NewConstrDecl = NewConstrDecl Position [Ident] Ident TypeExpr
+data NewConstrDecl
+  = NewConstrDecl Position [Ident] Ident TypeExpr
+  | NewRecordDecl Position [Ident] Ident (Ident, TypeExpr)
    deriving (Eq, Read, Show, Data, Typeable)
+
+-- |Declaration for labelled fields
+data FieldDecl = FieldDecl Position [Ident] TypeExpr
+  deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Calling convention for C code
 data CallConv
@@ -177,8 +186,6 @@ data TypeExpr
   | TupleType       [TypeExpr]
   | ListType        TypeExpr
   | ArrowType       TypeExpr TypeExpr
-  | RecordType      [([Ident], TypeExpr)]
-    -- {l1 :: t1,...,ln :: tn | r}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -227,43 +234,41 @@ data Pattern
   | ConstructorPattern QualIdent [Pattern]
   | InfixPattern       Pattern QualIdent Pattern
   | ParenPattern       Pattern
+  | RecordPattern      QualIdent [Field Pattern] -- C { l1 = p1, ..., ln = pn }
   | TuplePattern       SrcRef [Pattern]
   | ListPattern        [SrcRef] [Pattern]
   | AsPattern          Ident Pattern
   | LazyPattern        SrcRef Pattern
   | FunctionPattern    QualIdent [Pattern]
   | InfixFuncPattern   Pattern QualIdent Pattern
-  | RecordPattern      [Field Pattern] (Maybe Pattern)
-        -- {l1 = p1, ..., ln = pn | p}
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Expression
 data Expression
-  = Literal         Literal
-  | Variable        QualIdent
-  | Constructor     QualIdent
-  | Paren           Expression
-  | Typed           Expression TypeExpr
-  | Tuple           SrcRef [Expression]
-  | List            [SrcRef] [Expression]
-  | ListCompr       SrcRef Expression [Statement] -- the ref corresponds to the main list
-  | EnumFrom        Expression
-  | EnumFromThen    Expression Expression
-  | EnumFromTo      Expression Expression
-  | EnumFromThenTo  Expression Expression Expression
-  | UnaryMinus      Ident Expression
-  | Apply           Expression Expression
-  | InfixApply      Expression InfixOp Expression
-  | LeftSection     Expression InfixOp
-  | RightSection    InfixOp Expression
-  | Lambda          SrcRef [Pattern] Expression
-  | Let             [Decl] Expression
-  | Do              [Statement] Expression
-  | IfThenElse      SrcRef Expression Expression Expression
-  | Case            SrcRef CaseType Expression [Alt]
-  | RecordConstr    [Field Expression]            -- {l1 := e1,...,ln := en}
-  | RecordSelection Expression Ident              -- e :> l
-  | RecordUpdate    [Field Expression] Expression -- {l1 := e1,...,ln := en | e}
+  = Literal           Literal
+  | Variable          QualIdent
+  | Constructor       QualIdent
+  | Paren             Expression
+  | Typed             Expression TypeExpr
+  | Record            QualIdent [Field Expression]  -- C {l1 = e1,..., ln = en}
+  | RecordUpdate      Expression [Field Expression] -- e {l1 = e1,..., ln = en}
+  | Tuple             SrcRef [Expression]
+  | List              [SrcRef] [Expression]
+  | ListCompr         SrcRef Expression [Statement] -- the ref corresponds to the main list
+  | EnumFrom          Expression
+  | EnumFromThen      Expression Expression
+  | EnumFromTo        Expression Expression
+  | EnumFromThenTo    Expression Expression Expression
+  | UnaryMinus        Ident Expression
+  | Apply             Expression Expression
+  | InfixApply        Expression InfixOp Expression
+  | LeftSection       Expression InfixOp
+  | RightSection      InfixOp Expression
+  | Lambda            SrcRef [Pattern] Expression
+  | Let               [Decl] Expression
+  | Do                [Statement] Expression
+  | IfThenElse        SrcRef Expression Expression Expression
+  | Case              SrcRef CaseType Expression [Alt]
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Infix operation
@@ -290,7 +295,7 @@ data Alt = Alt Position Pattern Rhs
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Record field
-data Field a = Field Position Ident a
+data Field a = Field Position QualIdent a
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
@@ -319,8 +324,7 @@ instance SrcRefOf Pattern where
   srcRefOf (LazyPattern        s _) = s
   srcRefOf (FunctionPattern    i _) = srcRefOf i
   srcRefOf (InfixFuncPattern _ i _) = srcRefOf i
-  srcRefOf (RecordPattern      _ _)
-    = error "record pattern has several source refs"
+  srcRefOf (RecordPattern      i _) = srcRefOf i
 
 instance SrcRefOf Literal where
   srcRefOf (Char   s _) = s

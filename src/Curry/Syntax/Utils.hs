@@ -4,6 +4,7 @@
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
                        2011 - 2014 Björn Peemöller
+                       2015        Jan Tikovsky
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -17,9 +18,11 @@
 module Curry.Syntax.Utils
   ( hasLanguageExtension, knownExtensions
   , isTypeSig, infixOp, isTypeDecl, isValueDecl, isInfixDecl
-  , isRecordDecl, isFunctionDecl, isExternalDecl, patchModuleId
+  , isFunctionDecl, isExternalDecl, patchModuleId
   , flatLhs, mkInt, fieldLabel, fieldTerm, field2Tuple, opName
   , addSrcRefs
+  , constrId, nconstrId
+  , recordLabels, nrecordLabels
   ) where
 
 import Control.Monad.State
@@ -74,11 +77,6 @@ isValueDecl (PatternDecl     _ _ _) = True
 isValueDecl (FreeDecl          _ _) = True
 isValueDecl _                       = False
 
--- |Is the declaration a record declaration?
-isRecordDecl :: Decl -> Bool
-isRecordDecl (TypeDecl _ _ _ (RecordType _)) = True
-isRecordDecl _                               = False
-
 -- |Is the declaration a function declaration?
 isFunctionDecl :: Decl -> Bool
 isFunctionDecl (FunctionDecl _ _ _) = True
@@ -107,7 +105,7 @@ mkInt :: Integer -> Literal
 mkInt i = mk (\r -> Int (addPositionIdent (AST r) anonId) i)
 
 -- |Select the label of a field
-fieldLabel :: Field a -> Ident
+fieldLabel :: Field a -> QualIdent
 fieldLabel (Field _ l _) = l
 
 -- |Select the term of a field
@@ -115,7 +113,7 @@ fieldTerm :: Field a -> a
 fieldTerm (Field _ _ t) = t
 
 -- |Select the label and term of a field
-field2Tuple :: Field a -> (Ident, a)
+field2Tuple :: Field a -> (QualIdent, a)
 field2Tuple (Field _ l t) = (l, t)
 
 -- |Get the operator name of an infix operator
@@ -174,3 +172,25 @@ addSrcRefs x = evalState (addRefs x) 0
       ists <- sequence (map add ts)
       let (is,ts') = unzip ists
       return (i:is,ts')
+
+-- | Get the identifier of a constructor declaration
+constrId :: ConstrDecl -> Ident
+constrId (ConstrDecl _ _ c _) = c
+constrId (ConOpDecl _ _ _ op _) = op
+constrId (RecordDecl _ _ c _) = c
+
+-- | Get the identifier of a newtype constructor declaration
+nconstrId :: NewConstrDecl -> Ident
+nconstrId (NewConstrDecl _ _ c _) = c
+nconstrId (NewRecordDecl _ _ c _) = c
+
+-- | Get record label identifiers of a constructor declaration
+recordLabels :: ConstrDecl -> [Ident]
+recordLabels (ConstrDecl   _ _ _ _) = []
+recordLabels (ConOpDecl _ _ _ _  _) = []
+recordLabels (RecordDecl  _ _ _ fs) = [l | FieldDecl _ ls _ <- fs, l <- ls]
+
+-- | Get record label identifier of a newtype constructor declaration
+nrecordLabels :: NewConstrDecl -> [Ident]
+nrecordLabels (NewConstrDecl _ _ _ _    )  = []
+nrecordLabels (NewRecordDecl _ _ _ (l, _)) = [l]

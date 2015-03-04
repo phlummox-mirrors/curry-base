@@ -1,8 +1,9 @@
 {- |
     Module      :  $Header$
     Description :  Library to support meta-programming in Curry
-    Copyright   :  (c) Michael Hanus, April 2004
-                       Martin Engelke, July 2005
+    Copyright   :  Michael Hanus  , April 2004
+                   Martin Engelke , July 2005
+                   Björn Peemöller, January 2015
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -16,34 +17,31 @@
 
     Note that this defines a slightly new format for AbstractCurry
     in comparison to the first proposal of 2003.
-
-    /Assumption:/ An AbstractCurry program @Prog@ is stored in a file with
-    the file extension @acy@, i.e. in a file @Prog.acy@.
 -}
 module Curry.AbstractCurry.Type
-  ( CurryProg (..), QName, CLabel, CVisibility (..), CTVarIName
-  , CTypeDecl (..), CConsDecl (..), CTypeExpr (..), COpDecl (..), CFixity (..)
-  , CVarIName, CFuncDecl (..), CRules (..), CEvalAnnot (..), CRule (..)
-  , CLocalDecl (..), CExpr (..), CStatement (..), CPattern (..)
-  , CBranchExpr (..), CLiteral (..), CField
+  ( CurryProg (..), QName, CVisibility (..), CTVarIName
+  , CTypeDecl (..), CConsDecl (..), CFieldDecl (..), CTypeExpr (..)
+  , COpDecl (..), CFixity (..), Arity, CFuncDecl (..), CRhs (..), CRule (..)
+  , CLocalDecl (..), CVarIName, CExpr (..), CCaseType (..), CStatement (..)
+  , CPattern (..), CLiteral (..), CField, version
   ) where
 
 -- ---------------------------------------------------------------------------
 -- Abstract syntax
 -- ---------------------------------------------------------------------------
 
-{- |A qualified name.
+-- |Current version of AbstractCurry
+version :: String
+version = "AbstractCurry 1.0"
 
-    In AbstractCurry all names are qualified to avoid name clashes.
-    The first component is the module name and the second component the
-    unqualified name as it occurs in the source program.
--}
-type QName = (String, String)
+-- |A module name.
+type MName = String
 
-
--- |Identifiers for record labels (extended syntax).
-type CLabel = String
-
+-- |A qualified name.
+-- In AbstractCurry all names are qualified to avoid name clashes.
+-- The first component is the module name and the second component the
+-- unqualified name as it occurs in the source program.
+type QName = (MName, String)
 
 -- |Data type to specify the visibility of various entities.
 data CVisibility
@@ -51,77 +49,66 @@ data CVisibility
   | Private   -- ^ private entity
     deriving (Eq, Read, Show)
 
-
-{- |A Curry module in the intermediate form. A value of this type has the form
-
-    @CurryProg modname imports typedecls funcdecls opdecls@
-
-    where
-
-    [@modname@]   Name of this module
-
-    [@imports@]   List of modules names that are imported
-
-    [@typedecls@] Type declarations
-
-    [@funcdecls@] Function declarations
-
-    [@ opdecls@]  Operator precedence declarations
--}
-data CurryProg = CurryProg String [String] [CTypeDecl] [CFuncDecl] [COpDecl]
+-- |A Curry module in the intermediate form. A value of this type has the form
+-- @
+-- CurryProg modname imports typedecls funcdecls opdecls
+-- @
+-- where
+-- [@modname@]   Name of this module
+-- [@imports@]   List of modules names that are imported
+-- [@typedecls@] Type declarations
+-- [@funcdecls@] Function declarations
+-- [@ opdecls@]  Operator precedence declarations
+data CurryProg = CurryProg MName [MName] [CTypeDecl] [CFuncDecl] [COpDecl]
     deriving (Eq, Read, Show)
 
-
-{- |Definitions of algebraic data types and type synonyms.
-
-    A data type definition of the form
-
-    @data t x1...xn = ...| c t1....tkc |...@
-
-    is represented by the Curry term
-
-    @(CType t v [i1,...,in] [...(CCons c kc v [t1,...,tkc])...])@
-
-    where each @ij@ is the index of the type variable @xj@ and @v@ is the
-    visibility of the type resp. constructor.
-
-    /Note:/ The type variable indices are unique inside each type declaration
-            and are usually numbered from 0.
-
-    Thus, a data type declaration consists of the name of the data type,
-    a list of type parameters and a list of constructor declarations.
--}
+-- |Definitions of algebraic data types and type synonyms.
+-- A data type definition of the form
+-- @
+-- data t x1...xn = ...| c t1....tkc |...
+-- @
+-- is represented by the Curry term
+-- @
+-- (CType t v [i1,...,in] [...(CCons c kc v [t1,...,tkc])...])
+-- @
+-- where each @ij@ is the index of the type variable @xj@ and @v@ is the
+-- visibility of the type resp. constructor.
+-- /Note:/ The type variable indices are unique inside each type declaration
+--         and are usually numbered from 0.
+-- Thus, a data type declaration consists of the name of the data type,
+-- a list of type parameters and a list of constructor declarations.
 data CTypeDecl
-  = CType QName CVisibility [CTVarIName] [CConsDecl]  -- ^ algebraic data type
-  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr -- ^ type synonym
+    -- |algebraic data type
+  = CType    QName CVisibility [CTVarIName] [CConsDecl]
+    -- |type synonym
+  | CTypeSyn QName CVisibility [CTVarIName] CTypeExpr
+    -- |renaming type, may have only exactly one type expression
+    -- in the constructor declaration
+  | CNewType QName CVisibility [CTVarIName] CConsDecl
     deriving (Eq, Read, Show)
 
-
-{- |The type for representing type variables.
-
-    They are represented by @(i,n)@ where @i@ is a type variable index
-    which is unique inside a function and @n@ is a name (if possible,
-    the name written in the source program).
--}
+-- |The type for representing type variables.
+-- They are represented by @(i,n)@ where @i@ is a type variable index
+-- which is unique inside a function and @n@ is a name (if possible,
+-- the name written in the source program).
 type CTVarIName = (Int, String)
 
-
-{- |A constructor declaration consists of the name and arity of the
-    constructor and a list of the argument types of the constructor.
--}
-data CConsDecl = CCons QName Int CVisibility [CTypeExpr]
+-- |A constructor declaration consists of the name of the
+-- constructor and a list of the argument types of the constructor.
+-- The arity equals the number of types.
+data CConsDecl
+  = CCons   QName CVisibility [CTypeExpr]
+  | CRecord QName CVisibility [CFieldDecl]
     deriving (Eq, Read, Show)
 
+-- |A record field declaration consists of the name of the
+--   the label, the visibility and its corresponding type.
+data CFieldDecl = CField QName CVisibility CTypeExpr
+  deriving (Eq, Read, Show)
 
-{- |Type expression.
-
-    A type expression is either a type variable, a function type,
-    or a type constructor application.
-
-    /Note:/ the names of the predefined type constructors are
-            @Int@, @Float@, @Bool@, @Char@, @IO@, @Success@,
-            @()@ (unit type), @(,...,)@ (tuple types), @[]@ (list type)
--}
+-- |Type expression.
+-- A type expression is either a type variable, a function type,
+-- or a type constructor application.
 data CTypeExpr
     -- |Type variable
   = CTVar CTVarIName
@@ -129,23 +116,16 @@ data CTypeExpr
   | CFuncType CTypeExpr CTypeExpr
     -- |Type constructor application
   | CTCons QName [CTypeExpr]
-    -- |Record type (extended Curry)
-  | CRecordType [CField CTypeExpr]
     deriving (Eq, Read, Show)
-
 
 -- |Labeled record fields
-type CField a = (CLabel, a)
+type CField a = (QName, a)
 
-
-{- |Operator precedence declaration.
-
-    An operator precedence declaration @fix p n@ in Curry corresponds to the
-    AbstractCurry term @(COp n fix p)@.
--}
+-- |Operator precedence declaration.
+-- An operator precedence declaration @fix p n@ in Curry corresponds to the
+-- AbstractCurry term @(COp n fix p)@.
 data COpDecl = COp QName CFixity Int
     deriving (Eq, Read, Show)
-
 
 -- |Fixity declarations of infix operators
 data CFixity
@@ -154,80 +134,58 @@ data CFixity
   | CInfixrOp -- ^ right-associative infix operator
     deriving (Eq, Read, Show)
 
+-- |Function arity
+type Arity = Int
 
-{- |Data type for representing function declarations.
-
-    A function declaration in FlatCurry is a term of the form
-
-    @(CFunc name arity visibility type (CRules eval [CRule rule1,...,rulek]))@
-
-    and represents the function @name@ with definition
-
-    @
-    name :: type
-    rule1
-    ...
-    rulek
-    @
-
-    /Note:/ The variable indices are unique inside each rule.
-
-    External functions are represented as
-
-    @(CFunc name arity type (CExternal s))@
-
-    where s is the external name associated to this function.
-
-    Thus, a function declaration consists of the name, arity, type, and
-    a list of rules.
--}
-data CFuncDecl = CFunc QName Int CVisibility CTypeExpr CRules
+-- |Data type for representing function declarations.
+-- A function declaration in FlatCurry is a term of the form
+-- @
+-- (CFunc name arity visibility type (CRules eval [CRule rule1,...,rulek]))
+-- @
+-- and represents the function @name@ with definition
+-- @
+-- name :: type
+-- rule1
+-- ...
+-- rulek
+-- @
+-- /Note:/ The variable indices are unique inside each rule.
+-- External functions are represented as
+-- @
+-- (CFunc name arity type (CExternal s))
+-- @
+-- where s is the external name associated to this function.
+-- Thus, a function declaration consists of the name, arity, type, and
+-- a list of rules.
+-- If the list of rules is empty, the function is considered
+-- to be externally defined.
+data CFuncDecl = CFunc QName Arity CVisibility CTypeExpr [CRule]
     deriving (Eq, Read, Show)
 
-
-{- |A funcztion either consists of a list of general program rules with
-    an evaluation annotation, or it is externally defined.
--}
-data CRules
-  = CRules CEvalAnnot [CRule] -- ^ general program rule
-  | CExternal String          -- ^ externally defined
+-- |The general form of a function rule. It consists of a list of patterns
+-- (left-hand side), a list of guards (@success@ if not present in the
+-- source text) with their corresponding right-hand sides, and
+-- a list of local declarations.
+data CRule = CRule [CPattern] CRhs
     deriving (Eq, Read, Show)
 
-
-{- |Evaluation annotations for functions.
-    They can be either flexible (default), rigid, or choice.
--}
-data CEvalAnnot
-  = CFlex
-  | CRigid
-  | CChoice
+-- |Right-hand-side of a 'CRule' or an @case@ expression
+data CRhs
+  = CSimpleRhs  CExpr            [CLocalDecl] -- @expr where decls@
+  | CGuardedRhs [(CExpr, CExpr)] [CLocalDecl] -- @| cond = expr where decls@
     deriving (Eq, Read, Show)
-
-
-{- |The general form of a function rule. It consists of a list of patterns
-    (left-hand side), a list of guards (@success@ if not present in the
-    source text) with their corresponding right-hand sides, and
-    a list of local declarations.
--}
-data CRule = CRule [CPattern] [(CExpr, CExpr)] [CLocalDecl]
-    deriving (Eq, Read, Show)
-
 
 -- | Local (let/where) declarations
 data CLocalDecl
-  = CLocalFunc CFuncDecl                  -- ^ local function declaration
-  | CLocalPat CPattern CExpr [CLocalDecl] -- ^ local pattern declaration
-  | CLocalVar  CVarIName                  -- ^ local free variable declaration
+  = CLocalFunc CFuncDecl     -- ^ local function declaration
+  | CLocalPat  CPattern CRhs -- ^ local pattern declaration
+  | CLocalVars [CVarIName]   -- ^ local free variable declarations
     deriving (Eq, Read, Show)
 
-
-{- |Object variables.
-
-    Object variables occurring in expressions are represented by @(Var i)@
-    where @i@ is a variable index.
--}
+-- |Variable names.
+-- Object variables occurring in expressions are represented by @(Var i)@
+-- where @i@ is a variable index.
 type CVarIName = (Int, String)
-
 
 -- |Pattern expressions.
 data CPattern
@@ -240,58 +198,65 @@ data CPattern
   | CPComb QName [CPattern]
     -- |as-pattern (extended Curry)
   | CPAs CVarIName CPattern
-    -- |function pattern (extended Curry)
+    -- |functional pattern (extended Curry)
   | CPFuncComb QName [CPattern]
     -- |lazy pattern (extended Curry)
   | CPLazy CPattern
     -- |record pattern (extended curry)
-  | CPRecord [CField CPattern] (Maybe CPattern)
+  | CPRecord QName [CField CPattern]
     deriving (Eq, Read, Show)
-
 
 -- | Curry expressions.
 data CExpr
-  = CVar       CVarIName            -- ^ variable (unique index / name)
-  | CLit       CLiteral             -- ^ literal (Integer/Float/Char constant)
-  | CSymbol    QName                -- ^ a defined symbol with module and name
-  | CApply     CExpr CExpr          -- ^ application (e1 e2)
-  | CLambda    [CPattern] CExpr     -- ^ lambda abstraction
-  | CLetDecl   [CLocalDecl] CExpr   -- ^ local let declarations
-  | CDoExpr    [CStatement]         -- ^ do expression
-  | CListComp  CExpr [CStatement]   -- ^ list comprehension
-  | CCase      CExpr [CBranchExpr]  -- ^ case expression
-  | CRecConstr [CField CExpr]       -- ^ record construction (extended Curry)
-  | CRecSelect CExpr CLabel         -- ^ field selection (extended Curry)
-  | CRecUpdate [CField CExpr] CExpr -- ^ record update (extended Curry)
+    -- |variable (unique index / name)
+  = CVar       CVarIName
+    -- |literal (Integer/Float/Char/String constant)
+  | CLit       CLiteral
+    -- |a defined symbol with module and name, i.e., a function or a constructor
+  | CSymbol    QName
+    -- |application (e1 e2)
+  | CApply     CExpr CExpr
+    -- |lambda abstraction
+  | CLambda    [CPattern] CExpr
+    -- |local let declarations
+  | CLetDecl   [CLocalDecl] CExpr
+    -- |do block
+  | CDoExpr    [CStatement]
+    -- |list comprehension
+  | CListComp  CExpr [CStatement]
+    -- |case expression
+  | CCase      CCaseType CExpr [(CPattern, CRhs)]
+    -- |typed expression
+  | CTyped     CExpr CTypeExpr
+    -- |record construction (extended Curry)
+  | CRecConstr QName [CField CExpr]
+    -- |record update (extended Curry)
+  | CRecUpdate CExpr [CField CExpr]
     deriving (Eq, Read, Show)
 
-
-{- |Literals occurring in an expression, either an integer, a float,
-    or a character constant.
-
-    /Note:/ The constructor definition of 'CIntc' differs from the original
-    PAKCS definition. It uses Haskell type 'Integer' instead of 'Int'
-    to provide an unlimited range of integer numbers. Furthermore,
-    float values are represented with Haskell type 'Double' instead of
-    'Float' to gain double precision.
--}
+-- |Literals occurring in an expression or a pattern,
+-- either an integer, a float, a character, or a string constant.
+-- /Note:/ The constructor definition of 'CIntc' differs from the original
+-- PAKCS definition. It uses Haskell type 'Integer' instead of 'Int'
+-- to provide an unlimited range of integer numbers. Furthermore,
+-- float values are represented with Haskell type 'Double' instead of
+-- 'Float' to gain double precision.
 data CLiteral
-  = CIntc   Integer -- ^ Int literal
-  | CFloatc Double  -- ^ Float literal
-  | CCharc  Char    -- ^ Char literal
+  = CIntc    Integer -- ^ Int literal
+  | CFloatc  Double  -- ^ Float literal
+  | CCharc   Char    -- ^ Char literal
+  | CStringc String  -- ^ String literal
     deriving (Eq, Read, Show)
-
 
 -- |Statements in do expressions and list comprehensions.
 data CStatement
-  = CSExpr CExpr         -- ^ an expression (I/O action or boolean)
-  | CSPat CPattern CExpr -- ^ a pattern definition
-  | CSLet [CLocalDecl]   -- ^ a local let declaration
+  = CSExpr CExpr          -- ^ an expression (I/O action or boolean)
+  | CSPat  CPattern CExpr -- ^ a pattern definition
+  | CSLet  [CLocalDecl]   -- ^ a local let declaration
     deriving (Eq, Read, Show)
 
-
--- |Branches in case expressions.
-data CBranchExpr
-  = CBranch        CPattern CExpr
-  | CGuardedBranch CPattern [(CExpr, CExpr)]
+-- |Type of case expressions
+data CCaseType
+  = CRigid -- ^ rigid case expression
+  | CFlex  -- ^ flexible case expression
     deriving (Eq, Read, Show)
