@@ -19,7 +19,7 @@
     in comparison to the first proposal of 2003.
 -}
 module Curry.AbstractCurry.Type
-  ( CurryProg (..), QName, CVisibility (..), CTVarIName
+  ( CurryProg (..), MName, QName, CVisibility (..), CTVarIName
   , CTypeDecl (..), CConsDecl (..), CFieldDecl (..), CTypeExpr (..)
   , COpDecl (..), CFixity (..), Arity, CFuncDecl (..), CRhs (..), CRule (..)
   , CLocalDecl (..), CVarIName, CExpr (..), CCaseType (..), CStatement (..)
