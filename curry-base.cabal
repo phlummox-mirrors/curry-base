@@ -16,6 +16,10 @@ Homepage:      http://curry-language.org
 Build-Type:    Simple
 Stability:     experimental
 
+source-repository head
+  type:     git
+  location: git://git-ps.informatik.uni-kiel.de/curry/curry-base.git
+
 Flag broken-directory
   Description: Is the cabal configuration of directory incomplete?
   Default:     False
