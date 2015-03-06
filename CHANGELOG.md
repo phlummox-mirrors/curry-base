@@ -4,6 +4,22 @@ Change log for curry-base
 Under Development
 =================
 
+Version 0.4.0
+=============
+
+  * Introduced new representation of AbstractCurry
+
+    - AbstractCurry files now contain version information
+    - support for new record syntax
+    - support for newtype declarations
+    - evaluation annotations removed
+    - arity of constructor declarations removed
+    - simplified representation of function rules
+    - String literals added
+
+  * Removed support for Curry's record syntax and introduced Haskell's record
+    syntax instead
+
   * Lexer is now capable of lexing binary integer literals, for instance
     `0b101010` or `0B101010` can now be lexed and are converted to `42`.
 
