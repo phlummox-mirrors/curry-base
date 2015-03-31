@@ -45,7 +45,7 @@ module Curry.Base.LLParseComb
   ) where
 
 #if __GLASGOW_HASKELL__ >= 710
-import Prelude hiding ((<*>))
+import Prelude hiding ((<$>), (<*>))
 #endif
 import Control.Monad
 import qualified Data.Map as Map

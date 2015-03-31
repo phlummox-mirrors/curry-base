@@ -19,7 +19,7 @@ module Curry.Syntax.Parser
   ) where
 
 #if __GLASGOW_HASKELL__ >= 710
-import Prelude hiding ((<*>))
+import Prelude hiding ((<$>), (<*>))
 #endif
 import Curry.Base.Ident
 import Curry.Base.Monad       (CYM)
