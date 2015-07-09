@@ -355,10 +355,10 @@ ppQIdent :: QualIdent -> Doc
 ppQIdent x = parenIf (isQInfixOp x) (text (qualName x))
 
 ppInfixOp :: Ident -> Doc
-ppInfixOp x = backQuoteIf (not (isInfixOp x)) (text (idName x))
+ppInfixOp x = bquotesIf (not (isInfixOp x)) (text (idName x))
 
 ppQInfixOp :: QualIdent -> Doc
-ppQInfixOp x = backQuoteIf (not (isQInfixOp x)) (text (qualName x))
+ppQInfixOp x = bquotesIf (not (isQInfixOp x)) (text (qualName x))
 
 ppMIdent :: ModuleIdent -> Doc
 ppMIdent m = text (moduleName m)
@@ -370,12 +370,6 @@ ppMIdent m = text (moduleName m)
 indent :: Doc -> Doc
 indent = nest 2
 
-backQuoteIf :: Bool -> Doc -> Doc
-backQuoteIf b doc = if b then backQuote <> doc <> backQuote else doc
-
-list :: [Doc] -> Doc
-list = fsep . punctuate comma
-
 parenList :: [Doc] -> Doc
 parenList = parens . list
 
@@ -385,18 +379,3 @@ record doc | isEmpty doc = braces empty
 
 bracketList :: [Doc] -> Doc
 bracketList = brackets . list
-
-backQuote :: Doc
-backQuote = char '`'
-
-backsl :: Doc
-backsl = char '\\'
-
-vbar :: Doc
-vbar = char '|'
-
-rarrow :: Doc
-rarrow = text "->"
-
-larrow :: Doc
-larrow = text "<-"

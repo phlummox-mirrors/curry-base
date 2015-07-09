@@ -18,7 +18,6 @@ module Curry.Base.Pretty
   , module Text.PrettyPrint
   ) where
 
-import Data.List        (intersperse)
 import Text.PrettyPrint
 
 -- | Pretty printing class.
@@ -58,9 +57,16 @@ maybePP pp = maybe empty pp
 blankLine :: Doc
 blankLine = text ""
 
+-- |Above with a blank line in between. If one of the documents is empty,
+-- then the other document is returned.
+($++$) :: Doc -> Doc -> Doc
+d1 $++$ d2 | isEmpty d1 = d2
+           | isEmpty d2 = d1
+           | otherwise  = d1 $+$ blankLine $+$ d2
+
 -- | Seperate a list of 'Doc's by a 'blankLine'.
 sepByBlankLine :: [Doc] -> Doc
-sepByBlankLine = vcat . intersperse blankLine
+sepByBlankLine = foldr ($++$) empty
 
 -- |A '.' character.
 dot :: Doc
@@ -69,6 +75,38 @@ dot = char '.'
 -- |Precedence of function application
 appPrec :: Int
 appPrec = 10
+
+-- |A left arrow @<-@.
+larrow :: Doc
+larrow = text "<-"
+
+-- |A right arrow @->@.
+rarrow :: Doc
+rarrow = text "->"
+
+-- |A back quote @`@.
+backQuote :: Doc
+backQuote = char '`'
+
+-- |A backslash @\@.
+backsl :: Doc
+backsl = char '\\'
+
+-- |A vertical bar @|@.
+vbar :: Doc
+vbar = char '|'
+
+-- |Set a document in backquotes.
+bquotes :: Doc -> Doc
+bquotes doc = backQuote <> doc <> backQuote
+
+-- |Set a document in backquotes if the condition is @True@.
+bquotesIf :: Bool -> Doc -> Doc
+bquotesIf b doc = if b then bquotes doc else doc
+
+-- |Seperate a list of documents by commas
+list :: [Doc] -> Doc
+list = fsep . punctuate comma
 
 -- | Instance for 'Int'
 instance Pretty Int      where pPrint = int

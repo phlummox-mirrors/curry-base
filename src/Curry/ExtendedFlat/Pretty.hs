@@ -15,17 +15,20 @@ module Curry.ExtendedFlat.Pretty
   , ppFuncDecl, ppExpr, ppLiteral, ppOpDecl
   ) where
 
-import Text.PrettyPrint
+import Data.Char         (ord)
 
+import Curry.Base.Pretty
 import Curry.ExtendedFlat.Type
 
 -- |pretty-print a FlatCurry module
 ppProg :: Prog -> Doc
-ppProg (Prog m is ts fs os) = ppHeader m ts fs
-  $$ vcat (map ppImport   is)
-  $$ vcat (map ppOpDecl   os)
-  $$ vcat (map ppTypeDecl ts)
-  $$ vcat (map ppFuncDecl fs)
+ppProg (Prog m is ts fs os) = sepByBlankLine
+  [ ppHeader m ts fs
+  , vcat           (map ppImport   is)
+  , vcat           (map ppOpDecl   os)
+  , sepByBlankLine (map ppTypeDecl ts)
+  , sepByBlankLine (map ppFuncDecl fs)
+  ]
 
 -- |pretty-print the module header
 ppHeader :: String -> [TypeDecl] -> [FuncDecl] -> Doc
@@ -120,11 +123,12 @@ ppExpr p (Comb   _ qn es) = ppComb p qn es
 ppExpr p (Free      vs e)
   | null vs               = ppExpr p e
   | otherwise             = parenIf (p > 0) $ sep
-                              [ letSym <+> list (map ppVarIndex vs) <+> free
-                              , inSym <+> ppExpr 0 e
-                              ]
+                            [ text "let" <+> list (map ppVarIndex vs)
+                                         <+> text "free"
+                            , text "in"  <+> ppExpr 0 e
+                            ]
 ppExpr p (Let       ds e) = parenIf (p > 0) $ sep
-                            [letSym <+> ppDecls ds, inSym <+> ppExpr 0 e]
+                            [text "let" <+> ppDecls ds, text "in" <+> ppExpr 0 e]
 ppExpr p (Or       e1 e2) = parenIf (p > 0)
                           $ ppExpr 1 e1 <+> text "?" <+> ppExpr 1 e2
 ppExpr p (Case _ ct e bs) = parenIf (p > 0)
@@ -135,13 +139,22 @@ ppExpr p (Typed     e ty) = parenIf (p > 0)
 
 -- |pretty-print a variable
 ppVarIndex :: VarIndex -> Doc
-ppVarIndex i = text $ 'v' : show i
+ppVarIndex i = text $ 'v' : show (idxOf i)
 
 -- |pretty-print a literal
 ppLiteral :: Literal -> Doc
 ppLiteral (Intc   _ i) = integer i
 ppLiteral (Floatc _ f) = double  f
-ppLiteral (Charc  _ c) = text (show c)
+ppLiteral (Charc  _ c) = text (showEscape c)
+
+-- |Escape character literal
+showEscape :: Char -> String
+showEscape c
+  | o <   10  = "'\\00" ++ show o ++ "'"
+  | o <   32  = "'\\0"  ++ show o ++ "'"
+  | o == 127  = "'\\127'"
+  | otherwise = show c
+  where o = ord c
 
 -- |Pretty print a constructor or function call
 ppComb :: Int -> QName -> [Expr] -> Doc
@@ -194,28 +207,6 @@ ppQName qn = text $ modName qn ++ '.' : localName qn
 isInfixOp :: QName -> Bool
 isInfixOp = all (`elem` "~!@#$%^&*+-=<>:?./|\\") . localName
 
--- Helper
-
-letSym :: Doc
-letSym = text "let"
-
-inSym :: Doc
-inSym = text "in"
-
-free :: Doc
-free = text "free"
-
+-- Indentation
 indent :: Doc -> Doc
 indent = nest 2
-
-list :: [Doc] -> Doc
-list = fsep . punctuate comma
-
-parenIf :: Bool -> Doc -> Doc
-parenIf b doc = if b then parens doc else doc
-
-bquotes :: Doc -> Doc
-bquotes doc = char '`' <> doc <> char '`'
-
-rarrow :: Doc
-rarrow = text "->"
