@@ -1,8 +1,10 @@
 Change log for curry-base
 =========================
 
-Under Development
-=================
+Under Development (0.4.1)
+=========================
+
+  * Implemented pretty printer for extended FlatCurry
 
 Version 0.4.0
 =============
