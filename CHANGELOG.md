@@ -4,6 +4,8 @@ Change log for curry-base
 Under Development (0.4.1)
 =========================
 
+  * Emitted FlatCurry files now contain newlines to improve readability
+    for humans
   * Implemented pretty printer for extended FlatCurry
 
 Version 0.4.0

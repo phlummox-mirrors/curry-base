@@ -446,6 +446,7 @@ gshowsPrec :: Data a => Bool -> Bool -> a -> ShowS
 gshowsPrec showType d = genericShowsPrec d
   `ext1Q` showsList
   `ext2Q` showsTuple
+  `extQ`  showsProg
   `extQ`  (const id :: SrcRef   -> ShowS)
   `extQ`  (const id :: [SrcRef] -> ShowS)
   `extQ`  (shows    :: String   -> ShowS)
@@ -454,6 +455,21 @@ gshowsPrec showType d = genericShowsPrec d
   `extQ`  showsVarIndex d
 
   where
+  showsProg :: Prog -> ShowS
+  showsProg (Prog m is ts fs os) = showString "Prog " . shows m . newline
+                                 . showsList is . newline
+                                 . wrapList ts . newline
+                                 . wrapList fs . newline
+                                 . wrapList os . newline
+
+  wrapList :: Data a => [a] -> ShowS
+  wrapList xs = showChar '[' .
+                  foldr (.) (showChar ']')
+                        (intersperse (newline . showChar ',') $
+                        map (gshowsPrec showType False) xs)
+
+  newline :: ShowS
+  newline = showChar '\n'
 
   showsEscape :: Char -> ShowS
   showsEscape c
