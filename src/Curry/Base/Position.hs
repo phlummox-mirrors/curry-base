@@ -71,8 +71,8 @@ instance Show Position where
                                  . shows f . showChar ' '
                                  . shows l . showChar ' '
                                  . shows c . showChar ')'
-  showsPrec _ (AST            _) = showString "NoPos"
-  showsPrec _ NoPos              = showString "NoPos"
+  showsPrec _ (AST            _) = showString "(0,0)"
+  showsPrec _ NoPos              = showString "(0,0)"
 
 instance HasPosition Position where
   getPosition = id
