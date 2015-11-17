@@ -541,6 +541,13 @@ parenTuplePattern = pattern0 <**> optTuplePattern
 -- ---------------------------------------------------------------------------
 
 -- condExpr ::= '|' expr0 eq expr
+--
+-- Note: The guard is an `expr0` instead of `expr` since conditional expressions
+-- may also occur in case expressions, and an expression like
+-- @
+-- case a of { _ -> True :: Bool -> a }
+-- @
+-- can not be parsed with a limited parser lookahead.
 condExpr :: Parser Token a b -> Parser Token CondExpr b
 condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 
