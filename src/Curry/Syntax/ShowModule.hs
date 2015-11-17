@@ -541,7 +541,7 @@ showsField sa (Field pos ident a)
 
 showsPosition :: Position -> ShowS
 showsPosition Position { line = l, column = c } = showsPair shows shows (l, c)
-showsPosition _ = showsString "NoPos"
+showsPosition _ = showsString "(0,0)"
 -- showsPosition (Position file row col)
 --   = showsString "(Position "
 --   . shows file . space
