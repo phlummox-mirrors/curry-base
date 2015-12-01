@@ -36,7 +36,7 @@ showsPragma :: ModulePragma -> ShowS
 showsPragma (LanguagePragma pos exts)
   = showsString "(LanguagePragma "
   . showsPosition pos . space
-  . showsList shows exts
+  . showsList showsExtension exts
   . showsString ")"
 showsPragma (OptionsPragma pos mbTool args)
   = showsString "(OptionsPragma "
@@ -44,6 +44,18 @@ showsPragma (OptionsPragma pos mbTool args)
   . showsMaybe shows mbTool
   . shows args
   . showsString ")"
+
+showsExtension :: Extension -> ShowS
+showsExtension (KnownExtension p e)
+  = showsString "(KnownExtension "
+  . showsPosition p . space
+  . shows e
+  . showString ")"
+showsExtension (UnknownExtension p s)
+  = showsString "(UnknownExtension "
+  . showsPosition p . space
+  . shows s
+  . showString ")"
 
 showsExportSpec :: ExportSpec -> ShowS
 showsExportSpec (Exporting pos exports)
@@ -113,7 +125,7 @@ showsDecl (InfixDecl pos infx prec idents)
   = showsString "(InfixDecl "
   . showsPosition pos . space
   . shows infx . space
-  . shows prec . space
+  . showsMaybe shows prec . space
   . showsList showsIdent idents
   . showsString ")"
 showsDecl (DataDecl pos ident idents consdecls)
@@ -153,7 +165,7 @@ showsDecl (ForeignDecl pos cconv mstr ident typ)
   = showsString "(ForeignDecl "
   . showsPosition pos . space
   . shows cconv . space
-  . shows mstr . space
+  . showsMaybe shows mstr . space
   . showsIdent ident . space
   . showsTypeExpr typ
   . showsString ")"
@@ -548,6 +560,9 @@ showsPosition _ = showsString "(0,0)"
 --   . shows row . space
 --   . shows col
 --   . showsString ")"
+
+parens :: ShowS -> ShowS
+parens s = showsString "(" . s . showsString ")"
 
 showsString :: String -> ShowS
 showsString = (++)
