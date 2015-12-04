@@ -561,9 +561,6 @@ showsPosition _ = showsString "(0,0)"
 --   . shows col
 --   . showsString ")"
 
-parens :: ShowS -> ShowS
-parens s = showsString "(" . s . showsString ")"
-
 showsString :: String -> ShowS
 showsString = (++)
 
@@ -602,4 +599,12 @@ showsQualIdent (QualIdent mident ident)
   . showsString ")"
 
 showsModuleIdent :: ModuleIdent -> ShowS
-showsModuleIdent = shows . moduleName
+showsModuleIdent (ModuleIdent pos ss)
+  = showsString "(ModuleIdent "
+  . showsPosition pos . space
+  . showsList (showsQuotes showsString) ss
+  . showsString ")"
+
+showsQuotes :: (a -> ShowS) -> a -> ShowS
+showsQuotes sa a
+  = showsString "\"" . sa a . showsString "\""
