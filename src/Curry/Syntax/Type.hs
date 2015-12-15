@@ -186,6 +186,7 @@ data TypeExpr
   | TupleType       [TypeExpr]
   | ListType        TypeExpr
   | ArrowType       TypeExpr TypeExpr
+  | ParenType       TypeExpr
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------

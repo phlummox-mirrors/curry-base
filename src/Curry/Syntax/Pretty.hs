@@ -220,6 +220,7 @@ ppTypeExpr p (ArrowType ty1 ty2) = parenIf (p > 0)
   where
   ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
   ppArrowType ty                    = [ppTypeExpr 0 ty]
+ppTypeExpr _ (ParenType      ty) = parens (ppTypeExpr 0 ty)
 
 -- ---------------------------------------------------------------------------
 -- Literals

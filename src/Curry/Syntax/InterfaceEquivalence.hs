@@ -129,7 +129,7 @@ instance FixInterface ConstrDecl where
 
 instance FixInterface FieldDecl where
   fix tcs (FieldDecl p ls ty) = FieldDecl p ls (fix tcs ty)
-    
+
 instance FixInterface NewConstrDecl where
   fix tcs (NewConstrDecl p evs c ty    ) = NewConstrDecl p evs c (fix tcs ty)
   fix tcs (NewRecordDecl p evs c (i,ty)) = NewRecordDecl p evs c (i,fix tcs ty)
@@ -147,6 +147,7 @@ instance FixInterface TypeExpr where
   fix tcs (TupleType     tys) = TupleType  (fix tcs tys)
   fix tcs (ListType       ty) = ListType   (fix tcs ty)
   fix tcs (ArrowType ty1 ty2) = ArrowType  (fix tcs ty1) (fix tcs ty2)
+  fix tcs (ParenType      ty) = ParenType  (fix tcs ty)
 
 typeConstructors :: [IDecl] -> [Ident]
 typeConstructors ds = [tc | (QualIdent Nothing tc) <- foldr tyCons [] ds]

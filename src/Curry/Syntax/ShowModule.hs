@@ -257,6 +257,10 @@ showsTypeExpr (ArrowType dom ran)
   . showsTypeExpr dom . space
   . showsTypeExpr ran
   . showsString ")"
+showsTypeExpr (ParenType typ)
+  = showsString "(ParenType "
+  . showsTypeExpr typ
+  . showsString ")"
 
 showsEquation :: Equation -> ShowS
 showsEquation (Equation pos lhs rhs)

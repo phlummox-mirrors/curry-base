@@ -386,8 +386,8 @@ parenType = parens tupleType
 --            |  type0 ',' type0 { ',' type0 } (tuple type)
 --            |                                (unit type)
 tupleType :: Parser Token TypeExpr a
-tupleType = type0 <??> (tuple <$> many1 (comma <-*> type0))
-                           `opt` TupleType []
+tupleType = type0 <**> (tuple <$> many1 (comma <-*> type0) `opt` ParenType)
+                  `opt` TupleType []
   where tuple tys ty = TupleType (ty : tys)
 
 -- listType ::= '[' type0 ']'
