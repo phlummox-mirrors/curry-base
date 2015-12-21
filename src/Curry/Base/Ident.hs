@@ -64,7 +64,7 @@ module Curry.Base.Ident
   , renameLabel, mkLabelIdent
   ) where
 
-import Data.Char           (isAlpha, isAlphaNum, isSpace)
+import Data.Char           (isAlpha, isAlphaNum)
 import Data.Function       (on)
 import Data.Generics       (Data, Typeable)
 import Data.List           (intercalate, isInfixOf, isPrefixOf)
@@ -81,26 +81,13 @@ import Curry.Base.Pretty
 data ModuleIdent = ModuleIdent
   { midPosition   :: Position -- ^ source code 'Position'
   , midQualifiers :: [String] -- ^ hierarchical idenfiers
-  } deriving (Data, Typeable)
+  } deriving (Read, Show, Data, Typeable)
 
 instance Eq ModuleIdent where
   (==) = (==) `on` midQualifiers
 
 instance Ord ModuleIdent where
   compare = compare `on` midQualifiers
-
-instance Read ModuleIdent where
-  readsPrec _ r = [ (mkMIdent is, s) | (is, s) <- readsIdents r]
-    where
-    readsIdents s =    [ ([i] , t) | (i, t    ) <- readsIdent  s ]
-                    ++ [ (i:is, u) | (i, '.':t) <- readsIdent  s
-                                   , (is, u   ) <- readsIdents t ]
-    readsIdent s | null i    = []
-                 | otherwise = [(i, t)]
-      where (i, t) = span (\c -> not (isSpace c || c == '.')) s
-
-instance Show ModuleIdent where
-  show = moduleName
 
 instance HasPosition ModuleIdent where
   getPosition = midPosition
@@ -173,26 +160,13 @@ data Ident = Ident
   { idPosition :: Position -- ^ Source code 'Position'
   , idName     :: String   -- ^ Name of the identifier
   , idUnique   :: Integer  -- ^ Unique number of the identifier
-  } deriving (Data, Typeable)
+  } deriving (Read, Show, Data, Typeable)
 
 instance Eq Ident where
   Ident _ m i == Ident _ n j = (m, i) == (n, j)
 
 instance Ord Ident where
   Ident _ m i `compare` Ident _ n j = (m, i) `compare` (n, j)
-
-instance Read Ident where
-  readsPrec _ r =   [ (mkIdent i, s) | (i, s    ) <- readsIdent r ]
-                 ++ [ (renameIdent (mkIdent i) n, t)
-                    | (i, '.':s) <- readsIdent  r
-                    , (n, t    ) <- reads s
-                    ]
-    where readsIdent s | null i    = []
-                       | otherwise = [(i, t)]
-            where (i, t) = span (\c -> not (isSpace c || c == '.')) s
-
-instance Show Ident where
-  show = showIdent
 
 instance HasPosition Ident where
   getPosition = idPosition
@@ -273,23 +247,14 @@ isInfixOp (Ident _ _ _)          = False -- error "Zero-length identifier"
 data QualIdent = QualIdent
   { qidModule :: Maybe ModuleIdent -- ^ optional module identifier
   , qidIdent  :: Ident             -- ^ identifier itself
-  } deriving (Eq, Ord, Data, Typeable)
-
-instance Read QualIdent where
-  readsPrec _ r =    [ (QualIdent Nothing  i, s) | (i, s    ) <- reads r ]
-                  ++ [ (QualIdent (Just m) i, t) | (m, '.':s) <- reads r
-                                                 , (i, t    ) <- reads s ]
-
-instance Show QualIdent where
-  show (QualIdent Nothing  x) = showIdent x
-  show (QualIdent (Just m) x) = moduleName m ++ "." ++ showIdent x
+  } deriving (Eq, Ord, Read, Show, Data, Typeable)
 
 instance HasPosition QualIdent where
   getPosition     = getPosition . qidIdent
   setPosition p q = q { qidIdent = setPosition p $ qidIdent q }
 
 instance Pretty QualIdent where
-  pPrint = text . show
+  pPrint = text . qualName
 
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify
@@ -445,7 +410,7 @@ tupleArity :: Ident -> Int
 tupleArity i@(Ident _ x _)
   | n > 1 && x == idName (tupleId n) = n
   | otherwise                        = error $
-      "Curry.Base.Ident.tupleArity: no tuple identifier: " ++ show i
+      "Curry.Base.Ident.tupleArity: no tuple identifier: " ++ showIdent i
   where n = length x - 1
 
 -- ---------------------------------------------------------------------------

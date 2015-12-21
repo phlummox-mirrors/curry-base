@@ -23,7 +23,7 @@
 module Curry.Base.Position
   ( -- * Source code position
     HasPosition (..), Position (..)
-  , ppPosition, ppLine, showLine
+  , showPosition, ppPosition, ppLine, showLine
   , first, next, incr, tab, tabWidth, nl, incPosition
 
     -- * source reference
@@ -60,19 +60,7 @@ data Position
     }
   -- |no position
   | NoPos
-    deriving (Eq, Ord, Data, Typeable)
-
-instance Read Position where
-  readsPrec p s =
-    [ (Position "" i j noRef, s') | ((i, j), s') <- readsPrec p s ]
-
-instance Show Position where
-  showsPrec _ (Position f l c _) = showString "(Position "
-                                 . shows f . showChar ' '
-                                 . shows l . showChar ' '
-                                 . shows c . showChar ')'
-  showsPrec _ (AST            _) = showString "(0,0)"
-  showsPrec _ NoPos              = showString "(0,0)"
+    deriving (Eq, Ord, Read, Show, Data, Typeable)
 
 instance HasPosition Position where
   getPosition = id
@@ -84,6 +72,10 @@ instance SrcRefOf Position where
 
 instance Pretty Position where
   pPrint = ppPosition
+
+-- |Show a 'Position' as a 'String'
+showPosition :: Position -> String
+showPosition = show . ppPosition
 
 -- |Pretty print a 'Position'
 ppPosition :: Position -> Doc

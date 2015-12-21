@@ -1,6 +1,7 @@
 {- |
     Module      :  $Header$
     Copyright   :  (c) Sebastian Fischer 2008
+                       Björn Peemöller, 2011 - 2015
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -26,7 +27,7 @@ showModule m = showsModule m "\n"
 showsModule :: Module -> ShowS
 showsModule (Module ps mident espec imps decls)
   = showsString "Module "
-  . showsList (\p -> showsPragma p . newline) ps
+  . showsList (\p -> showsPragma p . newline) ps . space
   . showsModuleIdent mident . newline
   . showsMaybe showsExportSpec espec . newline
   . showsList (\i -> showsImportDecl i . newline) imps
@@ -257,9 +258,9 @@ showsTypeExpr (ArrowType dom ran)
   . showsTypeExpr dom . space
   . showsTypeExpr ran
   . showsString ")"
-showsTypeExpr (ParenType typ)
+showsTypeExpr (ParenType ty)
   = showsString "(ParenType "
-  . showsTypeExpr typ
+  . showsTypeExpr ty
   . showsString ")"
 
 showsEquation :: Equation -> ShowS

@@ -387,7 +387,7 @@ parenType = parens tupleType
 --            |                                (unit type)
 tupleType :: Parser Token TypeExpr a
 tupleType = type0 <**> (tuple <$> many1 (comma <-*> type0) `opt` ParenType)
-                  `opt` TupleType []
+            `opt` TupleType []
   where tuple tys ty = TupleType (ty : tys)
 
 -- listType ::= '[' type0 ']'
@@ -541,6 +541,13 @@ parenTuplePattern = pattern0 <**> optTuplePattern
 -- ---------------------------------------------------------------------------
 
 -- condExpr ::= '|' expr0 eq expr
+--
+-- Note: The guard is an `expr0` instead of `expr` since conditional expressions
+-- may also occur in case expressions, and an expression like
+-- @
+-- case a of { _ -> True :: Bool -> a }
+-- @
+-- can not be parsed with a limited parser lookahead.
 condExpr :: Parser Token a b -> Parser Token CondExpr b
 condExpr eq = CondExpr <$> position <*-> bar <*> expr0 <*-> eq <*> expr
 

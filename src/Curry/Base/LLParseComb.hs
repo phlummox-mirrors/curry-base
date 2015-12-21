@@ -190,7 +190,7 @@ Parser e1 ps1 <|?> Parser e2 ps2
           retry k (pos',p) = closeP0 p `thenP` curry k pos'
   select suc (pos1, p1) (pos2, p2) = case pos1 `compare` pos2 of
     GT -> p1
-    EQ | suc       -> failP pos1 $ "Ambiguous parse before " ++ show pos1
+    EQ | suc       -> failP pos1 $ "Ambiguous parse before " ++ showPosition pos1
        | otherwise -> p1
     LT -> p2
 

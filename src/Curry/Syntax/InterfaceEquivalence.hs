@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Comparison of Curry Interfaces
     Copyright   :  (c) 2000 - 2007, Wolfgang Lux
-                       2014       , Björn Peemöller
+                       2014 - 2015, Björn Peemöller
                        2014       , Jan Tikovsky
     License     :  OtherLicense
 
@@ -113,26 +113,24 @@ instance FixInterface a => FixInterface [a] where
   fix tcs = map (fix tcs)
 
 instance FixInterface IDecl where
-  fix tcs (IDataDecl     p tc tvs cs hs) = IDataDecl  p tc tvs (fix tcs cs) hs
-  fix tcs (INewtypeDecl  p tc tvs nc hs) =
-    INewtypeDecl  p tc tvs (fix tcs nc) hs
-  fix tcs (ITypeDecl     p tc tvs ty) = ITypeDecl     p tc tvs (fix tcs ty)
-  fix tcs (IFunctionDecl p f  n   ty) = IFunctionDecl p f  n   (fix tcs ty)
-  fix _   d                           = d
+  fix tcs (IDataDecl     p tc vs cs hs) = IDataDecl     p tc vs (fix tcs cs) hs
+  fix tcs (INewtypeDecl  p tc vs nc hs) = INewtypeDecl  p tc vs (fix tcs nc) hs
+  fix tcs (ITypeDecl     p tc vs    ty) = ITypeDecl     p tc vs (fix tcs ty)
+  fix tcs (IFunctionDecl p f  n      ty) = IFunctionDecl p f n  (fix tcs ty)
+  fix _   d                              = d
 
 instance FixInterface ConstrDecl where
-  fix tcs (ConstrDecl p evs      c tys) = ConstrDecl p evs c (fix tcs tys)
-  fix tcs (ConOpDecl  p evs ty1 op ty2) =
-    ConOpDecl p evs (fix tcs ty1) op (fix tcs ty2)
-  fix tcs (RecordDecl p evs c fs)       =
-    RecordDecl p evs c (fix tcs fs)
+  fix tcs (ConstrDecl p evs      c tys) = ConstrDecl p evs c  (fix tcs tys)
+  fix tcs (ConOpDecl  p evs ty1 op ty2) = ConOpDecl  p evs    (fix tcs ty1)
+                                                           op (fix tcs ty2)
+  fix tcs (RecordDecl p evs c fs)       = RecordDecl p evs c  (fix tcs fs)
 
 instance FixInterface FieldDecl where
   fix tcs (FieldDecl p ls ty) = FieldDecl p ls (fix tcs ty)
 
 instance FixInterface NewConstrDecl where
   fix tcs (NewConstrDecl p evs c ty    ) = NewConstrDecl p evs c (fix tcs ty)
-  fix tcs (NewRecordDecl p evs c (i,ty)) = NewRecordDecl p evs c (i,fix tcs ty)
+  fix tcs (NewRecordDecl p evs c (i,ty)) = NewRecordDecl p evs c (i, fix tcs ty)
 
 instance FixInterface TypeExpr where
   fix tcs (ConstructorType tc tys)
@@ -143,7 +141,7 @@ instance FixInterface TypeExpr where
     where tc' = unqualify tc
   fix tcs (VariableType  tv)
     | tv `Set.member` tcs = ConstructorType (qualify tv) []
-    | otherwise = VariableType tv
+    | otherwise           = VariableType tv
   fix tcs (TupleType     tys) = TupleType  (fix tcs tys)
   fix tcs (ListType       ty) = ListType   (fix tcs ty)
   fix tcs (ArrowType ty1 ty2) = ArrowType  (fix tcs ty1) (fix tcs ty2)
