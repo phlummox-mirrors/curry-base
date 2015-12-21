@@ -1,6 +1,7 @@
 {- |
     Module      :  $Header$
     Copyright   :  (c) Sebastian Fischer 2008
+                       Björn Peemöller, 2011 - 2015
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -244,6 +245,10 @@ showsTypeExpr (ArrowType dom ran)
   = showsString "(ArrowType "
   . showsTypeExpr dom . space
   . showsTypeExpr ran
+  . showsString ")"
+showsTypeExpr (ParenType ty)
+  = showsString "(ParenType "
+  . showsTypeExpr ty
   . showsString ")"
 
 showsEquation :: Equation -> ShowS

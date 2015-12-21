@@ -3,7 +3,7 @@
     Description :  A pretty printer for Curry
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2013 Björn Peemöller
+                       2011 - 2015 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -220,6 +220,7 @@ ppTypeExpr p (ArrowType ty1 ty2) = parenIf (p > 0)
   where
   ppArrowType (ArrowType ty1' ty2') = ppTypeExpr 1 ty1' <+> rarrow : ppArrowType ty2'
   ppArrowType ty                    = [ppTypeExpr 0 ty]
+ppTypeExpr _ (ParenType      ty) = parens (ppTypeExpr 0 ty)
 
 -- ---------------------------------------------------------------------------
 -- Literals

@@ -3,7 +3,7 @@
     Description :  Abstract syntax for Curry
     Copyright   :  (c) 1999 - 2004 Wolfgang Lux
                        2005        Martin Engelke
-                       2011 - 2012 Björn Peemöller
+                       2011 - 2015 Björn Peemöller
                        2014        Jan Rasmus Tikovsky
     License     :  OtherLicense
 
@@ -186,6 +186,7 @@ data TypeExpr
   | TupleType       [TypeExpr]
   | ListType        TypeExpr
   | ArrowType       TypeExpr TypeExpr
+  | ParenType       TypeExpr
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- ---------------------------------------------------------------------------
