@@ -4,6 +4,8 @@ Change log for curry-base
 Under Development (0.4.1)
 =========================
 
+  * Derive `Show` and `Read` instances also for identifiers to facilitate
+    debugging and reading/writing from/to files
   * Emitted FlatCurry files now contain newlines to improve readability
     for humans
   * Implemented pretty printer for extended FlatCurry
