@@ -254,15 +254,10 @@ instance HasPosition QualIdent where
   setPosition p q = q { qidIdent = setPosition p $ qidIdent q }
 
 instance Pretty QualIdent where
-  pPrint = text . showQualIdent
+  pPrint = text . qualName
 
 instance SrcRefOf QualIdent where
   srcRefOf = srcRefOf . unqualify
-
--- |Show function for a 'QualIdent'
-showQualIdent :: QualIdent -> String
-showQualIdent (QualIdent Nothing  x) = showIdent x
-showQualIdent (QualIdent (Just m) x) = moduleName m ++ "." ++ showIdent x
 
 -- |show function for qualified identifiers
 qualName :: QualIdent -> String

@@ -27,7 +27,7 @@ showModule m = showsModule m "\n"
 showsModule :: Module -> ShowS
 showsModule (Module ps mident espec imps decls)
   = showsString "Module "
-  . showsList (\p -> showsPragma p . newline) ps
+  . showsList (\p -> showsPragma p . newline) ps . space
   . showsModuleIdent mident . newline
   . showsMaybe showsExportSpec espec . newline
   . showsList (\i -> showsImportDecl i . newline) imps
