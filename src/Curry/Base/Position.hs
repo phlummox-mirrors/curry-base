@@ -22,7 +22,7 @@
 
 module Curry.Base.Position
   ( -- * Source code position
-    HasPosition (..), Position (..)
+    HasPosition (..), Position (..), (@>)
   , showPosition, ppPosition, ppLine, showLine
   , first, next, incr, tab, tabWidth, nl, incPosition
 
@@ -44,6 +44,10 @@ class HasPosition a where
   -- |Set the 'Position'
   setPosition :: Position -> a -> a
   setPosition _ = id
+
+-- | @x \@> y@ returns @x@ with the position obtained from @y@
+(@>) :: (HasPosition a, HasPosition b) => a -> b -> a
+x @> y = setPosition (getPosition y) x
 
 -- |Source code positions
 data Position
