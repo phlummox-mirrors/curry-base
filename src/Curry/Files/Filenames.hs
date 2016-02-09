@@ -108,12 +108,9 @@ addCurrySubdirModule b m fn
 -- contains the sub-directory, it remains unchanged.
 ensureCurrySubdir :: FilePath -- ^ original 'FilePath'
                   -> FilePath -- ^ new 'FilePath'
-ensureCurrySubdir f
-  = normalise
-  $ addTrailingPathSeparator
-    $ addSub (splitDirectories $ takeDirectory f)
+ensureCurrySubdir fn = normalise $ addSub (splitDirectories d) </> f
   where
-  addSub :: [String] -> String
+  (d, f) = splitFileName fn
   addSub dirs | null dirs                = currySubdir
               | last dirs == currySubdir = joinPath dirs
               | otherwise                = joinPath dirs </> currySubdir
