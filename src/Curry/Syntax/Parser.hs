@@ -854,11 +854,11 @@ tupleCommas = (\ p -> qualify . addPositionIdent p . tupleId . succ . length)
 -- |This function starts a new layout block but does not wait for its end.
 -- This is only used for parsing the module header.
 startLayout :: Parser Token a b -> Parser Token a b
-startLayout p = layoutOff <-*> leftBraceSemicolon <-*> p
+startLayout p = layoutOff <-*> leftBrace <-*> p
              <|> layoutOn <-*> p
 
 layout :: Parser Token a b -> Parser Token a b
-layout p =  layoutOff <-*> between leftBraceSemicolon p rightBrace
+layout p =  layoutOff <-*> between leftBrace p rightBrace
         <|> layoutOn  <-*> p <*-> (token VRightBrace <|> layoutEnd)
 
 -- ---------------------------------------------------------------------------
@@ -935,9 +935,6 @@ rightBracket = token RightBracket
 
 leftBrace :: Parser Token Attributes a
 leftBrace = token LeftBrace
-
-leftBraceSemicolon :: Parser Token Attributes a
-leftBraceSemicolon = token LeftBraceSemicolon
 
 rightBrace :: Parser Token Attributes a
 rightBrace = token RightBrace
