@@ -74,7 +74,7 @@ data Category
   | Underscore    -- _
   | Backquote     -- `
 
-  -- layout (inserted by bbr)
+  -- layout
   | VSemicolon         -- virtual ;
   | VRightBrace        -- virtual }
 

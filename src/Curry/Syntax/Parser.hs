@@ -858,7 +858,7 @@ startLayout p = layoutOff <-*> leftBrace <-*> p
              <|> layoutOn <-*> p
 
 layout :: Parser Token a b -> Parser Token a b
-layout p =  layoutOff <-*> between leftBrace p rightBrace
+layout p =  layoutOff <-*> braces p
         <|> layoutOn  <-*> p <*-> (token VRightBrace <|> layoutEnd)
 
 -- ---------------------------------------------------------------------------
