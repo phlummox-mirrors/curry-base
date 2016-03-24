@@ -27,10 +27,10 @@ import Curry.Base.Pretty   (text)
 type CYT m a = EitherT [Message] m a
 
 -- |Curry compiler monad based on the `IO` monad
-type CYIO a = EitherT [Message] IO a
+type CYIO a = CYT IO a
 
 -- |Pure Curry compiler monad
-type CYM a = EitherT [Message] Identity a
+type CYM a = CYT Identity a
 
 -- |Run an `IO`-based Curry compiler action in the `IO` monad,
 -- yielding either a list of errors or a result in case of success.
