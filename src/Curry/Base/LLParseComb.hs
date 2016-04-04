@@ -20,10 +20,6 @@
     reported if the parser does not consume the whole string,
     whereas 'prefixParser' discards the rest of the input string in this case.
 -}
-{-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 707 && __GLASGOW_HASKELL__ < 710
-{-# OPTIONS_GHC -fno-warn-amp #-}
-#endif
 module Curry.Base.LLParseComb
   ( -- * Data types
     Parser
@@ -44,9 +40,7 @@ module Curry.Base.LLParseComb
   , layoutOn, layoutOff, layoutEnd
   ) where
 
-#if __GLASGOW_HASKELL__ >= 710
-import Prelude hiding ((<$>), (<*>))
-#endif
+import Control.Applicative (Applicative, (<*>), (<$>), pure)
 import Control.Monad
 import qualified Data.Map as Map
 import Data.Maybe
@@ -56,7 +50,7 @@ import Curry.Base.LexComb
 import Curry.Base.Position
 
 infixl 5 <\>, <\\>
-infixl 4 <*>, <$>, <$->, <*->, <-*>, <**>, <??>, <.>
+infixl 4 <$->, <*->, <-*>, <**>, <??>, <.>
 infixl 3 <|>, <|?>
 infixl 2 <?>, `opt`
 
@@ -65,16 +59,29 @@ infixl 2 <?>, `opt`
 -- ---------------------------------------------------------------------------
 
 -- |Parsing function
-type ParseFun s a b  = (a -> SuccessP s b) -> FailP b -> SuccessP s b
+type ParseFun a s b  = (b -> SuccessP s a) -> FailP a -> SuccessP s a
 
 -- |CPS-Parser type
-data Parser s a b = Parser
+data Parser a s b = Parser
   -- Parsing function for empty word
-  (Maybe (ParseFun s a b))
+  (Maybe (ParseFun a s b))
   -- Lookup table (continuations for 'Symbol's recognized by the parser)
-  (Map.Map s (Lexer s b -> ParseFun s a b))
+  (Map.Map s (Lexer s a -> ParseFun a s b))
 
-instance Show s => Show (Parser s a b) where
+instance Symbol s => Functor (Parser a s) where
+  fmap f p = succeed f <*> p
+
+instance Symbol s => Applicative (Parser a s) where
+  pure = succeed
+
+  -- |Apply the result function of the first parser to the result of the
+  --  second parser.
+  Parser Nothing   ps1 <*> p2                  = Parser Nothing
+    (fmap (flip seqPP p2) ps1)
+  Parser (Just p1) ps1 <*> ~p2@(Parser e2 ps2) = Parser (fmap (seqEE p1) e2)
+    (Map.union (fmap (flip seqPP p2) ps1) (fmap (seqEP p1) ps2))
+
+instance Show s => Show (Parser a s b) where
   showsPrec p (Parser e ps) = showParen (p >= 10) $
     showString "Parser " . shows (isJust e) .
     showChar ' ' . shows (Map.keysSet ps)
@@ -85,7 +92,7 @@ instance Show s => Show (Parser s a b) where
 
 -- |Apply a parser and lexer to a 'String', whereas the 'FilePath' is used
 -- to identify the origin of the 'String' in case of parsing errors.
-fullParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
+fullParser :: Symbol s => Parser a s a -> Lexer s a -> FilePath -> String
            -> CYM a
 fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
   where successP x pos s
@@ -95,13 +102,13 @@ fullParser p lexer = parse (lexer (choose p lexer successP failP) failP)
 -- |Apply a parser and lexer to parse the beginning of a 'String'.
 -- The 'FilePath' is used to identify the origin of the 'String' in case of
 -- parsing errors.
-prefixParser :: Symbol s => Parser s a a -> Lexer s a -> FilePath -> String
+prefixParser :: Symbol s => Parser a s a -> Lexer s a -> FilePath -> String
              -> CYM a
 prefixParser p lexer = parse (lexer (choose p lexer discardP failP) failP)
   where discardP x _ _ = returnP x
 
 -- |Choose the appropriate parsing function w.r.t. to the next 'Symbol'.
-choose :: Symbol s => Parser s a b -> Lexer s b -> ParseFun s a b
+choose :: Symbol s => Parser a s b -> Lexer s a -> ParseFun a s b
 choose (Parser e ps) lexer success failp pos s = case Map.lookup s ps of
   Just p  -> p lexer success failp pos s
   Nothing -> case e of
@@ -119,22 +126,22 @@ unexpected s
 -- ---------------------------------------------------------------------------
 
 -- |Return the current position without consuming the input
-position :: Symbol s => Parser s Position b
+position :: Symbol s => Parser a s Position
 position = Parser (Just p) Map.empty
   where p success _ pos = success pos pos
 
 -- |Always succeeding parser
-succeed :: Symbol s => a -> Parser s a b
+succeed :: Symbol s => b -> Parser a s b
 succeed x = Parser (Just p) Map.empty
   where p success _ = success x
 
 -- |Always failing parser with a given message
-failure :: String -> Parser s a b
+failure :: String -> Parser a s b
 failure msg = Parser (Just p) Map.empty
   where p _ failp pos _ = failp pos msg
 
 -- |Create a parser accepting the given 'Symbol'
-symbol :: Symbol s => s -> Parser s s a
+symbol :: Symbol s => s -> Parser a s s
 symbol s = Parser Nothing (Map.singleton s p)
   where p lexer success failp _ s' = lexer (success s') failp
 
@@ -144,12 +151,12 @@ symbol s = Parser Nothing (Map.singleton s p)
 
 -- |Behave like the given parser, but use the given 'String' as the error
 -- message if the parser fails
-(<?>) :: Symbol s => Parser s a b -> String -> Parser s a b
+(<?>) :: Symbol s => Parser a s b -> String -> Parser a s b
 p <?> msg = p <|> failure msg
 
 -- |Deterministic choice between two parsers.
 -- The appropriate parser is chosen based on the next 'Symbol'
-(<|>) :: Symbol s => Parser s a b -> Parser s a b -> Parser s a b
+(<|>) :: Symbol s => Parser a s b -> Parser a s b -> Parser a s b
 Parser e1 ps1 <|> Parser e2 ps2
   | isJust e1 && isJust e2 = failure "Ambiguous parser for empty word"
   | not (Set.null common)  = failure $ "Ambiguous parser for " ++ show common
@@ -169,7 +176,7 @@ Parser e1 ps1 <|> Parser e2 ps2
 -- input stream irrespective of whether it succeeds or fails. If both
 -- functions recognize the same prefix, we choose the one that succeeds
 -- and report an ambiguous parse error if both succeed.
-(<|?>) :: Symbol s => Parser s a b -> Parser s a b -> Parser s a b
+(<|?>) :: Symbol s => Parser a s b -> Parser a s b -> Parser a s b
 Parser e1 ps1 <|?> Parser e2 ps2
   | isJust e1 && isJust e2 = failure "Ambiguous parser for empty word"
   | otherwise              = Parser (e1 `mplus` e2) (Map.union ps1' ps2)
@@ -194,23 +201,15 @@ Parser e1 ps1 <|?> Parser e2 ps2
        | otherwise -> p1
     LT -> p2
 
--- |Apply the result function of the first parser to the result of the
---  second parser.
-(<*>) :: Symbol s => Parser s (a -> b) c -> Parser s a c -> Parser s b c
-Parser Nothing   ps1 <*> p2                  = Parser Nothing
-  (fmap (flip seqPP p2) ps1)
-Parser (Just p1) ps1 <*> ~p2@(Parser e2 ps2) = Parser (fmap (seqEE p1) e2)
-  (Map.union (fmap (flip seqPP p2) ps1) (fmap (seqEP p1) ps2))
-
-seqEE :: Symbol s => ParseFun s (a -> b) c -> ParseFun s a c -> ParseFun s b c
+seqEE :: Symbol s => ParseFun a s (b -> c) -> ParseFun a s b -> ParseFun a s c
 seqEE p1 p2 success failp = p1 (\f -> p2 (success . f) failp) failp
 
-seqEP :: Symbol s => ParseFun s (a -> b) c -> (Lexer s c -> ParseFun s a c)
-      -> Lexer s c -> ParseFun s b c
+seqEP :: Symbol s => ParseFun a s (b -> c) -> (Lexer s a -> ParseFun a s b)
+      -> Lexer s a -> ParseFun a s c
 seqEP p1 p2 lexer success failp = p1 (\f -> p2 lexer (success . f) failp) failp
 
-seqPP :: Symbol s => (Lexer s c -> ParseFun s (a -> b) c) -> Parser s a c
-      -> Lexer s c -> ParseFun s b c
+seqPP :: Symbol s => (Lexer s a -> ParseFun a s (b -> c)) -> Parser a s b
+      -> Lexer s a -> ParseFun a s c
 seqPP p1 p2 lexer success failp =
   p1 lexer (\f -> choose p2 lexer (success . f) failp) failp
 
@@ -221,11 +220,11 @@ seqPP p1 p2 lexer success failp =
 -- ---------------------------------------------------------------------------
 
 -- |Restrict the first parser by the first 'Symbol's of the second
-(<\>) :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
+(<\>) :: Symbol s => Parser a s b -> Parser a s c -> Parser a s b
 p <\> Parser _ ps = p <\\> Map.keys ps
 
 -- |Restrict a parser by a list of first 'Symbol's
-(<\\>) :: Symbol s => Parser s a b -> [s] -> Parser s a b
+(<\\>) :: Symbol s => Parser a s b -> [s] -> Parser a s b
 Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 
 -- ---------------------------------------------------------------------------
@@ -234,74 +233,70 @@ Parser e ps <\\> xs = Parser e (foldr Map.delete ps xs)
 -- paper, but were taken from the implementation found on the web.
 -- ---------------------------------------------------------------------------
 
--- |Apply a function to the result of a parser.
-(<$>) :: Symbol s => (a -> b) -> Parser s a c -> Parser s b c
-f <$> p = succeed f <*> p
-
 -- |Replace the result of the parser with the first argument
-(<$->) :: Symbol s => a -> Parser s b c -> Parser s a c
+(<$->) :: Symbol s => a -> Parser b s c -> Parser b s a
 f <$-> p = const f <$> p
 
 -- |Apply two parsers in sequence, but return only the result of the first
 -- parser
-(<*->) :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
+(<*->) :: Symbol s => Parser a s b -> Parser a s c -> Parser a s b
 p <*-> q = const <$> p <*> q
 
 -- |Apply two parsers in sequence, but return only the result of the second
 -- parser
-(<-*>) :: Symbol s => Parser s a c -> Parser s b c -> Parser s b c
+(<-*>) :: Symbol s => Parser a s b -> Parser a s c -> Parser a s c
 p <-*> q = const id <$> p <*> q
 
 -- |Apply the parsers in sequence and apply the result function of the second
 -- parse to the result of the first
-(<**>) :: Symbol s => Parser s a c -> Parser s (a -> b) c -> Parser s b c
+(<**>) :: Symbol s => Parser a s b -> Parser a s (b -> c) -> Parser a s c
 p <**> q = flip ($) <$> p <*> q
 
 -- |Same as (<**>), but only applies the function if the second parser
 -- succeeded.
-(<??>) :: Symbol s => Parser s a b -> Parser s (a -> a) b -> Parser s a b
+(<??>) :: Symbol s => Parser a s b -> Parser a s (b -> b) -> Parser a s b
 p <??> q = p <**> (q `opt` id)
 
 -- |Flipped function composition on parsers
-(<.>) :: Symbol s => Parser s (a -> b) d -> Parser s (b -> c) d
-      -> Parser s (a -> c) d
+(<.>) :: Symbol s => Parser a s (b -> c) -> Parser a s (c -> d)
+      -> Parser a s (b -> d)
 p1 <.> p2 = p1 <**> ((.) <$> p2)
 
 -- |Try the first parser, but return the second argument if it didn't succeed
-opt :: Symbol s => Parser s a b -> a -> Parser s a b
+opt :: Symbol s => Parser a s b -> b -> Parser a s b
 p `opt` x = p <|> succeed x
 
 -- |Choose the first succeeding parser from a non-empty list of parsers
-choice :: Symbol s => [Parser s a b] -> Parser s a b
+choice :: Symbol s => [Parser a s b] -> Parser a s b
 choice = foldr1 (<|>)
 
 -- |Try to apply a given parser and return a boolean value if the parser
 -- succeeded.
-flag :: Symbol s => Parser s a b -> Parser s Bool b
+flag :: Symbol s => Parser a s b -> Parser a s Bool
 flag p = True <$-> p `opt` False
 
 -- |Try to apply a parser but forget if it succeeded
-optional :: Symbol s => Parser s a b -> Parser s () b
+optional :: Symbol s => Parser a s b -> Parser a s ()
 optional p = const () <$> p `opt` ()
 
 -- |Try to apply a parser and return its result in a 'Maybe' type
-option :: Symbol s => Parser s a b -> Parser s (Maybe a) b
+option :: Symbol s => Parser a s b -> Parser a s (Maybe b)
 option p = Just <$> p `opt` Nothing
 
 -- |Repeatedly apply a parser for 0 or more occurences
-many :: Symbol s => Parser s a b -> Parser s [a] b
+many :: Symbol s => Parser a s b -> Parser a s [b]
 many p = many1 p `opt` []
 
 -- |Repeatedly apply a parser for 1 or more occurences
-many1 :: Symbol s => Parser s a b -> Parser s [a] b
+many1 :: Symbol s => Parser a s b -> Parser a s [b]
 many1 p = (:) <$> p <*> many p
 
 -- |Parse a list with is separated by a seperator
-sepBy :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
+sepBy :: Symbol s => Parser a s b -> Parser a s c -> Parser a s [b]
 p `sepBy` q = p `sepBy1` q `opt` []
 
 -- |Parse a non-empty list with is separated by a seperator
-sepBy1 :: Symbol s => Parser s a c -> Parser s b c -> Parser s [a] c
+sepBy1 :: Symbol s => Parser a s b -> Parser a s c -> Parser a s [b]
 p `sepBy1` q = (:) <$> p <*> many (q <-*> p)
 
 -- |@chainr p op x@ parses zero or more occurrences of @p@, separated by @op@.
@@ -309,11 +304,11 @@ p `sepBy1` q = (:) <$> p <*> many (q <-*> p)
 -- functions returned by op. If there are no occurrences of @p@, @x@ is
 -- returned.
 chainr :: Symbol s
-       => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
+       => Parser a s b -> Parser a s (b -> b -> b) -> b -> Parser a s b
 chainr p op x = chainr1 p op `opt` x
 
 -- |Like 'chainr', but parses one or more occurrences of p.
-chainr1 :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> Parser s a b
+chainr1 :: Symbol s => Parser a s b -> Parser a s (b -> b -> b) -> Parser a s b
 chainr1 p op = r where r = p <**> (flip <$> op <*> r `opt` id)
 
 -- |@chainr p op x@ parses zero or more occurrences of @p@, separated by @op@.
@@ -321,23 +316,23 @@ chainr1 p op = r where r = p <**> (flip <$> op <*> r `opt` id)
 -- functions returned by op. If there are no occurrences of @p@, @x@ is
 -- returned.
 chainl :: Symbol s
-       => Parser s a b -> Parser s (a -> a -> a) b -> a -> Parser s a b
+       => Parser a s b -> Parser a s (b -> b -> b) -> b -> Parser a s b
 chainl p op x = chainl1 p op `opt` x
 
 -- |Like 'chainl', but parses one or more occurrences of p.
-chainl1 :: Symbol s => Parser s a b -> Parser s (a -> a -> a) b -> Parser s a b
+chainl1 :: Symbol s => Parser a s b -> Parser a s (b -> b -> b) -> Parser a s b
 chainl1 p op = foldF <$> p <*> many (flip <$> op <*> p)
-  where foldF x [] = x
+  where foldF x []     = x
         foldF x (f:fs) = foldF (f x) fs
 
 -- |Parse an expression between an opening and a closing part.
-between :: Symbol s => Parser s a c -> Parser s b c -> Parser s a c
-        -> Parser s b c
+between :: Symbol s => Parser a s b -> Parser a s c -> Parser a s b
+        -> Parser a s c
 between open p close = open <-*> p <*-> close
 
 -- |Parse one of the given operators
-ops :: Symbol s => [(s, a)] -> Parser s a b
-ops []               = failure "Curry.Base.LLParseComb.ops: empty list"
+ops :: Symbol s => [(s, b)] -> Parser a s b
+ops []              = failure "Curry.Base.LLParseComb.ops: empty list"
 ops [(s, x)]        = x <$-> symbol s
 ops ((s, x) : rest) = x <$-> symbol s <|> ops rest
 
@@ -349,17 +344,17 @@ ops ((s, x) : rest) = x <$-> symbol s <|> ops rest
 -- ---------------------------------------------------------------------------
 
 -- |Disable layout-awareness for the following
-layoutOff :: Symbol s => Parser s a b
+layoutOff :: Symbol s => Parser a s b
 layoutOff = Parser (Just off) Map.empty
   where off success _ pos = pushContext (-1) . success undefined pos
 
 -- |Add a new scope for layout
-layoutOn :: Symbol s => Parser s a b
+layoutOn :: Symbol s => Parser a s b
 layoutOn = Parser (Just on) Map.empty
   where on success _ pos = pushContext (column pos) . success undefined pos
 
 -- |End the current layout scope (or re-enable layout-awareness if it is
 -- currently disabled
-layoutEnd :: Symbol s => Parser s a b
+layoutEnd :: Symbol s => Parser a s b
 layoutEnd = Parser (Just end) Map.empty
   where end success _ pos = popContext . success undefined pos
