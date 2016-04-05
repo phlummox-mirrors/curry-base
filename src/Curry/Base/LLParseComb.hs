@@ -20,6 +20,8 @@
     reported if the parser does not consume the whole string,
     whereas 'prefixParser' discards the rest of the input string in this case.
 -}
+{-# LANGUAGE CPP #-}
+
 module Curry.Base.LLParseComb
   ( -- * Data types
     Parser
@@ -40,7 +42,9 @@ module Curry.Base.LLParseComb
   , layoutOn, layoutOff, layoutEnd
   ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative, (<*>), (<$>), pure)
+#endif
 import Control.Monad
 import qualified Data.Map as Map
 import Data.Maybe
