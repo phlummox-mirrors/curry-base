@@ -431,16 +431,16 @@ fullLexer = skipWhiteSpace False -- lex comments
 skipWhiteSpace :: Bool -> Lexer Token a
 skipWhiteSpace skipComments suc fail = skip
   where
-  skip p   []              bol = suc p (tok EOF)                  p        [] bol
-  skip p c@('-':'-':_)     _   = lexLineComment   sucComment fail p        c  True
-  skip p c@('{':'-':'#':_) bol = lexPragma noPragma suc  fail p  c  bol
-  skip p c@('{':'-':_)     bol = lexNestedComment sucComment fail p        c  bol
+  skip p   []              bol = suc p (tok EOF)                    p        [] bol
+  skip p c@('-':'-':_)     _   = lexLineComment     sucComment fail p        c  True
+  skip p c@('{':'-':'#':_) bol = lexPragma noPragma suc        fail p        c  bol
+  skip p c@('{':'-':_)     bol = lexNestedComment   sucComment fail p        c  bol
   skip p cs@(c:s)          bol
-    | c == '\t'            = skip                             (tab  p) s  bol
-    | c == '\n'            = skip                             (nl   p) s  True
-    | isSpace c            = skip                             (next p) s  bol
-    | bol                  = lexBOL   suc fail                p        cs bol
-    | otherwise            = lexToken suc fail                p        cs bol
+    | c == '\t'                = warnP p "Tab character" skip       (tab  p) s  bol
+    | c == '\n'                = skip                               (nl   p) s  True
+    | isSpace c                = skip                               (next p) s  bol
+    | bol                      = lexBOL             suc        fail p        cs bol
+    | otherwise                = lexToken           suc        fail p        cs bol
   sucComment = if skipComments then (\ _suc _fail -> skip) else suc
   noPragma   = lexNestedComment sucComment fail
 
