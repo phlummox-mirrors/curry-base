@@ -252,14 +252,9 @@ newFieldDecl :: Parser a Token (Ident, TypeExpr)
 newFieldDecl = layoutOff <-*> braces labelDecl
   where labelDecl = (,) <$> fun <*-> token DoubleColon <*> type0
 
--- Parsing of existential variables (currently disabled)
+-- Parsing of existential variables
 existVars :: Parser a Token [Ident]
-{-
-existVars flat
-  | flat = succeed []
-  | otherwise = token Id_forall <-*> many1 tyvar <*-> dot `opt` []
--}
-existVars = succeed []
+existVars = token Id_forall <-*> many1 tyvar <*-> dot `opt` []
 
 functionDecl :: Parser a Token Decl
 functionDecl = position <**> decl
@@ -892,6 +887,9 @@ tokenOps cs = ops [(Token c NoAttributes, x) | (c, x) <- cs]
 
 comma :: Parser a Token Attributes
 comma = token Comma
+
+dot :: Parser a Token Attributes
+dot = token SymDot
 
 semicolon :: Parser a Token Attributes
 semicolon = token Semicolon <|> token VSemicolon
