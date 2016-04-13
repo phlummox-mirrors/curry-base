@@ -42,7 +42,7 @@ tests = return [passingTests, warningTests, failingTests]
 -- Call the Curry parser
 parseCurry :: FilePath -> CYIO ()
 parseCurry file = do
-  msrc <- lift (readModule file)
+  msrc <- lift $ lift $ readModule file
   case msrc of Nothing  -> error $ "Missing file " ++ file
                Just src -> liftCYM $ do ul <- unlit file src
                                         parseModule file ul
@@ -55,7 +55,8 @@ runTest test [] = runCYIO (parseCurry test) >>= passOrFail
   passOrFail = (Finished <$>) . either fail pass
   fail msgs
     | null msgs = return Pass
-    | otherwise = return $ Fail $ "An unexpected failure occurred"
+    | otherwise = let errorStr = showMessages msgs
+                  in return $ Fail $ "An unexpected failure occurred: " ++ errorStr
   pass _     = return Pass
 runTest test errorMsgs = runCYIO (parseCurry test) >>= catchE
  where
@@ -64,7 +65,7 @@ runTest test errorMsgs = runCYIO (parseCurry test) >>= catchE
                in if all (`isInfixOf` errorStr) errorMsgs
                     then return Pass
                     else return $ Fail $ "Expected warning/failure did not occur: " ++ errorStr
-   fail _    = return $ Fail "Expected warning/failure did not occur"
+   fail      = pass . snd
 
 showMessages :: [Message] -> String
 showMessages = show . ppMessages ppError . sort
