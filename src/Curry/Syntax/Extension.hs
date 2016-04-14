@@ -41,10 +41,11 @@ instance HasPosition Extension where
 
 -- |Known language extensions of Curry.
 data KnownExtension
-  = AnonFreeVars       -- ^ anonymous free variables
-  | FunctionalPatterns -- ^ functional patterns
-  | NegativeLiterals   -- ^ negative literals
-  | NoImplicitPrelude  -- ^ no implicit import of the prelude
+  = AnonFreeVars              -- ^ anonymous free variables
+  | FunctionalPatterns        -- ^ functional patterns
+  | NegativeLiterals          -- ^ negative literals
+  | NoImplicitPrelude         -- ^ no implicit import of the prelude
+  | ExistentialQuantification -- ^ existential quantification 
     deriving (Eq, Read, Show, Enum, Bounded, Data, Typeable)
 
 -- |Classifies a 'String' as an 'Extension'

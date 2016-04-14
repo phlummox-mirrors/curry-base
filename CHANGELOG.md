@@ -13,6 +13,8 @@ Under Development (0.4.1)
   * Emitted FlatCurry files now contain newlines to improve readability
     for humans
   * Implemented pretty printer for extended FlatCurry
+  * Added syntax extension `ExistentialQuantification` that allows the use
+    of existentially quantified types in data and newtype constructors
 
 Version 0.4.0
 =============
