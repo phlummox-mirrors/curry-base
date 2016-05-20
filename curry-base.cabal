@@ -1,6 +1,6 @@
 Name:          curry-base
 Version:       0.4.1
-Cabal-Version: >= 1.6
+Cabal-Version: >= 1.10
 Synopsis:      Functions for manipulating Curry programs
 Description:   This package serves as a foundation for Curry compilers.
                It defines the intermediate language formats FlatCurry and
@@ -30,6 +30,7 @@ Flag old-time
 
 Library
   hs-source-dirs: src
+  default-language:  Haskell2010
   Build-Depends: base == 4.*, syb >= 0.3, either
   if impl(ghc < 7.4)
     Build-Depends: either < 4, contravariant < 0.5, semigroupoids < 3.0.3
@@ -86,3 +87,10 @@ Library
     Curry.Syntax.ShowModule
     Curry.Syntax.Type
     Curry.Syntax.Utils
+
+Test-Suite test-base
+  type:           detailed-0.9
+  hs-source-dirs: test
+  default-language:  Haskell2010
+  test-module:    TestBase
+  build-depends:  base == 4.*, Cabal >= 1.20, curry-base == 0.4.1, filepath, mtl

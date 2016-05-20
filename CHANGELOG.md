@@ -4,6 +4,8 @@ Change log for curry-base
 Under Development (0.4.1)
 =========================
 
+  * Added new operator `@>` to return the left operand with the source code
+    position obtained from the right operand.
   * Parenthesized type expressions are now represented accordingly in the
     abstract syntax tree
   * Derive `Show` and `Read` instances also for identifiers to facilitate

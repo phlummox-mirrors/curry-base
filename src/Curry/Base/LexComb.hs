@@ -23,7 +23,8 @@ module Curry.Base.LexComb
     Symbol (..), Indent, Context, P, CYM, SuccessP, FailP, Lexer
 
     -- * Monadic functions
-  , parse, applyLexer, returnP, thenP, thenP_, failP, liftP, closeP0, closeP1
+  , parse, applyLexer, returnP, thenP, thenP_, failP, warnP
+  , liftP, closeP0, closeP1
 
     -- * Combinators for layout handling
   , pushContext, popContext
@@ -35,7 +36,7 @@ module Curry.Base.LexComb
 
 import Data.Char           (digitToInt)
 
-import Curry.Base.Monad    (CYM, failMessageAt)
+import Curry.Base.Monad    (CYM, failMessageAt, warnMessageAt)
 import Curry.Base.Position (Position, first)
 
 
@@ -106,6 +107,11 @@ p1 `thenP_` p2 = p1 `thenP` \_ -> p2
 -- |Fail to lex on a 'Position', given an error message
 failP :: Position -> String -> P a
 failP pos msg _ _ _ _ = failMessageAt pos msg
+
+-- |Warn on a 'Position', given a warning message
+warnP :: Position -> String -> P a -> P a
+warnP warnPos msg lexer pos s bol ctxt
+  = warnMessageAt warnPos msg >> lexer pos s bol ctxt
 
 -- |Apply a pure function to the lexers result
 liftP :: (a -> b) -> P a -> P b

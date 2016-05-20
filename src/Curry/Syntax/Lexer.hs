@@ -74,8 +74,7 @@ data Category
   | Underscore    -- _
   | Backquote     -- `
 
-  -- layout (inserted by bbr)
-  | LeftBraceSemicolon -- {; (turn off layout)
+  -- layout
   | VSemicolon         -- virtual ;
   | VRightBrace        -- virtual }
 
@@ -220,8 +219,6 @@ instance Show Token where
   showsPrec _ (Token Comma              _) = showsEscaped ","
   showsPrec _ (Token Underscore         _) = showsEscaped "_"
   showsPrec _ (Token Backquote          _) = showsEscaped "`"
-  showsPrec _ (Token LeftBraceSemicolon _)
-    = showsEscaped "{;" . showString " (turn off layout)"
   showsPrec _ (Token VSemicolon         _)
     = showsEscaped ";" . showString " (inserted due to layout)"
   showsPrec _ (Token VRightBrace        _)
@@ -434,16 +431,16 @@ fullLexer = skipWhiteSpace False -- lex comments
 skipWhiteSpace :: Bool -> Lexer Token a
 skipWhiteSpace skipComments suc fail = skip
   where
-  skip p   []              bol = suc p (tok EOF)                  p        [] bol
-  skip p c@('-':'-':_)     _   = lexLineComment   sucComment fail p        c  True
-  skip p c@('{':'-':'#':_) bol = lexPragma noPragma suc  fail p  c  bol
-  skip p c@('{':'-':_)     bol = lexNestedComment sucComment fail p        c  bol
+  skip p   []              bol = suc p (tok EOF)                    p        [] bol
+  skip p c@('-':'-':_)     _   = lexLineComment     sucComment fail p        c  True
+  skip p c@('{':'-':'#':_) bol = lexPragma noPragma suc        fail p        c  bol
+  skip p c@('{':'-':_)     bol = lexNestedComment   sucComment fail p        c  bol
   skip p cs@(c:s)          bol
-    | c == '\t'            = skip                             (tab  p) s  bol
-    | c == '\n'            = skip                             (nl   p) s  True
-    | isSpace c            = skip                             (next p) s  bol
-    | bol                  = lexBOL   suc fail                p        cs bol
-    | otherwise            = lexToken suc fail                p        cs bol
+    | c == '\t'                = warnP p "Tab character" skip       (tab  p) s  bol
+    | c == '\n'                = skip                               (nl   p) s  True
+    | isSpace c                = skip                               (next p) s  bol
+    | bol                      = lexBOL             suc        fail p        cs bol
+    | otherwise                = lexToken           suc        fail p        cs bol
   sucComment = if skipComments then (\ _suc _fail -> skip) else suc
   noPragma   = lexNestedComment sucComment fail
 
@@ -531,7 +528,7 @@ lexToken suc fail p cs@(c:s)
   | c == ']'           = token RightBracket
   | c == '_'           = token Underscore
   | c == '`'           = token Backquote
-  | c == '{'           = lexLeftBrace  (suc p) (next p) s
+  | c == '{'           = token LeftBrace
   | c == '}'           = lexRightBrace (suc p) (next p) s
   | c == '\''          = lexChar   p suc fail  (next p) s
   | c == '\"'          = lexString p suc fail  (next p) s
@@ -540,11 +537,6 @@ lexToken suc fail p cs@(c:s)
   | isDigit      c     = lexNumber     (suc p) p        cs
   | otherwise          = fail p ("Illegal character " ++ show c) p s
   where token t = suc p (tok t) (next p) s
-
--- Lex either a left brace or a left brace semicolon
-lexLeftBrace :: (Token -> P a) -> P a
-lexLeftBrace cont p (';':s) = cont (tok LeftBraceSemicolon) (next p) s
-lexLeftBrace cont p s       = cont (tok LeftBrace         ) p        s
 
 -- Lex a right brace and pop from the context stack
 lexRightBrace :: (Token -> P a) -> P a
