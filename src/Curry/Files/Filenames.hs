@@ -38,7 +38,7 @@ module Curry.Files.Filenames
 
     -- * Functions for computing file names
   , interfName, flatName, extFlatName, flatIntName
-  , acyName, uacyName, sourceRepName
+  , acyName, uacyName, sourceRepName, tokensName, htmlName
   ) where
 
 import System.FilePath
@@ -172,6 +172,10 @@ uacyExt = ".uacy"
 sourceRepExt :: String
 sourceRepExt = ".cy"
 
+-- |Filename extension for token files
+tokensExt :: String
+tokensExt = ".tokens"
+
 -- ---------------------------------------------------------------------------
 -- Computation of file names for a given source file
 -- ---------------------------------------------------------------------------
@@ -203,6 +207,14 @@ uacyName = replaceExtensionWith uacyExt
 -- |Compute the filename of the source representation file for a source file
 sourceRepName :: FilePath -> FilePath
 sourceRepName = replaceExtensionWith sourceRepExt
+
+-- |Compute the filename of the tokens file for a source file
+tokensName :: FilePath -> FilePath
+tokensName = replaceExtensionWith tokensExt
+
+-- |Compute the filename of the HTML file for a source file
+htmlName :: ModuleIdent -> String
+htmlName m = moduleName m ++ "_curry.html"
 
 -- |Replace a filename extension with a new extension
 replaceExtensionWith :: String -> FilePath -> FilePath
