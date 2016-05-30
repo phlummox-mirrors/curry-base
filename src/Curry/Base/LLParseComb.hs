@@ -130,12 +130,12 @@ unexpected s
 -- ---------------------------------------------------------------------------
 
 -- |Return the current position without consuming the input
-position :: Symbol s => Parser a s Position
+position :: Parser a s Position
 position = Parser (Just p) Map.empty
   where p success _ pos = success pos pos
 
 -- |Always succeeding parser
-succeed :: Symbol s => b -> Parser a s b
+succeed :: b -> Parser a s b
 succeed x = Parser (Just p) Map.empty
   where p success _ = success x
 
@@ -145,7 +145,7 @@ failure msg = Parser (Just p) Map.empty
   where p _ failp pos _ = failp pos msg
 
 -- |Create a parser accepting the given 'Symbol'
-symbol :: Symbol s => s -> Parser a s s
+symbol :: s -> Parser a s s
 symbol s = Parser Nothing (Map.singleton s p)
   where p lexer success failp _ s' = lexer (success s') failp
 
@@ -205,10 +205,10 @@ Parser e1 ps1 <|?> Parser e2 ps2
        | otherwise -> p1
     LT -> p2
 
-seqEE :: Symbol s => ParseFun a s (b -> c) -> ParseFun a s b -> ParseFun a s c
+seqEE :: ParseFun a s (b -> c) -> ParseFun a s b -> ParseFun a s c
 seqEE p1 p2 success failp = p1 (\f -> p2 (success . f) failp) failp
 
-seqEP :: Symbol s => ParseFun a s (b -> c) -> (Lexer s a -> ParseFun a s b)
+seqEP :: ParseFun a s (b -> c) -> (Lexer s a -> ParseFun a s b)
       -> Lexer s a -> ParseFun a s c
 seqEP p1 p2 lexer success failp = p1 (\f -> p2 lexer (success . f) failp) failp
 
