@@ -1,7 +1,7 @@
 {- |
     Module      :  $Header$
     Description :  Monads for message handling
-    Copyright   :  2014 - 2015 Björn Peemöller
+    Copyright   :  2014 - 2016 Björn Peemöller
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -14,7 +14,7 @@
 
 module Curry.Base.Monad
   ( CYIO, CYM, CYT, failMessages, failMessageAt, warnMessages, warnMessageAt
-  , ok, runCYIO, runCYM, runCYIOIgnWarn, runCYMIgnWarn, liftCYM
+  , ok, runCYIO, runCYM, runCYIOIgnWarn, runCYMIgnWarn, liftCYM, silent
   ) where
 
 import Control.Monad.Identity
@@ -75,7 +75,11 @@ warnMessage msg = warnMessages [msg]
 
 -- |Warning with a list of messages describing the cause(s) of the warnings.
 warnMessages :: Monad m => [Message] -> CYT m ()
-warnMessages msgs = censor (++msgs) (return ())
+warnMessages msgs = tell msgs
+
+-- |Execute a monadic action, but ignore any warnings it issues
+silent :: Monad m => CYT m a -> CYT m a
+silent act = censor (const []) act
 
 -- |Warning with a source code position and a `String` indicating
 -- the cause of the warning.
