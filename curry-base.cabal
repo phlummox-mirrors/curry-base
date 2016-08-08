@@ -59,6 +59,7 @@ Library
     Curry.Base.Monad
     Curry.Base.Position
     Curry.Base.Pretty
+    Curry.Base.Span
     Curry.ExtendedFlat
     Curry.ExtendedFlat.CurryArithmetics
     Curry.ExtendedFlat.EraseTypes
