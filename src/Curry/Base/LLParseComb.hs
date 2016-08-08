@@ -2,6 +2,7 @@
     Module      :  $Header$
     Description :  Parser combinators
     Copyright   :  (c) 1999-2004, Wolfgang Lux
+                       2016     , Jan Tikovsky
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -52,6 +53,7 @@ import qualified Data.Set as Set
 
 import Curry.Base.LexComb
 import Curry.Base.Position
+import Curry.Base.Span (span2Pos)
 
 infixl 5 <\>, <\\>
 infixl 4 <$->, <*->, <-*>, <**>, <??>, <.>
@@ -132,7 +134,7 @@ unexpected s
 -- |Return the current position without consuming the input
 position :: Parser a s Position
 position = Parser (Just p) Map.empty
-  where p success _ pos = success pos pos
+  where p success _ sp = success (span2Pos sp) sp
 
 -- |Always succeeding parser
 succeed :: b -> Parser a s b
@@ -201,7 +203,7 @@ Parser e1 ps1 <|?> Parser e2 ps2
           retry k (pos',p) = closeP0 p `thenP` curry k pos'
   select suc (pos1, p1) (pos2, p2) = case pos1 `compare` pos2 of
     GT -> p1
-    EQ | suc       -> failP pos1 $ "Ambiguous parse before " ++ showPosition pos1
+    EQ | suc       -> failP pos1 $ "Ambiguous parse before " ++ showPosition (span2Pos pos1)
        | otherwise -> p1
     LT -> p2
 
@@ -355,7 +357,7 @@ layoutOff = Parser (Just off) Map.empty
 -- |Add a new scope for layout
 layoutOn :: Symbol s => Parser a s b
 layoutOn = Parser (Just on) Map.empty
-  where on success _ pos = pushContext (column pos) . success undefined pos
+  where on success _ pos = pushContext (column (span2Pos pos)) . success undefined pos
 
 -- |End the current layout scope (or re-enable layout-awareness if it is
 -- currently disabled

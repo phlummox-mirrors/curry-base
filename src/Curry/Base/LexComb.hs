@@ -3,6 +3,7 @@
     Description :  Lexer combinators
     Copyright   :  (c) 1999 - 2004, Wolfgang Lux
                        2012 - 2013, Björn Peemöller
+                       2016       , Jan Tikovsky
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -12,7 +13,7 @@
     This module provides the basic types and combinators to implement the
     lexers. The combinators use continuation passing code in a monadic style.
 
-    The first argument of the continuation function is the current position,
+    The first argument of the continuation function is the current span,
     and the second is the string to be parsed. The third argument is a flag
     which signals the lexer that it is lexing the beginning of a line and
     therefore has to check for layout tokens. The fourth argument is a stack
@@ -34,10 +35,11 @@ module Curry.Base.LexComb
   , convertIntegral, convertFloating
   ) where
 
-import Data.Char           (digitToInt)
+import Data.Char        (digitToInt)
 
-import Curry.Base.Monad    (CYM, failMessageAt, warnMessageAt)
-import Curry.Base.Position (Position, first)
+import Curry.Base.Monad (CYM, failMessageAt, warnMessageAt)
+import Curry.Base.Span  ( Distance, Span (..), startCol, fstSpan, span2Pos
+                        , setDistance)
 
 
 infixl 1 `thenP`, `thenP_`
@@ -46,6 +48,8 @@ infixl 1 `thenP`, `thenP_`
 class (Ord s, Show s) => Symbol s where
   -- |Does the 'Symbol' represent the end of the input?
   isEOF :: s -> Bool
+  -- |Compute the distance of a 'Symbol'
+  dist :: Int -> s -> Maybe Distance
 
 -- |Type for indentations, necessary for the layout rule
 type Indent = Int
@@ -54,36 +58,39 @@ type Indent = Int
 type Context = [Indent]
 
 -- |Basic lexer function
-type P a = Position   -- ^ Current source code position
-        -> String     -- ^ 'String' to be parsed
-        -> Bool       -- ^ Flag whether the beginning of a line should be
-                      --   parsed, which requires layout checking
-        -> Context    -- ^ context as a stack of 'Indent's
+type P a = Span     -- ^ Current source code span
+        -> String   -- ^ 'String' to be parsed
+        -> Bool     -- ^ Flag whether the beginning of a line should be
+                    --   parsed, which requires layout checking
+        -> Context  -- ^ context as a stack of 'Indent's
         -> CYM a
 
 -- |Apply a lexer on a 'String' to lex the content. The second parameter
--- requires a 'FilePath' to use in the 'Position'
+-- requires a 'FilePath' to use in the 'Span'
 parse :: P a -> FilePath -> String -> CYM a
-parse p fn s = p (first fn) s True []
+parse p fn s = p (fstSpan fn) s True []
 
 -- ---------------------------------------------------------------------------
 -- CPS lexer
 -- ---------------------------------------------------------------------------
 
 -- |success continuation
-type SuccessP s a = Position -> s -> P a
+type SuccessP s a = Span -> s -> P a
 
 -- |failure continuation
-type FailP a      = Position -> String -> P a
+type FailP a      = Span -> String -> P a
 
 -- |A CPS lexer
 type Lexer s a    = SuccessP s a -> FailP a -> P a
 
 -- |Apply a lexer
-applyLexer :: Symbol s => Lexer s [(Position, s)] -> P [(Position, s)]
+applyLexer :: Symbol s => Lexer s [(Span, s)] -> P [(Span, s)]
 applyLexer lexer = lexer successP failP
-  where successP p t | isEOF t   = returnP [(p, t)]
-                     | otherwise = ((p, t) :) `liftP` lexer successP failP
+  where successP sp t | isEOF t   = returnP [(sp', t)]
+                      | otherwise = ((sp', t) :) `liftP` lexer successP failP
+          where sp' = case dist (startCol sp) t of
+                        Nothing -> NoSpan
+                        Just d  -> setDistance sp d
 
 -- ---------------------------------------------------------------------------
 -- Monadic functions for the lexer.
@@ -96,22 +103,22 @@ returnP x _ _ _ _ = return x
 -- |Apply the first lexer and then apply the second one, based on the result
 -- of the first lexer.
 thenP :: P a -> (a -> P b) -> P b
-thenP lexer k pos s bol ctxt
-  = lexer pos s bol ctxt >>= \x -> k x pos s bol ctxt
+thenP lexer k sp s bol ctxt
+  = lexer sp s bol ctxt >>= \x -> k x sp s bol ctxt
 
 -- |Apply the first lexer and then apply the second one, ignoring the first
 -- result.
 thenP_ :: P a -> P b -> P b
 p1 `thenP_` p2 = p1 `thenP` \_ -> p2
 
--- |Fail to lex on a 'Position', given an error message
-failP :: Position -> String -> P a
-failP pos msg _ _ _ _ = failMessageAt pos msg
+-- |Fail to lex on a 'Span', given an error message
+failP :: Span -> String -> P a
+failP sp msg _ _ _ _ = failMessageAt (span2Pos sp) msg
 
--- |Warn on a 'Position', given a warning message
-warnP :: Position -> String -> P a -> P a
-warnP warnPos msg lexer pos s bol ctxt
-  = warnMessageAt warnPos msg >> lexer pos s bol ctxt
+-- |Warn on a 'Span', given a warning message
+warnP :: Span -> String -> P a -> P a
+warnP warnSpan msg lexer sp s bol ctxt
+  = warnMessageAt (span2Pos warnSpan) msg >> lexer sp s bol ctxt
 
 -- |Apply a pure function to the lexers result
 liftP :: (a -> b) -> P a -> P b
@@ -119,12 +126,12 @@ liftP f p = p `thenP` returnP . f
 
 -- |Lift a lexer into the 'P' monad, returning the lexer when evaluated.
 closeP0 :: P a -> P (P a)
-closeP0 lexer pos s bol ctxt = return (\_ _ _ _ -> lexer pos s bol ctxt)
+closeP0 lexer sp s bol ctxt = return (\_ _ _ _ -> lexer sp s bol ctxt)
 
 -- |Lift a lexer-generating function into the 'P' monad, returning the
 --  function when evaluated.
 closeP1 :: (a -> P b) -> P (a -> P b)
-closeP1 f pos s bol ctxt = return (\x _ _ _ _ -> f x pos s bol ctxt)
+closeP1 f sp s bol ctxt = return (\x _ _ _ _ -> f x sp s bol ctxt)
 
 -- ---------------------------------------------------------------------------
 -- Combinators for handling layout.
@@ -132,12 +139,12 @@ closeP1 f pos s bol ctxt = return (\x _ _ _ _ -> f x pos s bol ctxt)
 
 -- |Push an 'Indent' to the context, increasing the levels of indentation
 pushContext :: Indent -> P a -> P a
-pushContext col cont pos s bol ctxt = cont pos s bol (col : ctxt)
+pushContext col cont sp s bol ctxt = cont sp s bol (col : ctxt)
 
 -- |Pop an 'Indent' from the context, decreasing the levels of indentation
 popContext :: P a -> P a
-popContext cont pos s bol (_ : ctxt) = cont pos s bol ctxt
-popContext _    pos _ _   []         = failMessageAt pos $
+popContext cont sp s bol (_ : ctxt) = cont sp s bol ctxt
+popContext _    sp _ _   []         = failMessageAt (span2Pos sp) $
   "Parse error: popping layout from empty context stack. " ++
   "Perhaps you have inserted too many '}'?"
 

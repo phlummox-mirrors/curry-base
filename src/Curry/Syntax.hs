@@ -3,6 +3,7 @@
     Description :  Interface for reading and manipulating Curry source code
     Copyright   :  (c) 2009        Holger Siegel
                        2011 - 2013 Björn Peemöller
+                       2016        Jan Tikovsky
     License     :  OtherLicense
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -20,7 +21,7 @@ module Curry.Syntax
   ) where
 
 import           Curry.Base.Monad             (CYM)
-import           Curry.Base.Position          (Position)
+import           Curry.Base.Span              (Span)
 import qualified Curry.Files.Unlit       as U (unlit)
 
 import qualified Curry.Syntax.Lexer      as L
@@ -36,8 +37,8 @@ unlit = U.unlit
 
 -- |Unliterate and return the result of a lexical analysis of the source
 -- program @src@.
--- The result is a list of tuples consisting of a 'Position' and a 'Token'.
-unlitLexSource :: FilePath -> String -> CYM [(Position, L.Token)]
+-- The result is a list of tuples consisting of a 'Span' and a 'Token'.
+unlitLexSource :: FilePath -> String -> CYM [(Span, L.Token)]
 unlitLexSource fn src = U.unlit fn src >>= L.lexSource fn
 
 -- |Unliterate and parse a Curry 'Module' header
@@ -49,8 +50,8 @@ unlitParseModule :: FilePath -> String -> CYM Module
 unlitParseModule fn src = U.unlit fn src >>= P.parseSource fn
 
 -- |Return the result of a lexical analysis of the source program @src@.
--- The result is a list of tuples consisting of a 'Position' and a 'Token'.
-lexSource :: FilePath -> String -> CYM [(Position, L.Token)]
+-- The result is a list of tuples consisting of a 'Span' and a 'Token'.
+lexSource :: FilePath -> String -> CYM [(Span, L.Token)]
 lexSource = L.lexSource
 
 -- |Parse a Curry 'Interface'
