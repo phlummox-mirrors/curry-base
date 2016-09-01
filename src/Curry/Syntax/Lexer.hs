@@ -50,45 +50,45 @@ instance Ord Token where
 instance Symbol Token where
   isEOF (Token c _) = c == EOF
 
-  dist _ (Token VSemicolon         _) = Nothing
-  dist _ (Token VRightBrace        _) = Nothing
-  dist _ (Token EOF                _) = Nothing
-  dist _ (Token DotDot             _) = Just (0,  1)
-  dist _ (Token DoubleColon        _) = Just (0,  1)
-  dist _ (Token LeftArrow          _) = Just (0,  1)
-  dist _ (Token RightArrow         _) = Just (0,  1)
-  dist _ (Token SymMinusDot        _) = Just (0,  1)
-  dist _ (Token KW_do              _) = Just (0,  1)
-  dist _ (Token KW_if              _) = Just (0,  1)
-  dist _ (Token KW_in              _) = Just (0,  1)
-  dist _ (Token KW_of              _) = Just (0,  1)
-  dist _ (Token Id_as              _) = Just (0,  1)
-  dist _ (Token KW_let             _) = Just (0,  2)
-  dist _ (Token PragmaEnd          _) = Just (0,  2)
-  dist _ (Token KW_case            _) = Just (0,  3)
-  dist _ (Token KW_data            _) = Just (0,  3)
-  dist _ (Token KW_else            _) = Just (0,  3)
-  dist _ (Token KW_free            _) = Just (0,  3)
-  dist _ (Token KW_then            _) = Just (0,  3)
-  dist _ (Token KW_type            _) = Just (0,  3)
-  dist _ (Token KW_fcase           _) = Just (0,  4)
-  dist _ (Token KW_infix           _) = Just (0,  4)
-  dist _ (Token KW_where           _) = Just (0,  4)
-  dist _ (Token Id_ccall           _) = Just (0,  4)
-  dist _ (Token KW_import          _) = Just (0,  5)
-  dist _ (Token KW_infixl          _) = Just (0,  5)
-  dist _ (Token KW_infixr          _) = Just (0,  5)
-  dist _ (Token KW_module          _) = Just (0,  5)
-  dist _ (Token Id_forall          _) = Just (0,  5)
-  dist _ (Token Id_hiding          _) = Just (0,  5)
-  dist _ (Token KW_foreign         _) = Just (0,  6)
-  dist _ (Token KW_newtype         _) = Just (0,  6)
-  dist _ (Token KW_external        _) = Just (0,  7)
-  dist _ (Token Id_interface       _) = Just (0,  8)
-  dist _ (Token Id_primitive       _) = Just (0,  8)
-  dist _ (Token Id_qualified       _) = Just (0,  8)
-  dist _ (Token PragmaHiding       _) = Just (0,  9)
-  dist _ (Token PragmaLanguage     _) = Just (0, 11)
+  dist _ (Token VSemicolon         _) = (0,  0)
+  dist _ (Token VRightBrace        _) = (0,  0)
+  dist _ (Token EOF                _) = (0,  0)
+  dist _ (Token DotDot             _) = (0,  1)
+  dist _ (Token DoubleColon        _) = (0,  1)
+  dist _ (Token LeftArrow          _) = (0,  1)
+  dist _ (Token RightArrow         _) = (0,  1)
+  dist _ (Token SymMinusDot        _) = (0,  1)
+  dist _ (Token KW_do              _) = (0,  1)
+  dist _ (Token KW_if              _) = (0,  1)
+  dist _ (Token KW_in              _) = (0,  1)
+  dist _ (Token KW_of              _) = (0,  1)
+  dist _ (Token Id_as              _) = (0,  1)
+  dist _ (Token KW_let             _) = (0,  2)
+  dist _ (Token PragmaEnd          _) = (0,  2)
+  dist _ (Token KW_case            _) = (0,  3)
+  dist _ (Token KW_data            _) = (0,  3)
+  dist _ (Token KW_else            _) = (0,  3)
+  dist _ (Token KW_free            _) = (0,  3)
+  dist _ (Token KW_then            _) = (0,  3)
+  dist _ (Token KW_type            _) = (0,  3)
+  dist _ (Token KW_fcase           _) = (0,  4)
+  dist _ (Token KW_infix           _) = (0,  4)
+  dist _ (Token KW_where           _) = (0,  4)
+  dist _ (Token Id_ccall           _) = (0,  4)
+  dist _ (Token KW_import          _) = (0,  5)
+  dist _ (Token KW_infixl          _) = (0,  5)
+  dist _ (Token KW_infixr          _) = (0,  5)
+  dist _ (Token KW_module          _) = (0,  5)
+  dist _ (Token Id_forall          _) = (0,  5)
+  dist _ (Token Id_hiding          _) = (0,  5)
+  dist _ (Token KW_foreign         _) = (0,  6)
+  dist _ (Token KW_newtype         _) = (0,  6)
+  dist _ (Token KW_external        _) = (0,  7)
+  dist _ (Token Id_interface       _) = (0,  8)
+  dist _ (Token Id_primitive       _) = (0,  8)
+  dist _ (Token Id_qualified       _) = (0,  8)
+  dist _ (Token PragmaHiding       _) = (0,  9)
+  dist _ (Token PragmaLanguage     _) = (0, 11)
   dist _ (Token Id                 a) = distAttr False a
   dist _ (Token QId                a) = distAttr False a
   dist _ (Token Sym                a) = distAttr False a
@@ -99,35 +99,33 @@ instance Symbol Token where
   dist c (Token StringTok          a) = updColDist c (distAttr False a)
   dist _ (Token LineComment        a) = distAttr True  a
   dist c (Token NestedComment      a) = updColDist c (distAttr True  a)
-  dist _ (Token PragmaOptions      a) = let Just (ld, cd) = distAttr False a
-                                        in Just (ld, cd + 11)
-  dist _ _                            = Just (0, 0)
+  dist _ (Token PragmaOptions      a) = let (ld, cd) = distAttr False a
+                                        in  (ld, cd + 11)
+  dist _ _                            = (0, 0)
 
-updColDist :: Int -> Maybe Distance -> Maybe Distance
-updColDist _ Nothing = Nothing
-updColDist c d@(Just (ld, cd))
-  | ld == 0   = d
-  | otherwise = Just (ld, cd - c + 1)
+-- TODO: Comment
+updColDist :: Int -> Distance -> Distance
+updColDist c (ld, cd) = (ld, if ld == 0 then cd else cd - c + 1)
 
-distAttr :: Bool -> Attributes -> Maybe Distance
+distAttr :: Bool -> Attributes -> Distance
 distAttr isComment attr = case attr of
-  NoAttributes              -> Nothing
-  CharAttributes     _ orig -> Just (0, length orig + 1)
-  IntAttributes      _ orig -> Just (0, length orig - 1)
-  FloatAttributes    _ orig -> Just (0, length orig - 1)
+  NoAttributes              -> (0, 0)
+  CharAttributes     _ orig -> (0, length orig + 1)
+  IntAttributes      _ orig -> (0, length orig - 1)
+  FloatAttributes    _ orig -> (0, length orig - 1)
   StringAttributes   _ orig
       -- comment without surrounding quotes
-    | isComment             -> Just (ld, cd)
+    | isComment             -> (ld, cd)
       -- string with one ending double quote or two surrounding double quotes
       -- (column distance + 1 / + 2)
-    | '\n' `elem` orig      -> Just (ld, cd + 1)
-    | otherwise             -> Just (ld, cd + 2)
+    | '\n' `elem` orig      -> (ld, cd + 1)
+    | otherwise             -> (ld, cd + 2)
     where ld = length (filter    (== '\n') orig)
           cd = length (takeWhile (/= '\n') (reverse orig)) - 1
-  IdentAttributes    mid i  -> Just (0, length (intercalate "." (mid ++ [i])) - 1)
+  IdentAttributes    mid i  -> (0, length (intercalate "." (mid ++ [i])) - 1)
   OptionsAttributes mt args -> case mt of
-                                 Nothing -> Just (0, distArgs + 1)
-                                 Just t  -> Just (0, length t + distArgs + 2)
+                                 Nothing -> (0, distArgs + 1)
+                                 Just t  -> (0, length t + distArgs + 2)
     where distArgs = length args
 
 -- |Category of curry tokens

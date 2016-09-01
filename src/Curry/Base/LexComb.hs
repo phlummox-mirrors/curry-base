@@ -49,7 +49,7 @@ class (Ord s, Show s) => Symbol s where
   -- |Does the 'Symbol' represent the end of the input?
   isEOF :: s -> Bool
   -- |Compute the distance of a 'Symbol'
-  dist :: Int -> s -> Maybe Distance
+  dist :: Int -> s -> Distance
 
 -- |Type for indentations, necessary for the layout rule
 type Indent = Int
@@ -88,9 +88,7 @@ applyLexer :: Symbol s => Lexer s [(Span, s)] -> P [(Span, s)]
 applyLexer lexer = lexer successP failP
   where successP sp t | isEOF t   = returnP [(sp', t)]
                       | otherwise = ((sp', t) :) `liftP` lexer successP failP
-          where sp' = case dist (startCol sp) t of
-                        Nothing -> NoSpan
-                        Just d  -> setDistance sp d
+          where sp' = setDistance sp (dist (startCol sp) t)
 
 -- ---------------------------------------------------------------------------
 -- Monadic functions for the lexer.
