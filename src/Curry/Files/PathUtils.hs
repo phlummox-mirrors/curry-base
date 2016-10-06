@@ -104,8 +104,9 @@ writeModule :: FilePath -- ^ original path
             -> IO ()
 writeModule fn contents = do
   createDirectoryIfMissing True $ takeDirectory fn
-  writeFile fn contents
+  tryWriteFile fn contents
 
+    
 -- | Read the specified module and returns either 'Just String' if
 -- reading was successful or 'Nothing' otherwise.
 readModule :: FilePath -> IO (Maybe String)
@@ -151,3 +152,19 @@ tryOnExistingFile action fn = C.handle ignoreIOException $ do
 
 ignoreIOException :: C.IOException -> IO (Maybe a)
 ignoreIOException _ = return Nothing
+
+-- | Try to write a file. If it already exists and is not writable,
+-- a warning is issued. This solves some file dependency problems
+-- in global installations.
+tryWriteFile :: FilePath -- ^ original path
+             -> String   -- ^ file content
+             -> IO ()
+tryWriteFile fn contents = do
+  exists <- doesFileExist fn
+  if exists then C.handle issueWarning (writeFile fn contents)
+            else writeFile fn contents
+ where
+  issueWarning :: C.IOException -> IO ()
+  issueWarning _ = do
+    putStrLn $ "*** Warning: cannot update file `" ++ fn ++ "' (update ignored)"
+    return ()
