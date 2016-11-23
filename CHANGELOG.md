@@ -1,6 +1,11 @@
 Change log for curry-base
 =========================
 
+Version (0.4.2)
+===============
+
+  * Licenses made more specific.
+
 Version (0.4.1)
 ===============
 
