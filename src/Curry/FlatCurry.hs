@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Interface for reading and manipulating FlatCurry source code
     Copyright   :  (c) 2014 Björn Peemöller
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Elimination of recursive data declarations
     Copyright   :  (c) 2009, Holger Siegel
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

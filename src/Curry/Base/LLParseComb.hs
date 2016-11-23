@@ -3,7 +3,7 @@
     Description :  Parser combinators
     Copyright   :  (c) 1999-2004, Wolfgang Lux
                        2016     , Jan Tikovsky
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

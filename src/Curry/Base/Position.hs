@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Positions in a source file
     Copyright   :  (c) Wolfgang Lux
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

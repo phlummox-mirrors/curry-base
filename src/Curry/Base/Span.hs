@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Spans in a source file
     Copyright   :  (c) 2016 Jan Tikovsky
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  jrt@informatik.uni-kiel.de
     Stability   :  experimental

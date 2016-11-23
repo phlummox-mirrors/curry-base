@@ -3,7 +3,7 @@
     Description :  Monads for message handling
     Copyright   :  2009        Holger Siegel
                    2012 - 2015 Björn Peemöller
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

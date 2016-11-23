@@ -6,7 +6,7 @@
                        2005, Bernd Brassel
                        2009, Bernd Brassel
                        2012, Björn Peemöller
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  A pretty printer for extended FlatCurry
     Copyright   :  (c) 2015 Björn Peemöller
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

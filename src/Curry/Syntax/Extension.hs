@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Curry language extensions
     Copyright   :  (c) 2013 - 2014 Björn Peemöller
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

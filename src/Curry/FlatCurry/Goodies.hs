@@ -3,7 +3,7 @@
     Description : Utility functions for working with FlatCurry.
     Copyright   : (c) Sebastian Fischer 2006
                       Björn Peemöller 2011
-    License     : OtherLicense
+    License     : BSD-3-clause
 
     Maintainer  : bjp@informatik.uni-kiel.de
     Stability   : experimental

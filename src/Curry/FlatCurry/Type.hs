@@ -4,7 +4,7 @@
     Copyright   : (c) Michael Hanus  2003
                       Martin Engelke 2004
                       Bernd Brassel  2005
-    License     : OtherLicense
+    License     : BSD-3-clause
 
     Maintainer  : bjp@informatik.uni-kiel.de
     Stability   : experimental

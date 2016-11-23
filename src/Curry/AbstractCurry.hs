@@ -4,7 +4,7 @@
     Copyright   :  Michael Hanus  , April 2004
                    Martin Engelke , July 2005
                    Björn Peemöller, November 2013
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

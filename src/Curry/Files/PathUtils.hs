@@ -3,7 +3,7 @@
     Description :  Utility functions for reading and writing files
     Copyright   :  (c) 1999 - 2003, Wolfgang Lux
                        2011 - 2014, Björn Peemöller (bjp@informatik.uni-kiel.de)
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental
