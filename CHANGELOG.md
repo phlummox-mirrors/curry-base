@@ -1,8 +1,8 @@
 Change log for curry-base
 =========================
 
-Under Development (0.4.1)
-=========================
+Version (0.4.1)
+===============
 
   * Added new operator `@>` to return the left operand with the source code
     position obtained from the right operand.
@@ -13,6 +13,7 @@ Under Development (0.4.1)
   * Emitted FlatCurry files now contain newlines to improve readability
     for humans
   * Implemented pretty printer for extended FlatCurry
+  * Representation for spans (start and end position) added
 
 Version 0.4.0
 =============
