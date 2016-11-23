@@ -4,7 +4,7 @@
     Copyright   :  (c) 1999 - 2004, Wolfgang Lux
                        2012 - 2013, Björn Peemöller
                        2016       , Jan Tikovsky
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

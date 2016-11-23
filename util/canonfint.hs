@@ -2,7 +2,7 @@
     Module      :  $Header$
     Description :  Executable to fix FlatCurry interface files
     Copyright   :  (c) 2016 Björn Peemöller
-    License     :  OtherLicense
+    License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
     Stability   :  experimental

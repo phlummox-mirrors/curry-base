@@ -2,7 +2,7 @@
     Module      : $Header$
     Description : Functions for reading and writing FlatCurry files
     Copyright   : (c) Björn Peemöller 2014
-    License     : OtherLicense
+    License     : BSD-3-clause
 
     Maintainer  : bjp@informatik.uni-kiel.de
     Stability   : experimental

@@ -7,7 +7,7 @@ Description:   This package serves as a foundation for Curry compilers.
                ExtendedFlat. Additionally, it provides functionality
                for the smooth integration of compiler frontends and backends.
 Category:      Language
-License:       OtherLicense
+License:       BSD-3-clause
 License-File:  LICENSE
 Author:        Wolfgang Lux, Martin Engelke, Bernd Braßel, Holger Siegel,
                Björn Peemöller
