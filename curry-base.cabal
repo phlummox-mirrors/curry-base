@@ -1,5 +1,5 @@
 Name:          curry-base
-Version:       0.4.1
+Version:       0.4.2
 Cabal-Version: >= 1.10
 Synopsis:      Functions for manipulating Curry programs
 Description:   This package serves as a foundation for Curry compilers.
@@ -94,4 +94,4 @@ Test-Suite test-base
   hs-source-dirs: test
   default-language:  Haskell2010
   test-module:    TestBase
-  build-depends:  base == 4.*, Cabal >= 1.20, curry-base == 0.4.1, filepath, mtl
+  build-depends:  base == 4.*, Cabal >= 1.20, curry-base == 0.4.2, filepath, mtl
