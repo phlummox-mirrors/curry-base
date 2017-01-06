@@ -3,6 +3,7 @@
     Description :  Utility functions for reading and writing files
     Copyright   :  (c) 1999 - 2003, Wolfgang Lux
                        2011 - 2014, Björn Peemöller (bjp@informatik.uni-kiel.de)
+                       2017       , Finn Teegen (fte@informatik.uni-kiel.de)
     License     :  BSD-3-clause
 
     Maintainer  :  bjp@informatik.uni-kiel.de
@@ -32,6 +33,7 @@ import           Control.Monad          (liftM)
 import           Data.List              (isPrefixOf, isSuffixOf)
 import           System.FilePath
 import           System.Directory
+import           System.IO
 
 #if MIN_VERSION_directory(1,2,0)
 import Data.Time                        (UTCTime)
@@ -110,7 +112,13 @@ writeModule fn contents = do
 -- | Read the specified module and returns either 'Just String' if
 -- reading was successful or 'Nothing' otherwise.
 readModule :: FilePath -> IO (Maybe String)
-readModule = tryOnExistingFile readFile
+readModule = tryOnExistingFile readFileUTF8
+ where
+  readFileUTF8 :: FilePath -> IO String
+  readFileUTF8 fn = do
+    hdl <- openFile fn ReadMode
+    hSetEncoding hdl utf8
+    hGetContents hdl
 
 -- | Get the modification time of a file, if existent
 #if MIN_VERSION_directory(1,2,0)
@@ -161,10 +169,13 @@ tryWriteFile :: FilePath -- ^ original path
              -> IO ()
 tryWriteFile fn contents = do
   exists <- doesFileExist fn
-  if exists then C.handle issueWarning (writeFile fn contents)
-            else writeFile fn contents
+  if exists then C.handle issueWarning (writeFileUTF8 fn contents)
+            else writeFileUTF8 fn contents
  where
   issueWarning :: C.IOException -> IO ()
   issueWarning _ = do
     putStrLn $ "*** Warning: cannot update file `" ++ fn ++ "' (update ignored)"
     return ()
+  writeFileUTF8 :: FilePath -> String -> IO ()
+  writeFileUTF8 fn str =
+    withFile fn WriteMode (\hdl -> hSetEncoding hdl utf8 >> hPutStr hdl str)
