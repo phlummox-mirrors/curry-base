@@ -59,7 +59,7 @@ kielExtensions :: [KnownExtension]
 kielExtensions = [AnonFreeVars, FunctionalPatterns]
 
 -- |Different Curry tools which may accept compiler options.
-data Tool = KICS2 | PAKCS | CYMAKE | UnknownTool String
+data Tool = KICS2 | PAKCS | CYMAKE | FRONTEND | UnknownTool String
     deriving (Eq, Read, Show, Data, Typeable)
 
 -- |Classifies a 'String' as a 'Tool'
