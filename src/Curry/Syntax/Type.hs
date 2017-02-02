@@ -43,8 +43,11 @@ import Data.Generics          (Data, Typeable)
 
 import Curry.Base.Ident
 import Curry.Base.Position
+import Curry.Base.Pretty      (Pretty(..))
 
 import Curry.Syntax.Extension
+
+import Text.PrettyPrint
 
 -- ---------------------------------------------------------------------------
 -- Modules
@@ -332,3 +335,9 @@ instance SrcRefOf Literal where
   srcRefOf (Int    i _) = srcRefOf i
   srcRefOf (Float  s _) = s
   srcRefOf (String s _) = s
+
+instance Pretty Infix where
+  pPrint InfixL = text "infixl"
+  pPrint InfixR = text "infixr"
+  pPrint Infix  = text "infix"
+

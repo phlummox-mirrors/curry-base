@@ -106,15 +106,10 @@ ppDecl (PatternDecl _ t rhs) = ppRule (ppPattern 0 t) equals rhs
 ppDecl (FreeDecl       _ vs) = list (map ppIdent vs) <+> text "free"
 
 ppPrec :: Infix -> Maybe Precedence -> Doc
-ppPrec fix p = ppAssoc fix <+> ppPrio p
+ppPrec fix p = pPrint fix <+> ppPrio p
   where
     ppPrio Nothing   = empty
     ppPrio (Just p') = integer p'
-
-ppAssoc :: Infix -> Doc
-ppAssoc InfixL = text "infixl"
-ppAssoc InfixR = text "infixr"
-ppAssoc Infix  = text "infix"
 
 ppTypeDeclLhs :: String -> Ident -> [Ident] -> Doc
 ppTypeDeclLhs kw tc tvs = text kw <+> ppIdent tc <+> hsep (map ppIdent tvs)
